@@ -1,313 +1,288 @@
 <!DOCTYPE html>
 <html lang="bg">
 <head>
-<meta charset="UTF-8">
-<title>MenuPlanner — Седмично меню</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Menu Planner – Fresh Garden</title>
 
-<style>
+  <style>
     :root {
-        --primary: #6750A4;
-        --primary-container: #EADDFF;
-        --surface: #FFFBFE;
-        --surface-variant: #E7E0EC;
-        --outline: #79747E;
-        --text: #1C1B1F;
+      --bg: #fdfdfb;
+      --panel-bg: #ffffff;
+      --accent-green: #7ed9a6;
+      --accent-green-strong: #4bbf78;
+      --accent-yellow: #fff4c7;
+      --accent-yellow-strong: #ffe89a;
+      --text-main: #2d3a3f;
+      --text-muted: #6b7a80;
+      --border: #e8ece8;
+      --radius-lg: 22px;
+      --radius-md: 14px;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+      --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Inter", system-ui, sans-serif;
     }
 
     body {
-        margin: 0;
-        font-family: "Roboto", "Segoe UI", sans-serif;
-        background: var(--surface);
-        color: var(--text);
-        display: flex;
-        justify-content: center;
-        padding: 32px;
+      background: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 32px;
+      display: flex;
+      justify-content: center;
     }
 
-    .container {
-        width: 100%;
-        max-width: 900px;
+    .app-shell {
+      width: 100%;
+      max-width: 1400px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
     }
 
-    h1 {
-        text-align: center;
-        font-size: 32px;
-        font-weight: 700;
-        margin-bottom: 24px;
-        color: var(--primary);
-    }
-
+    /* Tabs */
     .tabs {
-        display: flex;
-        border-bottom: 2px solid var(--surface-variant);
-        margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
     }
 
     .tab {
-        padding: 14px 24px;
-        cursor: pointer;
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--text);
-        position: relative;
-        transition: 0.2s;
+      padding: 12px 24px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text-muted);
+      cursor: pointer;
+      box-shadow: var(--shadow-soft);
+      transition: 0.25s;
+      font-size: 15px;
     }
 
     .tab.active {
-        color: var(--primary);
+      background: var(--accent-green);
+      color: #fff;
+      border-color: var(--accent-green-strong);
+      box-shadow: 0 4px 12px rgba(126, 217, 166, 0.35);
     }
 
-    .tab.active::after {
-        content: "";
-        position: absolute;
-        bottom: -2px;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: var(--primary);
-        border-radius: 2px;
+    /* Layout */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 28px;
     }
 
-    .md-card {
-        background: var(--surface);
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 24px;
-        border: 1px solid var(--surface-variant);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Panels */
+    .panel {
+      background: var(--panel-bg);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      padding: 28px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
     }
 
     label {
-        font-size: 14px;
-        font-weight: 600;
-        margin-bottom: 6px;
-        display: block;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-muted);
     }
 
-    input, select, textarea {
-        width: 100%;
-        padding: 14px;
-        border-radius: 12px;
-        border: 1px solid var(--outline);
-        margin-bottom: 18px;
-        font-size: 15px;
-        background: var(--surface);
+    select, textarea {
+      width: 100%;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      padding: 12px;
+      font-size: 15px;
+      background: #fff;
+      color: var(--text-main);
+      box-shadow: var(--shadow-soft);
+      transition: 0.2s;
+    }
+
+    select:focus, textarea:focus {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 0 3px rgba(126, 217, 166, 0.25);
+      outline: none;
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+
+    /* Buttons */
+    .button-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
     }
 
     button {
-        background: var(--primary);
-        color: white;
-        padding: 14px 22px;
-        border: none;
-        border-radius: 12px;
-        font-size: 16px;
-        cursor: pointer;
-        width: 100%;
-        font-weight: 600;
-        transition: 0.2s;
+      padding: 12px 24px;
+      border-radius: 999px;
+      cursor: pointer;
+      border: none;
+      font-size: 15px;
+      transition: 0.25s;
     }
 
-    button:hover {
-        background: #57408d;
+    .btn-primary {
+      background: var(--accent-green);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(126, 217, 166, 0.35);
     }
 
-    #loading {
-        display: none;
-        justify-content: center;
-        margin: 20px 0;
+    .btn-primary:hover {
+      background: var(--accent-green-strong);
     }
 
-    .spinner {
-        width: 42px;
-        height: 42px;
-        border: 4px solid #ddd;
-        border-top-color: var(--primary);
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
+    .btn-secondary {
+      background: #fff;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
     }
 
-    @keyframes spin {
-        to { transform: rotate(360deg); }
+    /* Status */
+    #status {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: -6px;
+      min-height: 20px;
+    }
+
+    /* Cards */
+    .days-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .days-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .day-card {
-        background: var(--primary-container);
-        padding: 20px;
-        border-radius: 16px;
-        margin-bottom: 16px;
-        border: 1px solid var(--outline);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      padding: 22px;
+      box-shadow: var(--shadow-soft);
+      animation: fadeIn 0.4s ease;
     }
 
-    .day-title {
-        font-size: 20px;
-        font-weight: 700;
-        margin-bottom: 12px;
-        color: var(--primary);
+    /* Alternating pastel blocks */
+    .day-card:nth-child(odd) {
+      background: var(--accent-yellow);
     }
 
-    .meal {
-        margin-bottom: 8px;
-        font-size: 15px;
+    .day-card:nth-child(even) {
+      background: #e9f9ef;
     }
 
-    .shopping-category {
-        font-weight: 700;
-        margin-top: 20px;
-        font-size: 18px;
-        color: var(--primary);
+    .day-name {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--accent-green-strong);
     }
 
-    .shopping-item {
-        margin-left: 16px;
-        padding: 4px 0;
-        font-size: 15px;
+    .meal-list {
+      font-size: 15px;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
-</style>
+
+    .error-box {
+      color: #b91c1c;
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      padding: 12px;
+      border-radius: 12px;
+      display: none;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
 
 <body>
-<div class="container">
-
-    <h1>MenuPlanner</h1>
+  <div class="app-shell">
 
     <div class="tabs">
-        <div class="tab active" onclick="switchTab('menu')">Меню</div>
-        <div class="tab" onclick="switchTab('shopping')">Пазаруване</div>
+      <button class="tab active" data-tab="menu">Меню</button>
+      <button class="tab" data-tab="basket">Кошница</button>
     </div>
 
-    <div id="tab-menu">
-        <div class="md-card">
-            <label>Диета</label>
-            <select id="diet">
-                <option value="balanced">Баланс</option>
-                <option value="high-protein">Висок протеин</option>
-                <option value="vegetarian">Вегетарианска</option>
-                <option value="vegan">Веган</option>
-            </select>
+    <div class="layout">
 
-            <label>Брой хора</label>
-            <input id="people" type="number" value="2">
+      <!-- LEFT PANEL -->
+      <div class="panel">
+        <label>Брой хора:</label>
+        <select id="people">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4" selected>4</option>
+        </select>
 
-            <label>Стил</label>
-            <select id="variety">
-                <option value="mixed">Разнообразно</option>
-                <option value="traditional">Традиционно</option>
-                <option value="mediterranean">Средиземноморско</option>
-                <option value="quick">Бързи рецепти</option>
-            </select>
+        <label>Разнообразие:</label>
+        <select id="variety">
+          <option value="low">Ниско</option>
+          <option value="medium" selected>Средно</option>
+          <option value="high">Високо</option>
+        </select>
 
-            <label>Алергии (по желание)</label>
-            <input id="allergies" placeholder="глутен, ядки...">
+        <label>Диета:</label>
+        <select id="diet">
+          <option value="normal" selected>Нормална</option>
+          <option value="vegan">Веган</option>
+          <option value="vegetarian">Вегетарианска</option>
+          <option value="glutenfree">Без глутен</option>
+        </select>
 
-            <label>Предпочитания (по желание)</label>
-            <textarea id="prefs" rows="2" placeholder="повече риба, без пържено..."></textarea>
+        <label>Допълнителни инструкции:</label>
+        <textarea id="prompt">Генерирай ми седмично меню.</textarea>
 
-            <button id="gen-btn" onclick="generateMenu()">Генерирай меню</button>
-
-            <div id="loading"><div class="spinner"></div></div>
+        <div class="button-row">
+          <button id="reset" class="btn-secondary">Изчисти</button>
+          <button id="generate" class="btn-primary">Генерирай меню</button>
         </div>
 
-        <div id="menu-output"></div>
+        <div id="status">Готово за генериране.</div>
+
+        <div id="error" class="error-box"></div>
+      </div>
+
+      <!-- RIGHT PANEL -->
+      <div class="panel">
+        <div id="menuContainer" class="days-grid"></div>
+        <div id="basketContainer" class="days-grid" style="display:none;"></div>
+      </div>
+
     </div>
+  </div>
 
-    <div id="tab-shopping" style="display:none;">
-        <div id="shopping-output"></div>
-    </div>
-
-</div>
-
-<script>
-let currentMenu = null;
-let currentShopping = null;
-
-function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-
-    if (tab === 'menu') {
-        document.querySelector('.tab:nth-child(1)').classList.add('active');
-        document.getElementById('tab-menu').style.display = 'block';
-        document.getElementById('tab-shopping').style.display = 'none';
-    } else {
-        document.querySelector('.tab:nth-child(2)').classList.add('active');
-        document.getElementById('tab-menu').style.display = 'none';
-        document.getElementById('tab-shopping').style.display = 'block';
-        renderShopping(currentShopping);
-    }
-}
-
-async function generateMenu() {
-    const diet = document.getElementById('diet').value;
-    const people = document.getElementById('people').value;
-    const variety = document.getElementById('variety').value;
-    const allergies = document.getElementById('allergies').value;
-    const prefs = document.getElementById('prefs').value;
-
-    const btn = document.getElementById('gen-btn');
-    btn.disabled = true;
-    document.getElementById('loading').style.display = 'flex';
-    document.getElementById('menu-output').innerHTML = '';
-
-    try {
-        const response = await fetch("/api/generate-menu", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ diet, people, variety, allergies, prefs })
-        });
-
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
-
-        currentMenu = data;
-        currentShopping = data.shopping;
-
-        renderMenu(data.days);
-
-    } catch (e) {
-    document.getElementById('menu-output').innerHTML =
-        `<div style="color:red;padding:20px;">
-            Грешка:<br><pre>${JSON.stringify(e, null, 2)}</pre>
-        </div>`;
-}
- finally {
-        btn.disabled = false;
-        document.getElementById('loading').style.display = 'none';
-    }
-}
-
-function renderMenu(days) {
-    const out = document.getElementById('menu-output');
-    out.innerHTML = "";
-
-    days.forEach(day => {
-        out.innerHTML += `
-            <div class="day-card">
-                <div class="day-title">${day.day}</div>
-                <div class="meal"><b>Закуска:</b> ${day.breakfast.name} — ${day.breakfast.desc}</div>
-                <div class="meal"><b>Обяд:</b> ${day.lunch.name} — ${day.lunch.desc}</div>
-                <div class="meal"><b>Вечеря:</b> ${day.dinner.name} — ${day.dinner.desc}</div>
-            </div>
-        `;
-    });
-}
-
-function renderShopping(shopping) {
-    const out = document.getElementById('shopping-output');
-    out.innerHTML = "";
-
-    if (!shopping) {
-        out.innerHTML = "<p>Генерирай меню, за да видиш списъка за пазаруване.</p>";
-        return;
-    }
-
-    for (const category in shopping) {
-        out.innerHTML += `<div class="shopping-category">${category}</div>`;
-        shopping[category].forEach(item => {
-            out.innerHTML += `<div class="shopping-item">• ${item}</div>`;
-        });
-    }
-}
-</script>
-
+  <script src="script.js"></script>
 </body>
 </html>
