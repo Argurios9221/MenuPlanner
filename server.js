@@ -33,57 +33,20 @@ app.post('/api/generate-menu', async (req, res) => {
 
 Попълни всичките 7 дни: Понеделник, Вторник, Сряда, Четвъртък, Петък, Събота, Неделя.`;
 
-    // Groq API - 100% БЕЗПЛАТНО (без платежна карта)
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    // Claude (Anthropic) API - НАДЕЖДЕН
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "user", content: prompt }],
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 4000,
-        temperature: 0.7
+        messages: [{ role: "user", content: prompt }]
       })
     });
-
-    // Fallback към Claude ако Groq не работи
-    if (!response.ok && process.env.ANTHROPIC_API_KEY) {
-      const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": process.env.ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "claude-3-5-sonnet-20241022",
-          max_tokens: 4000,
-          messages: [{ role: "user", content: prompt }]
-        })
-      });
-
-      if (claudeResponse.ok) {
-        const claudeData = await claudeResponse.json();
-        let text = '';
-        if (claudeData.content && claudeData.content[0]) {
-          text = claudeData.content[0].text || '';
-        }
-        
-        const clean = text.replace(/```json\n?|```/g, '').trim();
-        let parsed;
-        try {
-          parsed = JSON.parse(clean);
-        } catch (jsonErr) {
-          const match = clean.match(/\{[\s\S]*\}/);
-          if (match) parsed = JSON.parse(match[0]);
-          else throw new Error('Невалиден JSON отговор');
-        }
-        res.json(parsed);
-        return;
-      }
-    }
 
     if (!response.ok) {
       const error = await response.json();
@@ -92,10 +55,10 @@ app.post('/api/generate-menu', async (req, res) => {
 
     const data = await response.json();
     
-    // Екстракция на текста (Groq използва OpenAI формат)
+    // Екстракция на текста (Claude формат)
     let text = '';
-    if (data.choices && data.choices[0]) {
-      text = data.choices[0].message?.content || data.choices[0].text || '';
+    if (data.content && data.content[0]) {
+      text = data.content[0].text || '';
     }
 
     // Парсване на JSON
