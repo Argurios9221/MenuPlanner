@@ -2,6 +2,7 @@ const promptEl = document.getElementById("prompt");
 const peopleEl = document.getElementById("people");
 const varietyEl = document.getElementById("variety");
 const dietEl = document.getElementById("diet");
+const cuisineEl = document.getElementById("cuisine");
 
 const generateBtn = document.getElementById("generate");
 const resetBtn = document.getElementById("reset");
@@ -30,7 +31,7 @@ function stopStatusTimer(success = true) {
     timerId = null;
   }
   if (success) {
-    statusEl.textContent = `Менюто е генерирано за ${seconds}s.`;
+    statusEl.textContent = `Argurios генерира менюто за генерирано за ${seconds}s.`;
   } else {
     statusEl.textContent = "Възникна грешка при генерирането.";
   }
@@ -147,7 +148,7 @@ generateBtn.addEventListener("click", async () => {
 
   try {
     const fullPrompt = `
-Генерирай седмично меню за ${peopleEl.value} души, напълно съобразено с диетата: ${dietEl.options[dietEl.selectedIndex].text} (${dietEl.value}).
+Генерирай седмично меню за ${peopleEl.value} души, напълно съобразено с избраната кухня: ${cuisineEl.options[cuisineEl.selectedIndex].text} (${cuisineEl.value}).
 Разнообразие: ${varietyEl.options[varietyEl.selectedIndex].text} (${varietyEl.value}).
 Всяко ястие трябва да съдържа грамаж за всяка порция (например: "Пилешка пържола 150g").
 Менюто трябва да отговаря на всички избрани критерии и да не съдържа несъвместими продукти.
