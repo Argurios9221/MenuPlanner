@@ -41,7 +41,7 @@ app.post('/api/generate-menu', async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+        model: "llama-3.1-8b-instant",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 4000,
         temperature: 0.7
