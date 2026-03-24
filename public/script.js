@@ -4,6 +4,19 @@ const varietyEl = document.getElementById("variety");
 const dietEl = document.getElementById("diet");
 const cuisineEl = document.getElementById("cuisine");
 
+// Картографиране на стойности към TheMealDB категории
+const cuisineToMealDB = {
+  mix: "",
+  vegetarian: "Vegetarian",
+  vegan: "Vegan",
+  glutenfree: "",
+  bulgarian: "",
+  german: "German",
+  italian: "Italian",
+  spanish: "Spanish",
+  turkish: "Turkish"
+};
+
 const generateBtn = document.getElementById("generate");
 const resetBtn = document.getElementById("reset");
 
@@ -146,52 +159,44 @@ function renderMenu(data) {
     card.appendChild(list);
     menuContainer.appendChild(card);
   });
-}
-
-function renderBasket(data) {
-  basketContainer.innerHTML = "";
-
-  const categories = {
-    meat: "🥩 Месо",
-    dairy: "🥛 Млечни",
-    vegetables: "🥬 Зеленчуци",
-    fruits: "🍎 Плодове",
-    other: "🧂 Други"
-  };
-
-  for (const key in categories) {
-    const card = document.createElement("div");
-    card.className = "day-card";
-
-    const name = document.createElement("div");
-    name.className = "day-name";
-    name.textContent = categories[key];
-
-    const list = document.createElement("div");
-    list.className = "meal-list";
-
-    (data[key] || []).forEach((item, idx) => {
-      const label = document.createElement("label");
-      label.style.display = "flex";
-      label.style.alignItems = "center";
-      label.style.gap = "8px";
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.style.marginRight = "8px";
-      checkbox.tabIndex = 0;
-      checkbox.ariaLabel = item;
-
-      label.appendChild(checkbox);
-      label.appendChild(document.createTextNode(item));
-      list.appendChild(label);
+    btn.addEventListener("click", async (e) => {
+      const mealName = btn.getAttribute("data-meal");
+      const recipeDiv = btn.parentElement.querySelector('.recipe-details');
+      if (recipeDiv.style.display === 'block') {
+        recipeDiv.style.display = 'none';
+        return;
+      }
+      btn.disabled = true;
+      recipeDiv.innerHTML = 'Зареждане...';
+      recipeDiv.style.display = 'block';
+      // Вземи рецептата от TheMealDB
+      try {
+        const resp = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(mealName)}`);
+        const data = await resp.json();
+        if (data.meals && data.meals.length > 0) {
+          const meal = data.meals[0];
+          let ingredients = '';
+          for (let i = 1; i <= 20; i++) {
+            const ing = meal[`strIngredient${i}`];
+            const measure = meal[`strMeasure${i}`];
+            if (ing && ing.trim()) {
+              ingredients += `<li>${ing} - ${measure}</li>`;
+            }
+          }
+          recipeDiv.innerHTML = `
+            <strong>${meal.strMeal}</strong><br>
+            <img src="${meal.strMealThumb}" alt="${meal.strMeal}" style="max-width:120px;"><br>
+            <b>Съставки:</b><ul>${ingredients}</ul>
+            <b>Инструкции:</b><br><span style="white-space:pre-line;">${meal.strInstructions}</span>
+          `;
+        } else {
+          recipeDiv.innerHTML = 'Няма намерена рецепта.';
+        }
+      } catch (err) {
+        recipeDiv.innerHTML = 'Грешка при зареждане на рецептата.';
+      }
+      btn.disabled = false;
     });
-
-    card.appendChild(name);
-    card.appendChild(list);
-    basketContainer.appendChild(card);
-  }
-}
 
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -223,27 +228,36 @@ generateBtn.addEventListener("click", async () => {
   generateBtn.disabled = true;
 
   try {
-    const fullPrompt = `
-Генерирай седмично меню за ${peopleEl.value} души, напълно съобразено с избраната кухня: ${cuisineEl.options[cuisineEl.selectedIndex].text} (${cuisineEl.value}).
-Разнообразие: ${varietyEl.options[varietyEl.selectedIndex].text} (${varietyEl.value}).
-Всяко ястие трябва да съдържа грамаж за всяка порция (например: "Пилешка пържола 150g").
-Менюто трябва да отговаря на всички избрани критерии и да не съдържа несъвместими продукти.
-Върни САМО валиден JSON в този формат:
-{
-  "days": [
-    {
-      "name": "Понеделник",
-      "meals": [
-        "Закуска: ... (грамаж)",
-        "Обяд: ... (грамаж)",
-        "Вечеря: ... (грамаж)"
-      ]
+
+    // Ако е избрана публична кухня, тегли от TheMealDB
+    const selectedCuisine = cuisineEl.value;
+    const mealDBCategory = cuisineToMealDB[selectedCuisine] || "";
+    if (mealDBCategory) {
+      // Вземи списък с ястия за кухнята
+      const resp = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(mealDBCategory)}`);
+      const data = await resp.json();
+      let meals = data.meals || [];
+      // Разбъркай и вземи 21 ястия (7 дни x 3 хранения)
+      meals = meals.sort(() => Math.random() - 0.5).slice(0, 21);
+      // Състави меню
+      const daysOfWeek = ["Понеделник", "Вторник", "Сряда", "Четвъртък", "Петък", "Събота", "Неделя"];
+      const menu = { days: [] };
+      for (let i = 0; i < 7; i++) {
+        menu.days.push({
+          name: daysOfWeek[i],
+          meals: [
+            meals[i * 3]?.strMeal || "-",
+            meals[i * 3 + 1]?.strMeal || "-",
+            meals[i * 3 + 2]?.strMeal || "-"
+          ]
+        });
+      }
+      renderMenu(menu);
+      stopStatusTimer(true);
+      generateBtn.disabled = false;
+      basketContainer.innerHTML = "";
+      return;
     }
-  ]
-}
-ВАЖНО: Не добавяй никакви обяснения, коментари, текст преди или след JSON-а. Започни и завърши отговора си само с { и }.
-${promptEl.value}
-`;
 
     const res = await fetch("/api/generate", {
       method: "POST",
@@ -309,4 +323,3 @@ ${text}
   } finally {
     generateBtn.disabled = false;
   }
-});
