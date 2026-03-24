@@ -41,12 +41,49 @@ app.post('/api/generate-menu', async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: process.env.GROQ_MODEL || "llama-3.2-90b-vision-preview",
+        model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 4000,
         temperature: 0.7
       })
     });
+
+    // Fallback към Claude ако Groq не работи
+    if (!response.ok && process.env.ANTHROPIC_API_KEY) {
+      const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "claude-3-5-sonnet-20241022",
+          max_tokens: 4000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      if (claudeResponse.ok) {
+        const claudeData = await claudeResponse.json();
+        let text = '';
+        if (claudeData.content && claudeData.content[0]) {
+          text = claudeData.content[0].text || '';
+        }
+        
+        const clean = text.replace(/```json\n?|```/g, '').trim();
+        let parsed;
+        try {
+          parsed = JSON.parse(clean);
+        } catch (jsonErr) {
+          const match = clean.match(/\{[\s\S]*\}/);
+          if (match) parsed = JSON.parse(match[0]);
+          else throw new Error('Невалиден JSON отговор');
+        }
+        res.json(parsed);
+        return;
+      }
+    }
 
     if (!response.ok) {
       const error = await response.json();
