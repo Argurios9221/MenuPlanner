@@ -93,10 +93,21 @@ function renderBasket(data) {
     const list = document.createElement("div");
     list.className = "meal-list";
 
-    (data[key] || []).forEach((item) => {
-      const div = document.createElement("div");
-      div.textContent = item;
-      list.appendChild(div);
+    (data[key] || []).forEach((item, idx) => {
+      const label = document.createElement("label");
+      label.style.display = "flex";
+      label.style.alignItems = "center";
+      label.style.gap = "8px";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.style.marginRight = "8px";
+      checkbox.tabIndex = 0;
+      checkbox.ariaLabel = item;
+
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(item));
+      list.appendChild(label);
     });
 
     card.appendChild(name);
@@ -136,9 +147,24 @@ generateBtn.addEventListener("click", async () => {
 
   try {
     const fullPrompt = `
-Генерирай седмично меню за ${peopleEl.value} души.
-Разнообразие: ${varietyEl.value}.
-Диета: ${dietEl.value}.
+Генерирай седмично меню за ${peopleEl.value} души, напълно съобразено с диетата: ${dietEl.options[dietEl.selectedIndex].text} (${dietEl.value}).
+Разнообразие: ${varietyEl.options[varietyEl.selectedIndex].text} (${varietyEl.value}).
+Всяко ястие трябва да съдържа грамаж за всяка порция (например: "Пилешка пържола 150g").
+Менюто трябва да отговаря на всички избрани критерии и да не съдържа несъвместими продукти.
+Върни САМО валиден JSON в този формат:
+{
+  "days": [
+    {
+      "name": "Понеделник",
+      "meals": [
+        "Закуска: ... (грамаж)",
+        "Обяд: ... (грамаж)",
+        "Вечеря: ... (грамаж)"
+      ]
+    }
+  ]
+}
+ВАЖНО: Не добавяй никакви обяснения, коментари, текст преди или след JSON-а. Започни и завърши отговора си само с { и }.
 ${promptEl.value}
 `;
 
@@ -168,8 +194,7 @@ ${promptEl.value}
     renderMenu(menuJson);
 
     const basketPrompt = `
-Извлечи всички продукти от следното меню и ги върни като JSON:
-
+Извлечи всички продукти от следното меню и ги върни като валиден JSON, като за всеки продукт добавиш бройка или грамаж (например: "Яйца 10 бр.", "Ориз 500g"):
 {
   "meat": [],
   "dairy": [],
@@ -177,7 +202,7 @@ ${promptEl.value}
   "fruits": [],
   "other": []
 }
-
+ВАЖНО: Не добавяй никакви обяснения, коментари, текст преди или след JSON-а. Започни и завърши отговора си само с { и }.
 Меню:
 ${text}
 `;
