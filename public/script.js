@@ -233,30 +233,45 @@ generateBtn.addEventListener("click", async () => {
     const selectedCuisine = cuisineEl.value;
     const mealDBCategory = cuisineToMealDB[selectedCuisine] || "";
     if (mealDBCategory) {
-      // Вземи списък с ястия за кухнята
-      const resp = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(mealDBCategory)}`);
-      const data = await resp.json();
-      let meals = data.meals || [];
-      // Разбъркай и вземи 21 ястия (7 дни x 3 хранения)
-      meals = meals.sort(() => Math.random() - 0.5).slice(0, 21);
-      // Състави меню
-      const daysOfWeek = ["Понеделник", "Вторник", "Сряда", "Четвъртък", "Петък", "Събота", "Неделя"];
-      const menu = { days: [] };
-      for (let i = 0; i < 7; i++) {
-        menu.days.push({
-          name: daysOfWeek[i],
-          meals: [
-            meals[i * 3]?.strMeal || "-",
-            meals[i * 3 + 1]?.strMeal || "-",
-            meals[i * 3 + 2]?.strMeal || "-"
-          ]
-        });
+      try {
+        const resp = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(mealDBCategory)}`);
+        if (!resp.ok) throw new Error("Грешка при заявка към TheMealDB: " + resp.status);
+        const data = await resp.json();
+        let meals = data.meals || [];
+        if (!meals.length) {
+          errorBox.style.display = "block";
+          errorBox.textContent = "Няма намерени ястия за избраната кухня!";
+          stopStatusTimer(false);
+          generateBtn.disabled = false;
+          return;
+        }
+        // Разбъркай и вземи 21 ястия (7 дни x 3 хранения)
+        meals = meals.sort(() => Math.random() - 0.5).slice(0, 21);
+        // Състави меню
+        const daysOfWeek = ["Понеделник", "Вторник", "Сряда", "Четвъртък", "Петък", "Събота", "Неделя"];
+        const menu = { days: [] };
+        for (let i = 0; i < 7; i++) {
+          menu.days.push({
+            name: daysOfWeek[i],
+            meals: [
+              meals[i * 3]?.strMeal || "-",
+              meals[i * 3 + 1]?.strMeal || "-",
+              meals[i * 3 + 2]?.strMeal || "-"
+            ]
+          });
+        }
+        renderMenu(menu);
+        stopStatusTimer(true);
+        generateBtn.disabled = false;
+        basketContainer.innerHTML = "";
+        return;
+      } catch (err) {
+        errorBox.style.display = "block";
+        errorBox.textContent = "Грешка при заявка към TheMealDB: " + err.message;
+        stopStatusTimer(false);
+        generateBtn.disabled = false;
+        return;
       }
-      renderMenu(menu);
-      stopStatusTimer(true);
-      generateBtn.disabled = false;
-      basketContainer.innerHTML = "";
-      return;
     }
 
     const res = await fetch("/api/generate", {
