@@ -61,9 +61,57 @@ function renderMenu(data) {
     const list = document.createElement("div");
     list.className = "meal-list";
     day.meals.forEach((m) => {
-      const div = document.createElement("div");
-      div.textContent = m;
-      list.appendChild(div);
+      const mealRow = document.createElement("div");
+      mealRow.style.display = "flex";
+      mealRow.style.alignItems = "center";
+      mealRow.style.gap = "8px";
+
+      const mealName = document.createElement("span");
+      mealName.textContent = m;
+      mealRow.appendChild(mealName);
+
+      const recipeBtn = document.createElement("button");
+      recipeBtn.textContent = "Рецепта";
+      recipeBtn.className = "btn-secondary";
+      recipeBtn.style.fontSize = "13px";
+      recipeBtn.style.padding = "4px 12px";
+      recipeBtn.onclick = async () => {
+        recipeBtn.disabled = true;
+        recipeBtn.textContent = "Зарежда...";
+        try {
+          const res = await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: `Дай ми рецепта на български за: ${m}. Върни само текст без обяснения и без JSON.` })
+          });
+          let recipe = "(няма рецепта)";
+          if (res.ok) {
+            const data = await res.json();
+            recipe = data.text || recipe;
+          } else {
+            recipe = "Грешка при зареждане на рецептата.";
+          }
+          // Показване на рецептата под ястието
+          let recipeDiv = mealRow.querySelector(".recipe-box");
+          if (!recipeDiv) {
+            recipeDiv = document.createElement("div");
+            recipeDiv.className = "recipe-box";
+            recipeDiv.style.marginTop = "6px";
+            recipeDiv.style.fontSize = "14px";
+            recipeDiv.style.background = "#f8fff4";
+            recipeDiv.style.border = "1px solid #e8ece8";
+            recipeDiv.style.borderRadius = "8px";
+            recipeDiv.style.padding = "8px";
+            mealRow.appendChild(recipeDiv);
+          }
+          recipeDiv.textContent = recipe;
+        } finally {
+          recipeBtn.disabled = false;
+          recipeBtn.textContent = "Рецепта";
+        }
+      };
+      mealRow.appendChild(recipeBtn);
+      list.appendChild(mealRow);
     });
 
     card.appendChild(name);
