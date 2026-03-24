@@ -2,633 +2,323 @@
 <html lang="bg">
 <head>
 <meta charset="UTF-8">
+<title>MenuPlanner — Седмично меню</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Седмично меню</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
 <style>
-  :root {
-    --cream: #FAF6EF;
-    --warm: #F2E8D9;
-    --brown: #8B6F47;
-    --dark: #2C1F0E;
-    --green: #4A7C59;
-    --green-light: #E8F2EC;
-    --orange: #D4622A;
-    --orange-light: #FDF0EA;
-    --border: #E2D5C3;
-  }
+    :root {
+        --primary: #6750A4;
+        --primary-container: #EADDFF;
+        --surface: #FFFBFE;
+        --surface-variant: #E7E0EC;
+        --outline: #79747E;
+        --text: #1C1B1F;
+    }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        margin: 0;
+        font-family: "Roboto", "Segoe UI", sans-serif;
+        background: var(--surface);
+        color: var(--text);
+        display: flex;
+        justify-content: center;
+        padding: 32px;
+    }
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--cream);
-    color: var(--dark);
-    min-height: 100vh;
-  }
+    .container {
+        width: 100%;
+        max-width: 900px;
+    }
 
-  /* HEADER */
-  header {
-    background: var(--dark);
-    color: var(--cream);
-    padding: 28px 40px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 2px 20px rgba(44,31,14,0.3);
-  }
-  header h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.7rem;
-    letter-spacing: -0.5px;
-  }
-  header h1 span { color: var(--brown); font-style: italic; }
-  .header-btns { display: flex; gap: 10px; }
+    h1 {
+        text-align: center;
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 24px;
+        color: var(--primary);
+    }
 
-  /* TABS */
-  .tabs {
-    display: flex;
-    background: var(--warm);
-    border-bottom: 2px solid var(--border);
-    padding: 0 40px;
-  }
-  .tab {
-    padding: 14px 24px;
-    cursor: pointer;
-    font-weight: 500;
-    color: var(--brown);
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px;
-    transition: all 0.2s;
-    font-size: 0.95rem;
-  }
-  .tab:hover { color: var(--dark); }
-  .tab.active {
-    color: var(--dark);
-    border-bottom-color: var(--orange);
-    font-weight: 600;
-  }
+    /* ---------- Tabs ---------- */
+    .tabs {
+        display: flex;
+        border-bottom: 2px solid var(--surface-variant);
+        margin-bottom: 20px;
+    }
 
-  /* PANELS */
-  .panel { display: none; padding: 30px 40px; max-width: 1100px; margin: 0 auto; }
-  .panel.active { display: block; }
+    .tab {
+        padding: 14px 24px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text);
+        position: relative;
+        transition: 0.2s;
+    }
 
-  /* GENERATE SECTION */
-  .generate-box {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 28px;
-    margin-bottom: 28px;
-  }
-  .generate-box h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
-    margin-bottom: 16px;
-    color: var(--dark);
-  }
-  .prefs-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 14px;
-    margin-bottom: 20px;
-  }
-  .pref-item label {
-    display: block;
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--brown);
-    margin-bottom: 5px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .pref-item select, .pref-item input {
-    width: 100%;
-    padding: 9px 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.92rem;
-    background: var(--cream);
-    color: var(--dark);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .pref-item select:focus, .pref-item input:focus { border-color: var(--brown); }
+    .tab.active {
+        color: var(--primary);
+    }
 
-  .btn {
-    padding: 11px 22px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    font-size: 0.93rem;
-    transition: all 0.2s;
-  }
-  .btn-primary {
-    background: var(--dark);
-    color: var(--cream);
-  }
-  .btn-primary:hover { background: var(--brown); }
-  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-  .btn-secondary {
-    background: var(--warm);
-    color: var(--dark);
-    border: 1.5px solid var(--border);
-  }
-  .btn-secondary:hover { background: var(--border); }
-  .btn-green {
-    background: var(--green);
-    color: white;
-  }
-  .btn-green:hover { background: #3a6347; }
-  .btn-orange {
-    background: var(--orange);
-    color: white;
-  }
-  .btn-orange:hover { background: #b8521f; }
-  .btn-sm { padding: 7px 14px; font-size: 0.82rem; border-radius: 7px; }
+    .tab.active::after {
+        content: "";
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
 
-  /* LOADING */
-  .loading {
-    display: none;
-    align-items: center;
-    gap: 12px;
-    padding: 20px;
-    color: var(--brown);
-    font-style: italic;
-  }
-  .spinner {
-    width: 22px; height: 22px;
-    border: 3px solid var(--border);
-    border-top-color: var(--brown);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+    /* ---------- Material Card ---------- */
+    .md-card {
+        background: var(--surface);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        border: 1px solid var(--surface-variant);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
 
-  /* MENU GRID */
-  .menu-grid { display: flex; flex-direction: column; gap: 16px; }
-  .day-card {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    overflow: hidden;
-    animation: fadeUp 0.4s ease both;
-  }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(14px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .day-header {
-    background: var(--dark);
-    color: var(--cream);
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .day-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.1rem;
-  }
-  .day-meals {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    divide-color: var(--border);
-  }
-  .meal-slot {
-    padding: 16px 18px;
-    border-right: 1px solid var(--border);
-  }
-  .meal-slot:last-child { border-right: none; }
-  .meal-type {
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    margin-bottom: 6px;
-  }
-  .meal-type.breakfast { color: var(--orange); }
-  .meal-type.lunch { color: var(--green); }
-  .meal-type.dinner { color: var(--brown); }
-  .meal-name {
-    font-size: 0.93rem;
-    font-weight: 500;
-    line-height: 1.35;
-    margin-bottom: 4px;
-  }
-  .meal-desc {
-    font-size: 0.8rem;
-    color: #888;
-    line-height: 1.3;
-  }
+    label {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        display: block;
+    }
 
-  /* SHOPPING LIST */
-  .shopping-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-  }
-  .shopping-header h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.4rem;
-  }
-  .category-section { margin-bottom: 24px; }
-  .category-title {
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--brown);
-    border-bottom: 1.5px solid var(--border);
-    padding-bottom: 6px;
-    margin-bottom: 10px;
-  }
-  .shopping-items { display: flex; flex-wrap: wrap; gap: 8px; }
-  .shop-item {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 7px 13px;
-    background: white;
-    border: 1.5px solid var(--border);
-    border-radius: 25px;
-    font-size: 0.87rem;
-    cursor: pointer;
-    transition: all 0.18s;
-    user-select: none;
-  }
-  .shop-item:hover { border-color: var(--brown); }
-  .shop-item.checked {
-    background: var(--green-light);
-    border-color: var(--green);
-    color: var(--green);
-    text-decoration: line-through;
-    opacity: 0.7;
-  }
-  .shop-item .check-icon { font-size: 0.9rem; }
+    input, select, textarea {
+        width: 100%;
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid var(--outline);
+        margin-bottom: 18px;
+        font-size: 15px;
+        background: var(--surface);
+    }
 
-  /* FAVORITES */
-  .fav-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .fav-card {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 18px;
-    animation: fadeUp 0.3s ease both;
-  }
-  .fav-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .fav-card-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem;
-    font-weight: 700;
-  }
-  .fav-date { font-size: 0.78rem; color: #aaa; }
-  .fav-preview { font-size: 0.83rem; color: #777; line-height: 1.5; }
-  .fav-actions { display: flex; gap: 8px; margin-top: 14px; }
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #bbb;
-  }
-  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
-  .empty-state p { font-size: 0.95rem; }
+    button {
+        background: var(--primary);
+        color: white;
+        padding: 14px 22px;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        cursor: pointer;
+        width: 100%;
+        font-weight: 600;
+        transition: 0.2s;
+    }
 
-  /* TOAST */
-  .toast {
-    position: fixed;
-    bottom: 30px; right: 30px;
-    background: var(--dark);
-    color: var(--cream);
-    padding: 12px 20px;
-    border-radius: 10px;
-    font-size: 0.9rem;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.3s;
-    z-index: 999;
-    pointer-events: none;
-  }
-  .toast.show { opacity: 1; transform: translateY(0); }
+    button:hover {
+        background: #57408d;
+    }
 
-  @media (max-width: 700px) {
-    header { padding: 18px 20px; }
-    .tabs { padding: 0 16px; }
-    .panel { padding: 20px 16px; }
-    .prefs-grid { grid-template-columns: 1fr 1fr; }
-    .day-meals { grid-template-columns: 1fr; }
-    .meal-slot { border-right: none; border-bottom: 1px solid var(--border); }
-    .fav-grid { grid-template-columns: 1fr; }
-  }
+    /* ---------- Loading ---------- */
+    #loading {
+        display: none;
+        justify-content: center;
+        margin: 20px 0;
+    }
+
+    .spinner {
+        width: 42px;
+        height: 42px;
+        border: 4px solid #ddd;
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* ---------- Menu Cards ---------- */
+    .day-card {
+        background: var(--primary-container);
+        padding: 20px;
+        border-radius: 16px;
+        margin-bottom: 16px;
+        border: 1px solid var(--outline);
+    }
+
+    .day-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: var(--primary);
+    }
+
+    .meal {
+        margin-bottom: 8px;
+        font-size: 15px;
+    }
+
+    /* ---------- Shopping List ---------- */
+    .shopping-category {
+        font-weight: 700;
+        margin-top: 20px;
+        font-size: 18px;
+        color: var(--primary);
+    }
+
+    .shopping-item {
+        margin-left: 16px;
+        padding: 4px 0;
+        font-size: 15px;
+    }
 </style>
 </head>
+
 <body>
+<div class="container">
 
-<header>
-  <h1>Седмично <span>меню</span></h1>
-  <div class="header-btns">
-    <button class="btn btn-secondary btn-sm" onclick="showTab('shopping')" id="btn-shopping" style="display:none">🛒 Списък за пазар</button>
-  </div>
-</header>
+    <h1>MenuPlanner</h1>
 
-<div class="tabs">
-  <div class="tab active" onclick="showTab('menu')">📅 Меню</div>
-  <div class="tab" onclick="showTab('shopping')">🛒 Пазар</div>
-  <div class="tab" onclick="showTab('favorites')">❤️ Любими</div>
-</div>
-
-<!-- MENU TAB -->
-<div class="panel active" id="tab-menu">
-  <div class="generate-box">
-    <h2>Генерирай седмично меню</h2>
-    <div class="prefs-grid">
-      <div class="pref-item">
-        <label>Тип диета</label>
-        <select id="diet">
-          <option value="обикновена">Обикновена</option>
-          <option value="вегетарианска">Вегетарианска</option>
-          <option value="веганска">Веганска</option>
-          <option value="без глутен">Без глутен</option>
-          <option value="кето">Кето</option>
-        </select>
-      </div>
-      <div class="pref-item">
-        <label>Брой хора</label>
-        <select id="people">
-          <option value="1">1 човек</option>
-          <option value="2" selected>2 човека</option>
-          <option value="3">3 човека</option>
-          <option value="4">4 човека</option>
-        </select>
-      </div>
-      <div class="pref-item">
-        <label>Разнообразие</label>
-        <select id="variety">
-          <option value="балансирано">Балансирано</option>
-          <option value="максимално разнообразно">Максимално разнообразно</option>
-          <option value="с традиционни български ястия">Традиционна кухня</option>
-          <option value="международна кухня">Международна кухня</option>
-        </select>
-      </div>
-      <div class="pref-item">
-        <label>Без алергени</label>
-        <input type="text" id="allergies" placeholder="напр. ядки, млечни...">
-      </div>
-      <div class="pref-item">
-        <label>Предпочитания</label>
-        <input type="text" id="prefs" placeholder="напр. обичам риба...">
-      </div>
+    <!-- Tabs -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('menu')">Меню</div>
+        <div class="tab" onclick="switchTab('shopping')">Пазаруване</div>
     </div>
-    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <button class="btn btn-primary" id="gen-btn" onclick="generateMenu()">✨ Генерирай меню</button>
-      <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <span>AI генерира менюто...</span>
-      </div>
+
+    <!-- TAB: Меню -->
+    <div id="tab-menu">
+
+        <div class="md-card">
+            <label>Диета</label>
+            <select id="diet">
+                <option value="balanced">Баланс</option>
+                <option value="high-protein">Висок протеин</option>
+                <option value="vegetarian">Вегетарианска</option>
+                <option value="vegan">Веган</option>
+            </select>
+
+            <label>Брой хора</label>
+            <input id="people" type="number" value="2">
+
+            <label>Стил</label>
+            <select id="variety">
+                <option value="mixed">Разнообразно</option>
+                <option value="traditional">Традиционно</option>
+                <option value="mediterranean">Средиземноморско</option>
+                <option value="quick">Бързи рецепти</option>
+            </select>
+
+            <label>Алергии (по желание)</label>
+            <input id="allergies" placeholder="глутен, ядки...">
+
+            <label>Предпочитания (по желание)</label>
+            <textarea id="prefs" rows="2" placeholder="повече риба, без пържено..."></textarea>
+
+            <button id="gen-btn" onclick="generateMenu()">Генерирай меню</button>
+
+            <div id="loading"><div class="spinner"></div></div>
+        </div>
+
+        <div id="menu-output"></div>
     </div>
-  </div>
 
-  <div id="menu-output"></div>
-</div>
-
-<!-- SHOPPING TAB -->
-<div class="panel" id="tab-shopping">
-  <div class="shopping-header">
-    <h2>🛒 Списък за пазар</h2>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-secondary btn-sm" onclick="uncheckAll()">Изчисти отметките</button>
-      <button class="btn btn-secondary btn-sm" onclick="printList()">🖨️ Принтирай</button>
+    <!-- TAB: Пазаруване -->
+    <div id="tab-shopping" style="display:none;">
+        <div id="shopping-output"></div>
     </div>
-  </div>
-  <div id="shopping-output">
-    <div class="empty-state">
-      <div class="icon">🛒</div>
-      <p>Генерирай меню, за да видиш списъка за пазар</p>
-    </div>
-  </div>
-</div>
 
-<!-- FAVORITES TAB -->
-<div class="panel" id="tab-favorites">
-  <div class="shopping-header">
-    <h2>❤️ Любими менюта</h2>
-  </div>
-  <div id="fav-output"></div>
 </div>
-
-<div class="toast" id="toast"></div>
 
 <script>
-const DAYS = ['Понеделник','Вторник','Сряда','Четвъртък','Петък','Събота','Неделя'];
 let currentMenu = null;
 let currentShopping = null;
 
-function showTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => {
-    t.classList.toggle('active', ['menu','shopping','favorites'][i] === name);
-  });
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
-  if(name === 'favorites') renderFavorites();
-}
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+    if (tab === 'menu') {
+        document.querySelector('.tab:nth-child(1)').classList.add('active');
+        document.getElementById('tab-menu').style.display = 'block';
+        document.getElementById('tab-shopping').style.display = 'none';
+    } else {
+        document.querySelector('.tab:nth-child(2)').classList.add('active');
+        document.getElementById('tab-menu').style.display = 'none';
+        document.getElementById('tab-shopping').style.display = 'block';
+        renderShopping(currentShopping);
+    }
 }
 
 async function generateMenu() {
-  const diet = document.getElementById('diet').value;
-  const people = document.getElementById('people').value;
-  const variety = document.getElementById('variety').value;
-  const allergies = document.getElementById('allergies').value;
-  const prefs = document.getElementById('prefs').value;
+    const diet = document.getElementById('diet').value;
+    const people = document.getElementById('people').value;
+    const variety = document.getElementById('variety').value;
+    const allergies = document.getElementById('allergies').value;
+    const prefs = document.getElementById('prefs').value;
 
-  const btn = document.getElementById('gen-btn');
-  btn.disabled = true;
-  document.getElementById('loading').style.display = 'flex';
-  document.getElementById('menu-output').innerHTML = '';
+    const btn = document.getElementById('gen-btn');
+    btn.disabled = true;
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('menu-output').innerHTML = '';
 
-  const prompt = `Генерирай седмично меню на БЪЛГАРСКИ за ${people} човека. Диета: ${diet}. Стил: ${variety}.${allergies ? ' Без: ' + allergies + '.' : ''}${prefs ? ' Предпочитания: ' + prefs + '.' : ''}
+    try {
+        const response = await fetch("http://localhost:3000/api/generate-menu", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ diet, people, variety, allergies, prefs })
+        });
 
-Върни САМО валиден JSON без никакъв друг текст. Описанията (desc) да са до 5 думи.
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
 
-{"days":[{"day":"Понеделник","breakfast":{"name":"...","desc":"..."},"lunch":{"name":"...","desc":"..."},"dinner":{"name":"...","desc":"..."}},...всичките 7 дни],"shopping":{"Зеленчуци и плодове":["..."],"Месо и риба":["..."],"Млечни":["..."],"Хляб и зърнени":["..."],"Консерви и подправки":["..."],"Друго":[]}}
+        const raw = data.content?.[0]?.text;
+        if (!raw) throw new Error("Невалиден отговор от API");
 
-Попълни всичките 7 дни: Понеделник, Вторник, Сряда, Четвъртък, Петък, Събота, Неделя.`;
+        const parsed = JSON.parse(raw);
 
-  try {
-    const response = await fetch("http://localhost:3000/api/generate-menu", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        diet,
-        people,
-        variety,
-        allergies,
-        prefs
-      })
-    });
+        currentMenu = parsed;
+        currentShopping = parsed.shopping;
 
-    const data = await response.json();
-    if(data.error) throw new Error(data.error);
-    
-    // Сървърът връща директно JSON, не трябва парсване
-    const parsed = data;
+        renderMenu(parsed.days);
 
-    currentMenu = parsed;
-    currentShopping = parsed.shopping;
-    renderMenu(parsed.days);
-    renderShopping(parsed.shopping);
-    document.getElementById('btn-shopping').style.display = 'block';
-  } catch(e) {
-    document.getElementById('menu-output').innerHTML = `<div style="color:red;padding:20px;">Грешка: ${e.message}. Провери API ключа.</div>`;
-  } finally {
-    btn.disabled = false;
-    document.getElementById('loading').style.display = 'none';
-  }
+    } catch (e) {
+        document.getElementById('menu-output').innerHTML =
+            `<div style="color:red;padding:20px;">Грешка: ${e.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        document.getElementById('loading').style.display = 'none';
+    }
 }
 
 function renderMenu(days) {
-  const out = document.getElementById('menu-output');
-  const saved = currentMenu;
+    const out = document.getElementById('menu-output');
+    out.innerHTML = "";
 
-  let html = `<div style="display:flex;justify-content:flex-end;margin-bottom:14px;gap:8px;">
-    <button class="btn btn-green btn-sm" onclick="saveFavorite()">❤️ Запази като любимо</button>
-    <button class="btn btn-orange btn-sm" onclick="showTab('shopping')">🛒 Виж списъка за пазар</button>
-  </div>
-  <div class="menu-grid">`;
-
-  days.forEach((d, i) => {
-    html += `<div class="day-card" style="animation-delay:${i*0.06}s">
-      <div class="day-header">
-        <span class="day-name">${d.day}</span>
-      </div>
-      <div class="day-meals">
-        <div class="meal-slot">
-          <div class="meal-type breakfast">🌅 Закуска</div>
-          <div class="meal-name">${d.breakfast.name}</div>
-          <div class="meal-desc">${d.breakfast.desc}</div>
-        </div>
-        <div class="meal-slot">
-          <div class="meal-type lunch">☀️ Обяд</div>
-          <div class="meal-name">${d.lunch.name}</div>
-          <div class="meal-desc">${d.lunch.desc}</div>
-        </div>
-        <div class="meal-slot">
-          <div class="meal-type dinner">🌙 Вечеря</div>
-          <div class="meal-name">${d.dinner.name}</div>
-          <div class="meal-desc">${d.dinner.desc}</div>
-        </div>
-      </div>
-    </div>`;
-  });
-
-  html += `</div>`;
-  out.innerHTML = html;
+    days.forEach(day => {
+        out.innerHTML += `
+            <div class="day-card">
+                <div class="day-title">${day.day}</div>
+                <div class="meal"><b>Закуска:</b> ${day.breakfast.name} — ${day.breakfast.desc}</div>
+                <div class="meal"><b>Обяд:</b> ${day.lunch.name} — ${day.lunch.desc}</div>
+                <div class="meal"><b>Вечеря:</b> ${day.dinner.name} — ${day.dinner.desc}</div>
+            </div>
+        `;
+    });
 }
 
 function renderShopping(shopping) {
-  const out = document.getElementById('shopping-output');
-  let html = '';
-  for(const [cat, items] of Object.entries(shopping)) {
-    if(!items || items.length === 0) continue;
-    html += `<div class="category-section">
-      <div class="category-title">${cat}</div>
-      <div class="shopping-items">`;
-    items.forEach(item => {
-      html += `<div class="shop-item" onclick="toggleItem(this)">
-        <span class="check-icon">○</span>
-        <span>${item}</span>
-      </div>`;
-    });
-    html += `</div></div>`;
-  }
-  out.innerHTML = html;
-}
+    const out = document.getElementById('shopping-output');
+    out.innerHTML = "";
 
-function toggleItem(el) {
-  el.classList.toggle('checked');
-  el.querySelector('.check-icon').textContent = el.classList.contains('checked') ? '✓' : '○';
-}
+    if (!shopping) {
+        out.innerHTML = "<p>Генерирай меню, за да видиш списъка за пазаруване.</p>";
+        return;
+    }
 
-function uncheckAll() {
-  document.querySelectorAll('.shop-item.checked').forEach(el => {
-    el.classList.remove('checked');
-    el.querySelector('.check-icon').textContent = '○';
-  });
-}
-
-function printList() {
-  window.print();
-}
-
-function saveFavorite() {
-  if(!currentMenu) return;
-  const favs = JSON.parse(localStorage.getItem('menuFavorites') || '[]');
-  const name = prompt('Дай име на менюто:', 'Меню ' + new Date().toLocaleDateString('bg-BG'));
-  if(!name) return;
-  favs.unshift({ name, date: new Date().toLocaleDateString('bg-BG'), menu: currentMenu });
-  localStorage.setItem('menuFavorites', JSON.stringify(favs.slice(0, 20)));
-  showToast('✅ Менюто е запазено!');
-}
-
-function renderFavorites() {
-  const favs = JSON.parse(localStorage.getItem('menuFavorites') || '[]');
-  const out = document.getElementById('fav-output');
-  if(favs.length === 0) {
-    out.innerHTML = `<div class="empty-state"><div class="icon">❤️</div><p>Все още нямаш запазени менюта</p></div>`;
-    return;
-  }
-  let html = '<div class="fav-grid">';
-  favs.forEach((f, idx) => {
-    const days = f.menu.days || [];
-    const preview = days.slice(0,2).map(d => `<b>${d.day}:</b> ${d.lunch.name}`).join(' · ');
-    html += `<div class="fav-card">
-      <div class="fav-card-header">
-        <div class="fav-card-title">${f.name}</div>
-        <div class="fav-date">${f.date}</div>
-      </div>
-      <div class="fav-preview">${preview}...</div>
-      <div class="fav-actions">
-        <button class="btn btn-primary btn-sm" onclick="loadFavorite(${idx})">📂 Зареди</button>
-        <button class="btn btn-secondary btn-sm" onclick="deleteFavorite(${idx})">🗑️ Изтрий</button>
-      </div>
-    </div>`;
-  });
-  html += '</div>';
-  out.innerHTML = html;
-}
-
-function loadFavorite(idx) {
-  const favs = JSON.parse(localStorage.getItem('menuFavorites') || '[]');
-  const f = favs[idx];
-  currentMenu = f.menu;
-  currentShopping = f.menu.shopping;
-  renderMenu(f.menu.days);
-  renderShopping(f.menu.shopping);
-  showTab('menu');
-  showToast('📂 Менюто е заредено!');
-}
-
-function deleteFavorite(idx) {
-  const favs = JSON.parse(localStorage.getItem('menuFavorites') || '[]');
-  favs.splice(idx, 1);
-  localStorage.setItem('menuFavorites', JSON.stringify(favs));
-  renderFavorites();
-  showToast('🗑️ Изтрито');
+    for (const category in shopping) {
+        out.innerHTML += `<div class="shopping-category">${category}</div>`;
+        shopping[category].forEach(item => {
+            out.innerHTML += `<div class="shopping-item">• ${item}</div>`;
+        });
+    }
 }
 </script>
+
 </body>
 </html>

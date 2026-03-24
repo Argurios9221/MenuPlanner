@@ -7,102 +7,110 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(cors());
-
-// Статични файлове
 app.use(express.static(__dirname));
 
-/**
- * POST /api/generate-menu
- * Генерира седмично меню чрез Copilot
- */
+async function callClaude(model, prompt) {
+  const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 4000,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+
+  const text = await response.text();
+  return { ok: response.ok, status: response.status, text };
+}
+
 app.post('/api/generate-menu', async (req, res) => {
   try {
     const { diet, people, variety, allergies, prefs } = req.body;
 
-    // Проверка на входните данни
-    if (!diet || !people || !variety) {
-      return res.status(400).json({ error: 'Липсват задължени параметри' });
+    const prompt = `
+Генерирай седмично меню на български за ${people} човека.
+Диета: ${diet}.
+Стил: ${variety}.
+${allergies ? 'Алергии: ' + allergies + '.' : ''}
+${prefs ? 'Предпочитания: ' + prefs + '.' : ''}
+
+Върни САМО валиден JSON в следния формат:
+
+{
+  "days": [
+    {
+      "day": "Понеделник",
+      "breakfast": { "name": "...", "desc": "..." },
+      "lunch": { "name": "...", "desc": "..." },
+      "dinner": { "name": "...", "desc": "..." }
+    }
+  ],
+  "shopping": {
+    "Зеленчуци и плодове": ["..."],
+    "Месо и риба": ["..."],
+    "Млечни": ["..."],
+    "Хляб и зърнени": ["..."],
+    "Консерви и подправки": ["..."],
+    "Друго": []
+  }
+}
+
+Описанията (desc) да са до 5 думи.
+Попълни всичките 7 дни.
+`;
+
+    let result = await callClaude("claude-sonnet-4-6", prompt);
+
+    if (!result.ok) {
+      console.log("Sonnet 4.6 не е достъпен → fallback към Haiku 4.5");
+      result = await callClaude("claude-haiku-4-5-20251001", prompt);
     }
 
-    // Промпт на български
-    const prompt = `Генерирай седмично меню на БЪЛГАРСКИ за ${people} човека. Диета: ${diet}. Стил: ${variety}.${allergies ? ' Без: ' + allergies + '.' : ''}${prefs ? ' Предпочитания: ' + prefs + '.' : ''}
-
-Върни САМО валиден JSON без никакъв друг текст. Описанията (desc) да са до 5 думи.
-
-{"days":[{"day":"Понеделник","breakfast":{"name":"...","desc":"..."},"lunch":{"name":"...","desc":"..."},"dinner":{"name":"...","desc":"..."}},...всичките 7 дни],"shopping":{"Зеленчуци и плодове":["..."],"Месо и риба":["..."],"Млечни":["..."],"Хляб и зърнени":["..."],"Консерви и подправки":["..."],"Друго":[]}}
-
-Попълни всичките 7 дни: Понеделник, Вторник, Сряда, Четвъртък, Петък, Събота, Неделя.`;
-
-    // Claude (Anthropic) API - НАДЕЖДЕН
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 4000,
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'API грешка');
+    if (!result.ok) {
+      return res.status(500).json({
+        error: "API грешка",
+        details: result.text
+      });
     }
 
-    const data = await response.json();
-    
-    // Екстракция на текста (Claude формат)
-    let text = '';
-    if (data.content && data.content[0]) {
-      text = data.content[0].text || '';
-    }
+    let clean = result.text
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
 
-    // Парсване на JSON
-    const clean = text.replace(/```json\n?|```/g, '').trim();
     let parsed;
-    
+
     try {
       parsed = JSON.parse(clean);
-    } catch (jsonErr) {
-      // Fallback: опит да се намери JSON в отговора
+    } catch {
       const match = clean.match(/\{[\s\S]*\}/);
-      if (match) {
-        parsed = JSON.parse(match[0]);
-      } else {
-        throw new Error('Невалиден JSON отговор');
-      }
+      if (match) parsed = JSON.parse(match[0]);
+      else throw new Error("Невалиден JSON отговор");
     }
 
     res.json(parsed);
+
   } catch (error) {
-    console.error('Грешка при генериране на меню:', error);
-    res.status(500).json({ 
-      error: error.message || 'Грешка при генериране на меню' 
-    });
+    console.error("Грешка при генериране:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-/**
- * GET /api/health
- * Проверка на здравето на сървъра
- */
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Сървърът е активен' });
+  res.json({ status: 'OK', message: 'Сървърът работи' });
 });
 
-/**
- * GET /
- * Служба на главната страница (menu_planner.html)
- */
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/menu_planner.html');
 });
 
 app.listen(PORT, () => {
   console.log(`🚀 Сървърът работи на http://localhost:${PORT}`);
-  console.log('📝 Генератор на менюта е активен');
 });
