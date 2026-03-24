@@ -148,6 +148,11 @@ ${promptEl.value}
       body: JSON.stringify({ prompt: fullPrompt })
     });
 
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error("Грешка от сървъра: " + errorText);
+    }
     const data = await res.json();
     const text = data.text;
 
@@ -183,6 +188,11 @@ ${text}
       body: JSON.stringify({ prompt: basketPrompt })
     });
 
+
+    if (!basketRes.ok) {
+      const errorText = await basketRes.text();
+      throw new Error("Грешка от сървъра: " + errorText);
+    }
     const basketData = await basketRes.json();
     const basketText = basketData.text;
     const basketJson = tryExtractJson(basketText);

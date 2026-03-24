@@ -54,6 +54,10 @@ async function callAnthropic(prompt) {
     body: JSON.stringify(body)
   });
 
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error("Anthropic API error: " + errorText);
+  }
   return await response.json();
 }
 

@@ -52,6 +52,10 @@ ${prefs ? 'Предпочитания: ' + prefs + '.' : ''}
       })
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error("Anthropic API error: " + errorText);
+    }
     const text = await response.text();
 
     let clean = text
