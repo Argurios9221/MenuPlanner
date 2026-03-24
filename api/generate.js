@@ -21,7 +21,20 @@ export default async function handler(req, res) {
 }
 
 async function callAnthropic(prompt) {
-  const SYSTEM_PROMPT = "Ти си асистент за планиране на менюта.";
+  const SYSTEM_PROMPT = `Ти си асистент за планиране на седмично меню. Върни САМО валиден JSON в този формат:
+{
+  "days": [
+    {
+      "name": "Понеделник",
+      "meals": [
+        "Закуска: ...",
+        "Обяд: ...",
+        "Вечеря: ..."
+      ]
+    }
+  ]
+}
+ВАЖНО: Не добавяй никакви обяснения, коментари, текст преди или след JSON-а. Започни и завърши отговора си само с { и }. Ако не можеш да генерираш меню, върни празен валиден JSON в същия формат.`;
   const ANTHROPIC_API_KEY = "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";
   const body = {
     model: "claude-sonnet-4-6",
