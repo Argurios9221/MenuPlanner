@@ -21,6 +21,42 @@
       --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.04);
     }
 
+    @media (max-width: 600px) {
+      body {
+        padding: 8px;
+      }
+      .app-shell {
+        padding: 0;
+        gap: 12px;
+      }
+      .layout {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .panel {
+        padding: 12px;
+        gap: 10px;
+      }
+      .button-row {
+        flex-direction: column;
+        gap: 8px;
+      }
+      .days-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .day-card {
+        padding: 12px;
+      }
+      label, select, textarea, button {
+        font-size: 16px;
+      }
+      .tab {
+        font-size: 14px;
+        padding: 8px 12px;
+      }
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
