@@ -264,9 +264,12 @@ async function generateMenu() {
         renderMenu(data.days);
 
     } catch (e) {
-        document.getElementById('menu-output').innerHTML =
-            `<div style="color:red;padding:20px;">Грешка: ${e.message}</div>`;
-    } finally {
+    document.getElementById('menu-output').innerHTML =
+        `<div style="color:red;padding:20px;">
+            Грешка:<br><pre>${JSON.stringify(e, null, 2)}</pre>
+        </div>`;
+}
+ finally {
         btn.disabled = false;
         document.getElementById('loading').style.display = 'none';
     }
