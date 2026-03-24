@@ -37,6 +37,8 @@ const SYSTEM_PROMPT = `
 `;
 
 async function callAnthropic(prompt) {
+
+  const ANTHROPIC_API_KEY = "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";
   const body = {
     model: "claude-sonnet-4-6",
     system: SYSTEM_PROMPT,
@@ -48,7 +50,7 @@ async function callAnthropic(prompt) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": process.env.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,
+      "x-api-key": ANTHROPIC_API_KEY,
       "anthropic-version": "2023-06-01"
     },
     body: JSON.stringify(body)

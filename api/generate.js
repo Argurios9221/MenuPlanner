@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
 async function callAnthropic(prompt) {
   const SYSTEM_PROMPT = "Ти си асистент за планиране на менюта.";
-  const ANTHROPIC_API_KEY = "YOUR_ANTHROPIC_API_KEY_HERE"; // <-- постави тук твоя ключ
+  const ANTHROPIC_API_KEY = "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";
   const body = {
     model: "claude-sonnet-4-6",
     system: SYSTEM_PROMPT,
