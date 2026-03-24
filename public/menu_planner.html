@@ -38,7 +38,6 @@
         color: var(--primary);
     }
 
-    /* ---------- Tabs ---------- */
     .tabs {
         display: flex;
         border-bottom: 2px solid var(--surface-variant);
@@ -70,7 +69,6 @@
         border-radius: 2px;
     }
 
-    /* ---------- Material Card ---------- */
     .md-card {
         background: var(--surface);
         border-radius: 16px;
@@ -114,7 +112,6 @@
         background: #57408d;
     }
 
-    /* ---------- Loading ---------- */
     #loading {
         display: none;
         justify-content: center;
@@ -134,7 +131,6 @@
         to { transform: rotate(360deg); }
     }
 
-    /* ---------- Menu Cards ---------- */
     .day-card {
         background: var(--primary-container);
         padding: 20px;
@@ -155,7 +151,6 @@
         font-size: 15px;
     }
 
-    /* ---------- Shopping List ---------- */
     .shopping-category {
         font-weight: 700;
         margin-top: 20px;
@@ -176,15 +171,12 @@
 
     <h1>MenuPlanner</h1>
 
-    <!-- Tabs -->
     <div class="tabs">
         <div class="tab active" onclick="switchTab('menu')">Меню</div>
         <div class="tab" onclick="switchTab('shopping')">Пазаруване</div>
     </div>
 
-    <!-- TAB: Меню -->
     <div id="tab-menu">
-
         <div class="md-card">
             <label>Диета</label>
             <select id="diet">
@@ -219,7 +211,6 @@
         <div id="menu-output"></div>
     </div>
 
-    <!-- TAB: Пазаруване -->
     <div id="tab-shopping" style="display:none;">
         <div id="shopping-output"></div>
     </div>
@@ -258,7 +249,7 @@ async function generateMenu() {
     document.getElementById('menu-output').innerHTML = '';
 
     try {
-        const response = await fetch("http://localhost:3000/api/generate-menu", {
+        const response = await fetch("/api/generate-menu", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ diet, people, variety, allergies, prefs })
@@ -267,15 +258,10 @@ async function generateMenu() {
         const data = await response.json();
         if (data.error) throw new Error(data.error);
 
-        const raw = data.content?.[0]?.text;
-        if (!raw) throw new Error("Невалиден отговор от API");
+        currentMenu = data;
+        currentShopping = data.shopping;
 
-        const parsed = JSON.parse(raw);
-
-        currentMenu = parsed;
-        currentShopping = parsed.shopping;
-
-        renderMenu(parsed.days);
+        renderMenu(data.days);
 
     } catch (e) {
         document.getElementById('menu-output').innerHTML =
