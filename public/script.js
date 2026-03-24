@@ -60,6 +60,7 @@ function renderMenu(data) {
 
     const list = document.createElement("div");
     list.className = "meal-list";
+
     day.meals.forEach((m) => {
       const mealRow = document.createElement("div");
       mealRow.style.display = "flex";
@@ -75,7 +76,15 @@ function renderMenu(data) {
       recipeBtn.className = "btn-secondary";
       recipeBtn.style.fontSize = "13px";
       recipeBtn.style.padding = "4px 12px";
+
+      let recipeDiv = null;
+
       recipeBtn.onclick = async () => {
+        // Ако вече има рецепта, скрий я
+        if (recipeDiv && recipeDiv.style.display !== "none") {
+          recipeDiv.style.display = "none";
+          return;
+        }
         recipeBtn.disabled = true;
         recipeBtn.textContent = "Зарежда...";
         try {
@@ -91,8 +100,7 @@ function renderMenu(data) {
           } else {
             recipe = "Грешка при зареждане на рецептата.";
           }
-          // Показване на рецептата под ястието
-          let recipeDiv = mealRow.querySelector(".recipe-box");
+          // Показване на рецептата под ястието (на нов ред)
           if (!recipeDiv) {
             recipeDiv = document.createElement("div");
             recipeDiv.className = "recipe-box";
@@ -102,9 +110,29 @@ function renderMenu(data) {
             recipeDiv.style.border = "1px solid #e8ece8";
             recipeDiv.style.borderRadius = "8px";
             recipeDiv.style.padding = "8px";
-            mealRow.appendChild(recipeDiv);
+            recipeDiv.style.display = "block";
+
+            // Бутон за затваряне
+            const closeBtn = document.createElement("button");
+            closeBtn.textContent = "Затвори";
+            closeBtn.className = "btn-secondary";
+            closeBtn.style.fontSize = "12px";
+            closeBtn.style.marginTop = "8px";
+            closeBtn.onclick = () => {
+              recipeDiv.style.display = "none";
+            };
+            recipeDiv.appendChild(closeBtn);
+            // Текст на рецептата
+            const recipeText = document.createElement("div");
+            recipeText.className = "recipe-text";
+            recipeText.style.marginTop = "6px";
+            recipeDiv.appendChild(recipeText);
+            // Добавяме под mealRow, на нов ред
+            mealRow.parentNode.insertBefore(recipeDiv, mealRow.nextSibling);
+          } else {
+            recipeDiv.style.display = "block";
           }
-          recipeDiv.textContent = recipe;
+          recipeDiv.querySelector(".recipe-text").textContent = recipe;
         } finally {
           recipeBtn.disabled = false;
           recipeBtn.textContent = "Рецепта";
