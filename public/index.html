@@ -1,122 +1,114 @@
 <!DOCTYPE html>
-<html lang="bg">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Menu Planner – Fresh Garden</title>
+  <title>Menu Planner – Fresh Kitchen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      --bg: #fdfdfb;
-      --panel-bg: #ffffff;
-      --accent-green: #7ed9a6;
-      --accent-green-strong: #4bbf78;
-      --accent-yellow: #fff4c7;
-      --accent-yellow-strong: #ffe89a;
-      --text-main: #2d3a3f;
-      --text-muted: #6b7a80;
-      --border: #e8ece8;
-      --radius-lg: 22px;
-      --radius-md: 14px;
-      --shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-      --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.04);
-    }
-
-    @media (max-width: 600px) {
-      body {
-        padding: 8px;
-      }
-      .app-shell {
-        padding: 0;
-        gap: 12px;
-      }
-      .layout {
-        grid-template-columns: 1fr;
-        gap: 12px;
-      }
-      .panel {
-        padding: 12px;
-        gap: 10px;
-      }
-      .button-row {
-        flex-direction: column;
-        gap: 8px;
-      }
-      .days-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-      }
-      .day-card {
-        padding: 12px;
-      }
-      label, select, textarea, button {
-        font-size: 16px;
-      }
-      .tab {
-        font-size: 14px;
-        padding: 8px 12px;
-      }
+      --bg: #fdf6ee;
+      --panel-bg: #fffdf9;
+      --accent: #d4895a;
+      --accent-strong: #b5704a;
+      --accent-warm: #fceee2;
+      --accent-sage: #8ea58a;
+      --accent-sage-light: #e3ede1;
+      --accent-pink: #d9899e;
+      --accent-lavender: #a994c8;
+      --text-main: #3a2e28;
+      --text-muted: #7a6b60;
+      --border: #e6d9cc;
+      --radius-lg: 20px;
+      --radius-md: 12px;
+      --shadow: 0 8px 30px rgba(80, 50, 30, 0.1);
+      --shadow-soft: 0 4px 14px rgba(80, 50, 30, 0.06);
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: "Inter", system-ui, sans-serif;
     }
 
     body {
+      font-family: "Inter", system-ui, sans-serif;
       background: var(--bg);
       color: var(--text-main);
       min-height: 100vh;
-      padding: 32px;
+      padding: 0;
+    }
+
+    /* Header */
+    .site-header {
+      background: linear-gradient(135deg, #fceee2 0%, #f0e4f2 100%);
+      color: var(--text-main);
+      padding: 32px 40px;
       display: flex;
-      justify-content: center;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .site-header .logo {
+      font-family: "Playfair Display", serif;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .site-header .tagline {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-left: auto;
     }
 
     .app-shell {
-      width: 100%;
       max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 32px 48px;
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      gap: 24px;
     }
 
     /* Tabs */
     .tabs {
       display: flex;
-      gap: 12px;
+      gap: 8px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0;
     }
 
     .tab {
-      padding: 12px 24px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #fff;
+      padding: 12px 28px;
+      border: none;
+      background: transparent;
       color: var(--text-muted);
       cursor: pointer;
-      box-shadow: var(--shadow-soft);
-      transition: 0.25s;
       font-size: 15px;
+      font-weight: 500;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: 0.2s;
+      font-family: "Inter", system-ui, sans-serif;
+    }
+
+    .tab:hover {
+      color: var(--accent);
     }
 
     .tab.active {
-      background: var(--accent-green);
-      color: #fff;
-      border-color: var(--accent-green-strong);
-      box-shadow: 0 4px 12px rgba(126, 217, 166, 0.35);
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      font-weight: 600;
     }
 
     /* Layout */
     .layout {
       display: grid;
-      grid-template-columns: 1fr 1.5fr;
+      grid-template-columns: 320px 1fr;
       gap: 28px;
-    }
-
-    @media (max-width: 900px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
     }
 
     /* Panels */
@@ -124,67 +116,85 @@
       background: var(--panel-bg);
       border-radius: var(--radius-lg);
       border: 1px solid var(--border);
-      padding: 28px;
+      padding: 24px;
       box-shadow: var(--shadow);
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
+    }
+
+    .panel-title {
+      font-family: "Playfair Display", serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-main);
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
     }
 
     label {
-      font-size: 15px;
-      font-weight: 500;
+      font-size: 13px;
+      font-weight: 600;
       color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     select, textarea {
       width: 100%;
       border-radius: var(--radius-md);
       border: 1px solid var(--border);
-      padding: 12px;
-      font-size: 15px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: "Inter", system-ui, sans-serif;
       background: #fff;
       color: var(--text-main);
-      box-shadow: var(--shadow-soft);
       transition: 0.2s;
     }
 
     select:focus, textarea:focus {
-      border-color: var(--accent-green);
-      box-shadow: 0 0 0 3px rgba(126, 217, 166, 0.25);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(212, 137, 90, 0.2);
       outline: none;
     }
 
     textarea {
-      min-height: 140px;
+      min-height: 90px;
       resize: vertical;
     }
 
     /* Buttons */
     .button-row {
       display: flex;
-      justify-content: flex-end;
-      gap: 12px;
+      gap: 10px;
+      padding-top: 4px;
     }
 
     button {
-      padding: 12px 24px;
-      border-radius: 999px;
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
       cursor: pointer;
       border: none;
-      font-size: 15px;
-      transition: 0.25s;
+      font-size: 14px;
+      font-family: "Inter", system-ui, sans-serif;
+      transition: 0.2s;
     }
 
     .btn-primary {
-      background: var(--accent-green);
+      background: var(--accent);
       color: #fff;
       font-weight: 600;
-      box-shadow: 0 4px 12px rgba(126, 217, 166, 0.35);
+      flex: 1;
+      box-shadow: 0 4px 12px rgba(212, 137, 90, 0.3);
     }
 
     .btn-primary:hover {
-      background: var(--accent-green-strong);
+      background: var(--accent-strong);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     .btn-secondary {
@@ -193,57 +203,263 @@
       border: 1px solid var(--border);
     }
 
-    /* Status */
-    #status {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-top: -6px;
-      min-height: 20px;
+    .btn-secondary:hover {
+      background: var(--bg);
     }
 
-    /* Cards */
+    #status {
+      font-size: 13px;
+      color: var(--text-muted);
+      min-height: 18px;
+    }
+
+    /* Menu grid */
     .days-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 20px;
-    }
-
-    @media (max-width: 900px) {
-      .days-grid {
-        grid-template-columns: 1fr;
-      }
     }
 
     .day-card {
       border-radius: var(--radius-lg);
       border: 1px solid var(--border);
-      padding: 22px;
+      overflow: hidden;
       box-shadow: var(--shadow-soft);
       animation: fadeIn 0.4s ease;
+      background: #fff;
     }
 
-    /* Alternating pastel blocks */
-    .day-card:nth-child(odd) {
-      background: var(--accent-yellow);
-    }
-
-    .day-card:nth-child(even) {
-      background: #e9f9ef;
-    }
-
-    .day-name {
-      font-size: 20px;
+    .day-card .day-name {
+      font-family: "Playfair Display", serif;
+      font-size: 18px;
       font-weight: 600;
-      margin-bottom: 10px;
-      color: var(--accent-green-strong);
+      padding: 14px 18px 10px;
+      color: var(--accent-strong);
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, #fceee2 0%, #f0e4f2 100%);
     }
 
     .meal-list {
-      font-size: 15px;
-      color: var(--text-main);
+      padding: 0;
       display: flex;
       flex-direction: column;
+    }
+
+    .meal-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-bottom: 1px solid #efe4d9;
+      transition: background 0.15s;
+    }
+
+    .meal-item:last-child {
+      border-bottom: none;
+    }
+
+    .meal-actions {
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .btn-recipe {
+      background: var(--accent-warm);
+      color: var(--accent-strong);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: "Inter", system-ui, sans-serif;
+      white-space: nowrap;
+    }
+
+    .btn-recipe:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    /* Recipe Modal */
+    .recipe-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .recipe-overlay.visible {
+      display: flex;
+    }
+
+    .recipe-modal {
+      background: #fff;
+      border-radius: var(--radius-lg);
+      max-width: 600px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      animation: fadeIn 0.3s ease;
+    }
+
+    .recipe-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, #fceee2 0%, #f0e4f2 100%);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .recipe-modal-header h2 {
+      font-family: "Playfair Display", serif;
+      font-size: 20px;
+      color: var(--text-main);
+      margin: 0;
+    }
+
+    .recipe-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 0 4px;
+      line-height: 1;
+    }
+
+    .recipe-close:hover {
+      color: var(--text-main);
+    }
+
+    .recipe-modal-body {
+      padding: 24px;
+    }
+
+    .recipe-modal-body img {
+      width: 100%;
+      border-radius: var(--radius-md);
+      margin-bottom: 16px;
+    }
+
+    .recipe-section-title {
+      font-family: "Playfair Display", serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--accent-strong);
+      margin: 16px 0 8px;
+    }
+
+    .recipe-ingredients-list {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
       gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .recipe-ingredients-list li {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 13px;
+    }
+
+    .recipe-instructions {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-main);
+      white-space: pre-line;
+    }
+
+    .recipe-loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+
+    .meal-item:hover {
+      background: #fdf6ee;
+    }
+
+    .meal-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .meal-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .meal-type {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .meal-name {
+      font-size: 14px;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    /* Basket categories */
+    .basket-category {
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+      animation: fadeIn 0.4s ease;
+      background: #fff;
+    }
+
+    .basket-category-header {
+      font-family: "Playfair Display", serif;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .basket-category-header .cat-icon {
+      font-size: 20px;
+    }
+
+    .basket-items {
+      padding: 12px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .basket-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      color: var(--text-main);
     }
 
     .error-box {
@@ -251,30 +467,70 @@
       background: #fee2e2;
       border: 1px solid #fecaca;
       padding: 12px;
-      border-radius: 12px;
+      border-radius: var(--radius-md);
       display: none;
+      font-size: 14px;
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
+      from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .site-header {
+        padding: 20px 16px;
+        flex-wrap: wrap;
+      }
+      .site-header .tagline {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 4px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .app-shell {
+        padding: 16px 12px 32px;
+        gap: 16px;
+      }
+      .panel {
+        padding: 16px;
+      }
+      .days-grid {
+        grid-template-columns: 1fr;
+      }
+      .button-row {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
 
 <body>
+  <header class="site-header">
+    <div class="logo">Fresh Kitchen</div>
+    <div class="tagline">Plan your weekly meals with ease</div>
+  </header>
+
   <div class="app-shell">
 
     <div class="tabs">
-      <button class="tab active" data-tab="menu">Меню</button>
-      <button class="tab" data-tab="basket">Кошница</button>
+      <button class="tab active" data-tab="menu">Weekly Menu</button>
+      <button class="tab" data-tab="basket">Shopping Basket</button>
     </div>
 
     <div class="layout">
 
       <!-- LEFT PANEL -->
       <div class="panel">
-        <label>Брой хора:</label>
+        <div class="panel-title">Preferences</div>
+
+        <label>Number of people</label>
         <select id="people">
           <option value="1">1</option>
           <option value="2">2</option>
@@ -282,41 +538,53 @@
           <option value="4" selected>4</option>
         </select>
 
-        <label>Разнообразие:</label>
+        <label>Variety</label>
         <select id="variety">
-          <option value="low">Ниско</option>
-          <option value="medium" selected>Средно</option>
-          <option value="high">Високо</option>
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
         </select>
 
-        <label>Кухня:</label>
+        <label>Cuisine</label>
         <select id="cuisine">
-          <option value="mix" selected>Микс от всички кухни</option>
-          <option value="vegetarian">Вегетарианска</option>
-          <option value="vegan">Веган</option>
-          <option value="glutenfree">Безглутенова</option>
-          <option value="italian">Италианска</option>
+          <option value="mix" selected>Mix of all cuisines</option>
+          <option value="vegetarian">Vegetarian</option>
+          <option value="vegan">Vegan</option>
+          <option value="glutenfree">Gluten-free</option>
+          <option value="italian">Italian</option>
         </select>
 
-        <label>Допълнителни инструкции:</label>
-        <textarea id="prompt" placeholder="Напиши допълнителни предпочитания..."></textarea>
+        <label>Additional notes</label>
+        <textarea id="prompt" placeholder="Any dietary preferences or notes..."></textarea>
 
         <div class="button-row">
-          <button id="reset" class="btn-secondary">Изчисти</button>
-          <button id="generate" class="btn-primary">Генерирай меню</button>
+          <button id="reset" class="btn-secondary">Reset</button>
+          <button id="generate" class="btn-primary">Generate Menu</button>
         </div>
 
-        <div id="status">Готово за генериране.</div>
-
+        <div id="status">Ready to generate.</div>
         <div id="error" class="error-box"></div>
       </div>
 
       <!-- RIGHT PANEL -->
-      <div class="panel">
+      <div class="panel" style="min-height: 400px;">
         <div id="menuContainer" class="days-grid"></div>
         <div id="basketContainer" class="days-grid" style="display:none;"></div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Recipe Modal -->
+  <div class="recipe-overlay" id="recipeOverlay">
+    <div class="recipe-modal">
+      <div class="recipe-modal-header">
+        <h2 id="recipeTitle">Recipe</h2>
+        <button class="recipe-close" id="recipeClose">&times;</button>
+      </div>
+      <div class="recipe-modal-body" id="recipeBody">
+        <div class="recipe-loading">Loading recipe...</div>
+      </div>
     </div>
   </div>
 
