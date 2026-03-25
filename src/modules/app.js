@@ -953,6 +953,9 @@ export class MenuPlannerApp {
 
         const availabilityLabel = t('marketAvailability') || 'availability';
         const promoLabel = t('marketPromoCoverage') || 'promo';
+        const minCoverage = report.minRecommendedCoverage || 70;
+        const promoCount = store.coverage.promoMatchedCount || 0;
+        const thresholdLabel = store.coverage.percent >= minCoverage ? 'OK' : 'LOW';
 
         const matchedRows = store.coverage.matchedOffers
           .map((match) => {
@@ -995,8 +998,9 @@ export class MenuPlannerApp {
               ${distanceHtml}
               <span class="market-meta-item coverage-tag">${store.coverage.percent}% ${availabilityLabel}</span>
               <span class="market-meta-item promo-tag">${store.coverage.promoPercent || 0}% ${promoLabel}</span>
-              ${store.coverage.estimatedTotal > 0 ? `<span class="market-meta-item price-tag">&euro;${store.coverage.estimatedTotal.toFixed(2)}</span>` : ''}
+              <span class="market-meta-item price-tag">&euro;${store.coverage.estimatedTotal.toFixed(2)}</span>
             </div>
+            <p class="market-coverage-line">${t('marketCoverage')(store.coverage.matchedCount, store.coverage.total, store.coverage.percent)} · min ${minCoverage}%: ${thresholdLabel} · ${t('marketMatchedOffers')(promoCount)} · ${t('marketEstimatedPrice')(store.coverage.estimatedTotal)}</p>
             ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
             ${links ? `<div class="market-links">${links}</div>` : ''}
             ${store.coverage.matchedOffers.length > 0 ? `

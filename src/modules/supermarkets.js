@@ -459,7 +459,10 @@ async function getChainOffers(chainId, ingredientNames, options = {}) {
     return live.slice(0, 30);
   }
 
-  return [];
+  return (FALLBACK_OFFERS[chainId] || []).map((offer) => ({
+    ...offer,
+    source: 'fallback',
+  }));
 }
 
 function getCoverage(offers, ingredientNames) {

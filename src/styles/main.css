@@ -937,6 +937,13 @@ body {
   font-size: 0.85rem;
 }
 
+.market-coverage-line {
+  margin: 0.35rem 0 0.55rem;
+  color: var(--dark-text);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .market-links {
   display: flex;
   gap: 0.75rem;
