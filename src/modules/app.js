@@ -41,7 +41,7 @@ import {
   switchTab,
 } from './ui.js';
 import { exportMenuToPDF, exportBasketToPDF, exportRecipeToPDF, downloadFile, generatePDFFilename } from './pdf.js';
-import { getSpoonacularKey, setSpoonacularKey, isSpoonacularEnabled, clearSpoonacularCache } from './spoonacular.js';
+import { isSpoonacularEnabled } from './spoonacular.js';
 
 function scaleIngredientMeasure(measureStr, factor) {
   if (!measureStr) {

@@ -1,78 +1,130 @@
-# Fresh Kitchen - Weekly Menu Planner
+# Fresh Kitchen — Weekly Menu Planner
 
-ðŸ½ï¸ **AI-powered weekly meal planner with shopping lists and recipe translations**
+> **"Argurios is generating your menu…"**  
+> A smart, bilingual weekly meal planner built with Vanilla JS, powered by multiple recipe APIs and Spoonacular integration.
 
-A modern, responsive web application that generates personalized weekly menus, manages shopping lists, and provides recipe translations using TheMealDB API.
+?? **Live app:** [https://argurios9221.github.io/MenuPlanner/](https://argurios9221.github.io/MenuPlanner/)
+
+---
 
 ## Features
 
-### âœ… Core Features (Active)
-- ðŸ“… **Weekly Menu Generation** - Generate 7-day meal plans with customizable preferences
-- ðŸ›’ **Shopping Basket** - Organized by ingredient categories with checkout tracking
-- â¤ï¸ **Favorites System** - Save menus, recipes, and products for quick access
-- ðŸ“¤ **Social Sharing** - Share menus and recipes via WhatsApp, Facebook, Twitter
-- ðŸŒ **Multi-Language Support** - English and Bulgarian interface + auto-translations
-- ðŸ  **Offline Support** - Works offline with cached data via Service Workers
-- ðŸ“± **Responsive Design** - Optimized for mobile, tablet, and desktop
-- âš¡ **PWA Ready** - Installable on home screen with manifest
+### ??? Menu Generation
+- Generates a full **7-day meal plan** (Breakfast, Lunch, Dinner) with a single click
+- Respects cuisine preference, prep time, dietary exclusions, allergies and number of servings
+- **Swap** individual meals without regenerating the whole menu
+- **Lock** meals you want to keep across regenerations
+- Menu history — browse and reload previously generated menus
 
-### ðŸ”œ Coming Soon (Phase 2 & 3)
-- ðŸ• **Recipe Metadata** - Cooking time, difficulty level, calories
-- ðŸ“Š **Cost Estimation** - Estimate meal plan cost based on ingredients
-- ðŸ“„ **PDF Export** - Export menus and shopping lists as PDFs
-- ðŸ·ï¸ **Allergen Filtering** - Filter recipes based on allergies
-- ðŸ” **Recipe Search** - Search by name or ingredients
-- ðŸ”¥ **Trending Recipes** - Discover popular recipes
-- ðŸ’¡ **Recommendations** - AI-powered recipe suggestions
-- ðŸ‘¤ **User Accounts** - Cloud sync and personalization (Firebase/Supabase)
+### ?? Shopping Basket
+- Auto-builds an organised shopping list from the current menu
+- Categorised by ingredient type (Meat, Vegetables, Dairy, etc.)
+- Check off items as you shop
+- Scalable serving sizes — adjust quantities on the fly
+- Export basket as **PDF** or copy as text
+
+### ?? Spoonacular Integration
+- Set `VITE_SPOONACULAR_KEY` in `.env` to unlock:
+  - Richer recipes from Spoonacular's database (5,000+ recipes)
+  - **Real nutritional data** per serving — calories, protein, carbs, fat, fiber — shown as badges on meal cards and in the recipe modal
+  - Smarter search — filters by cuisine, diet, intolerances and prep time in parallel with TheMealDB
+  - Ingredient substitutes lookup
+  - Direct link to original recipe source
+- Fully optional — the app works without a key using TheMealDB + DummyJSON + SampleAPIs + local recipes
+
+### ?? Markets Assistant
+- Detects **nearby supermarkets** (Lidl, Kaufland, Metro, Fantastico, BILLA, T-Market, CBA, 345, FRESCO) via Overpass API using your location
+- Online stores: **EBAG.bg, Supermag, Glovo Market**
+- Filter by chain; **All Chains** view shows the nearest location per chain
+- Promotional offer matching against your basket
+- Budget indicator — see at a glance which stores are within your weekly budget
+
+### ?? Favorites
+- Save whole menus, individual recipes and products
+- Click a saved menu to reload it directly into the planner
+
+### ?? Sharing & Export
+- Share menus and recipes via **WhatsApp, Facebook, Twitter** or copy link
+- Export menus, basket and individual recipes as **PDF**
+
+### ?? Bilingual UI
+- Full **English / Bulgarian** interface toggle
+- Meal names auto-translated to Bulgarian via MyMemory API
+- All labels, hints and status messages available in both languages
+
+### ?? UX & Accessibility
+- Light / Dark mode
+- Responsive — works on mobile, tablet and desktop
+- Keyboard navigable with ARIA labels
+- PWA-ready (installable on home screen)
+
+---
 
 ## Tech Stack
 
-- **Frontend**: Vanilla JavaScript (ES6+ Modules)
-- **Build Tool**: Vite 8
-- **Styling**: CSS3 (Custom Properties)
-- **APIs**: 
-  - TheMealDB (meal and recipe data)
-  - MyMemory (recipe translations)
-- **Storage**: localStorage + IndexedDB (planned)
-- **Testing**: Playwright
-- **Quality**: ESLint + Prettier
-- **Offline**: Service Workers (PWA)
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vanilla JS (ES Modules), no framework |
+| Build | Vite 8 + Terser |
+| Styling | CSS3 — Custom Properties, CSS Grid, `color-mix()` |
+| Recipe APIs | TheMealDB · DummyJSON · SampleAPIs · Local recipes · Spoonacular |
+| Maps | Overpass API (OpenStreetMap) |
+| Translation | MyMemory API |
+| PDF | pdf-lib |
+| Testing | Playwright (5 E2E tests) |
+| Linting | ESLint + Prettier |
+| Deployment | GitHub Pages via GitHub Actions |
+
+---
 
 ## Project Structure
 
 ```
 MenuPlanner/
-â”œâ”€â”€ src/
-â”‚   â”œâ”€â”€ index.html              # Main HTML template
-â”‚   â”œâ”€â”€ main.js                 # App entry point
-â”‚   â”œâ”€â”€ sw.js                   # Service worker for offline support
-â”‚   â”œâ”€â”€ modules/
-â”‚   â”‚   â”œâ”€â”€ app.js              # Main application logic
-â”‚   â”‚   â”œâ”€â”€ i18n.js             # Internationalization
-â”‚   â”‚   â”œâ”€â”€ api.js              # TheMealDB API calls
-â”‚   â”‚   â”œâ”€â”€ menu.js             # Menu generation
-â”‚   â”‚   â”œâ”€â”€ recipe.js           # Recipe management
-â”‚   â”‚   â”œâ”€â”€ basket.js           # Shopping basket logic
-â”‚   â”‚   â”œâ”€â”€ favorites.js        # Favorites management
-â”‚   â”‚   â”œâ”€â”€ sharing.js          # Social sharing
-â”‚   â”‚   â”œâ”€â”€ translation.js      # Recipe translation
-â”‚   â”‚   â”œâ”€â”€ ui.js               # UI rendering
-â”‚   â”‚   â””â”€â”€ storage.js          # localStorage abstraction
-â”‚   â”œâ”€â”€ styles/
-â”‚   â”‚   â””â”€â”€ main.css            # Main stylesheet
-â”‚   â””â”€â”€ utils/
-â”‚       â”œâ”€â”€ constants.js        # App constants
-â”‚       â”œâ”€â”€ helpers.js          # Utility functions
-â”‚       â””â”€â”€ errors.js           # Error handling
-â”œâ”€â”€ public/
-â”‚   â””â”€â”€ manifest.json           # PWA manifest
-â”œâ”€â”€ index.html                  # Vite root HTML
-â”œâ”€â”€ vite.config.js              # Vite configuration
-â”œâ”€â”€ package.json                # Dependencies
-â”œâ”€â”€ .eslintrc.json              # ESLint config
-â””â”€â”€ .prettierrc.json            # Prettier config
++-- index.html                  # Root HTML (Vite entry)
++-- src/
+¦   +-- main.js                 # App entry point
+¦   +-- index.html              # Dev HTML template
+¦   +-- modules/
+¦   ¦   +-- app.js              # Main controller — wires all modules
+¦   ¦   +-- api.js              # TheMealDB + multi-source recipe fetching
+¦   ¦   +-- spoonacular.js      # Spoonacular API client
+¦   ¦   +-- menu.js             # Menu generation & swap logic
+¦   ¦   +-- basket.js           # Shopping basket builder
+¦   ¦   +-- supermarkets.js     # Nearby stores & offer matching
+¦   ¦   +-- recipe.js           # Recipe loading & translation pipeline
+¦   ¦   +-- search.js           # Advanced multi-source recipe search
+¦   ¦   +-- favorites.js        # Favorites management
+¦   ¦   +-- sharing.js          # Social share helpers
+¦   ¦   +-- translation.js      # MyMemory translation client
+¦   ¦   +-- metadata.js         # Prep time, difficulty, calorie estimates
+¦   ¦   +-- storage.js          # localStorage abstraction
+¦   ¦   +-- ui.js               # DOM rendering helpers
+¦   ¦   +-- ui-advanced.js      # Advanced UI components
+¦   ¦   +-- pdf.js              # PDF export
+¦   ¦   +-- i18n.js             # EN / BG translation dictionary
+¦   +-- styles/
+¦   ¦   +-- main.css            # All styles incl. dark mode & responsive
+¦   +-- data/
+¦   ¦   +-- local-recipes.js    # Bundled local recipe collections
+¦   +-- utils/
+¦   ¦   +-- constants.js
+¦   ¦   +-- helpers.js
+¦   ¦   +-- errors.js
+¦   +-- sw.js                   # Service Worker (PWA / offline)
++-- public/
+¦   +-- manifest.json           # PWA manifest
++-- tests/
+¦   +-- app.spec.js             # Playwright E2E tests
++-- .env                        # Local secrets — never committed
++-- vite.config.js
++-- playwright.config.js
++-- package.json
++-- .eslintrc.json
++-- .prettierrc.json
 ```
+
+---
 
 ## Getting Started
 
@@ -83,201 +135,80 @@ MenuPlanner/
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/menu-planner.git
-cd menu-planner
-
-# Install dependencies
+git clone https://github.com/Argurios9221/MenuPlanner.git
+cd MenuPlanner
 npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Run tests
-npm test
-
-# Lint code
-npm run lint
-
-# Format code
-npm run format
 ```
 
-## Usage
+### Environment Variables
 
-1. **Generate Menu**: Click "Generate Menu" to create a 7-day meal plan
-2. **Customize Preferences**: Adjust people count, variety level, cuisine type, dietary preferences
-3. **View Recipes**: Click "Recipe" to see ingredients and instructions
-4. **Manage Basket**: Switch to the "Basket" tab to see organized shopping list
-5. **Save Favorites**: Star recipes or menus to save them for later
-6. **Share**: Use the share button to send menus/recipes to friends
-7. **Translate**: Recipes are automatically translated to your selected language
+Create a `.env` file in the project root (already in `.gitignore`):
 
-## API Integration
+```env
+VITE_SPOONACULAR_KEY=your_key_here
+```
 
-### TheMealDB
-- Free meal database with 1000+ recipes
-- Provides ingredients, instructions, and images
-- No authentication required
-- Rate limit: Reasonable for single user
+Get a free key (150 requests/day) at [spoonacular.com/food-api](https://spoonacular.com/food-api).  
+The app is fully functional without this key.
 
-### MyMemory
-- Free translation API
-- Used for recipe instruction translation
-- Caching implemented to minimize requests
-- Fallback to original text on error
-
-## Localization
-
-Currently supports:
-- **English** (en) - Default
-- **Bulgarian** (bg) - Full UI + AUTO-TRANSLATION of recipes
-
-To add more languages:
-1. Add translations in `src/modules/i18n.js`
-2. Update ingredient dictionary in `src/modules/translation.js`
-3. Update language selector UI
-
-## Offline Support
-
-The app uses Service Workers to enable offline functionality:
-- Static assets are cached on first visit
-- API responses are cached for 1 hour
-- Network-first strategy for API calls (fall back to cache if offline)
-- Cache-first strategy for static assets
-
-To test offline: DevTools â†’ Network â†’ Offline
-
-## Error Handling
-
-Centralized error handling with:
-- User-friendly error messages via toasts
-- Automatic retry logic for network errors
-- Error logging in localStorage
-- Validation helpers for input sanitization
-
-## Performance Optimizations
-
-- Vite for fast builds and dev server
-- Code splitting and lazy loading
-- CSS custom properties for theme management
-- Debouncing for search/input
-- Memoization for expensive computations
-- Service Worker caching strategy
-
-## Testing
+### Development
 
 ```bash
-# Run tests
-npm test
-
-# Run specific test file
-npx playwright test tests/menu.spec.js
-
-# Test with UI
-npx playwright test --ui
+npm run dev        # Start dev server at http://localhost:3000
+npm run build      # Production build
+npm run build:pages # Build for GitHub Pages (/MenuPlanner/ base)
+npm run preview    # Preview production build
+npm run lint       # ESLint check
+npm run lint:fix   # Auto-fix lint errors
+npm run format     # Prettier format
+npm test           # Playwright E2E tests
 ```
-
-## Development Workflow
-
-```bash
-# Start dev server
-npm run dev
-
-# Lint before commit
-npm run lint
-npm run lint:fix
-
-# Format code
-npm run format
-
-# Build and preview
-npm run build
-npm run preview
-```
-
-## Browser Support
-
-- Chrome/Edge >= 90
-- Firefox >= 88
-- Safari >= 14
-- Mobile browsers (iOS Safari, Chrome Mobile)
-
-## Accessibility
-
-- Semantic HTML
-- ARIA labels where needed
-- Keyboard navigation support
-- Sufficient color contrast
-- Focus indicators on interactive elements
-
-## Security
-
-- Input validation and sanitization
-- XSS protection (no innerHTML except trusted sources)
-- CSRF protection (GET for data fetching)
-- localStorage data is client-side only
-- No sensitive data transmitted unencrypted
-
-## License
-
-MIT - See LICENSE file for details
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Roadmap
-
-### Phase 1 (âœ… In Progress)
-- [x] Modular architecture with ES6 modules
-- [x] Vite + ESLint + Prettier setup
-- [x] Service Worker for offline support
-- [x] Centralized error handling
-- [ ] Comprehensive error logging
-- [ ] Unit tests for core modules
-- [ ] E2E tests with Playwright
-
-### Phase 2 (Planned)
-- [ ] Recipe metadata (time, difficulty, calories)
-- [ ] PDF export using pdf-lib
-- [ ] Allergen filtering system
-- [ ] Advanced recipe search
-- [ ] Cost estimation
-- [ ] Trending recipes feed
-
-### Phase 3 (Planned)
-- [ ] User accounts (Firebase/Supabase)
-- [ ] Cloud sync
-- [ ] Recommendations engine
-- [ ] Dark mode theme
-- [ ] Mobile app (React Native)
-
-## Known Issues
-
-- Translation cache can grow large (manual clear via settings)
-- TheMealDB API occasionally slow (mitigated with caching)
-- Some recipes missing ingredient details (using fallback to API)
-
-## Support
-
-For issues and feature requests, please open an issue on GitHub.
-
-## Changelog
-
-### v1.0.0
-- Initial release
-- Core features: menu generation, basket, favorites, translations
-- Multi-language support (EN/BG)
-- PWA with offline support
 
 ---
 
-Made with â¤ï¸ by the Fresh Kitchen team
+## Cuisine & Dietary Options
+
+| Cuisine | Dietary Exclusions |
+|---------|-------------------|
+| International (Mix) | No beef |
+| Bulgarian | No pork |
+| Italian | Lactose-free |
+| Vegetarian | No chicken |
+| Vegan | No seafood |
+| Gluten-free | No nuts |
+| | Gluten-free ingredients |
+
+---
+
+## Supported Supermarkets
+
+### Physical (Bulgaria)
+Lidl · Kaufland · Metro · Fantastico · BILLA · T-Market · CBA · 345 · FRESCO
+
+### Online
+EBAG.bg · Supermag · Glovo Market
+
+---
+
+## API Sources
+
+| API | Purpose | Auth |
+|-----|---------|------|
+| [TheMealDB](https://www.themealdb.com/) | Recipe data | Free, no key |
+| [DummyJSON](https://dummyjson.com/recipes) | Extra recipes | Free, no key |
+| [SampleAPIs](https://api.sampleapis.com/recipes/recipes) | Extra recipes | Free, no key |
+| [Spoonacular](https://spoonacular.com/food-api) | Rich recipes + nutrition | Free tier (150/day) |
+| [MyMemory](https://mymemory.translated.net/) | Recipe translation | Free, no key |
+| [Overpass API](https://overpass-api.de/) | Nearby stores (OSM) | Free, no key |
+
+---
+
+## Browser Support
+
+Chrome/Edge >= 90 · Firefox >= 88 · Safari >= 14 · iOS Safari · Chrome Mobile
+
+---
+
+## License
+
+MIT

@@ -1,42 +1,27 @@
 // Spoonacular API integration
-// Users supply their own free key from https://spoonacular.com/food-api
-// Key is stored in localStorage (never baked into the build).
+// Set VITE_SPOONACULAR_KEY in your .env file (never commit the key to git).
 
 const BASE_URL = 'https://api.spoonacular.com';
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
-const STORAGE_KEY = 'spoonacular_api_key';
 
 const _cache = new Map();
 
 // ---------- Key management ----------
 
-export function getSpoonacularKey() {
-  return (localStorage.getItem(STORAGE_KEY) || '').trim();
-}
-
-export function setSpoonacularKey(key) {
-  const trimmed = String(key || '').trim();
-  if (trimmed) {
-    localStorage.setItem(STORAGE_KEY, trimmed);
-  } else {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-  _cache.clear();
-}
+const _envKey = (import.meta.env.VITE_SPOONACULAR_KEY || '').trim();
 
 export function isSpoonacularEnabled() {
-  return Boolean(getSpoonacularKey());
+  return Boolean(_envKey);
 }
 
 // ---------- Internal helpers ----------
 
 function buildUrl(path, params = {}) {
-  const key = getSpoonacularKey();
-  if (!key) {
-    throw new Error('Spoonacular API key is not set');
+  if (!_envKey) {
+    throw new Error('Spoonacular API key is not set. Add VITE_SPOONACULAR_KEY to your .env file.');
   }
   const url = new URL(`${BASE_URL}${path}`);
-  url.searchParams.set('apiKey', key);
+  url.searchParams.set('apiKey', _envKey);
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null && v !== '') {
       url.searchParams.set(k, String(v));
