@@ -521,11 +521,12 @@ function makeDirectionsUrl(store, originCoords) {
     return '';
   }
 
-  const destination = encodeURIComponent(`${store.lat},${store.lon}`);
+  const destinationLabel = [store.name, store.address].filter(Boolean).join(', ').trim();
+  const destination = encodeURIComponent(destinationLabel || `${store.lat},${store.lon}`);
   const origin = originCoords && !originCoords.isFallback
     ? `&origin=${encodeURIComponent(`${originCoords.lat},${originCoords.lon}`)}`
     : '';
-  return `https://www.google.com/maps/dir/?api=1&destination=${destination}${origin}&travelmode=driving&dir_action=navigate`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${destination}${origin}&travelmode=driving`;
 }
 
 export async function buildSupermarketRecommendations(basket) {
@@ -571,7 +572,7 @@ export async function buildSupermarketRecommendations(basket) {
 
   const storesWithInfo = shouldUseFallbackOnly
     ? enriched
-    : enriched.filter((store) => Array.isArray(store.offers) && store.offers.length > 0);
+    : enriched.filter((store) => !store.isFallback && Array.isArray(store.offers) && store.offers.length > 0);
 
   const onlineChain = CHAIN_DEFS.find((chain) => chain.onlineOnly);
   if (onlineChain) {

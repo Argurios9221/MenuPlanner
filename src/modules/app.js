@@ -207,11 +207,6 @@ export class MenuPlannerApp {
             <line x1="42" y1="59" x2="38" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
             <line x1="58" y1="59" x2="62" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
           </svg>
-          <div class="visitor-stores">
-            <div class="store-icon">B</div>
-            <div class="store-icon">L</div>
-            <div class="store-icon">D</div>
-          </div>
         </div>
         <p class="market-loading-text">${t('statusGenerating')(0)}</p>
       </div>

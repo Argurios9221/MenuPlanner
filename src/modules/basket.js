@@ -2,6 +2,20 @@
 import { categorizeIngredient, extractIngredients, fetchMealDetails } from './api.js';
 import { getCheckedItems, saveCheckedItems } from './storage.js';
 
+const INGREDIENT_ALIASES = {
+  tomatoes: 'tomato',
+  onions: 'onion',
+  eggs: 'egg',
+  potatoes: 'potato',
+  carrots: 'carrot',
+  cucumbers: 'cucumber',
+  peppers: 'pepper',
+  mushrooms: 'mushroom',
+  beans: 'bean',
+  chickpeas: 'chickpea',
+  lentils: 'lentil',
+};
+
 export async function buildBasket(menu) {
   const ingredients = {};
 
@@ -35,7 +49,10 @@ export async function buildBasket(menu) {
             };
           }
           if (ingredient.measure) {
-            ingredients[key].measures.push(ingredient.measure);
+            const normalizedMeasure = String(ingredient.measure).trim();
+            if (normalizedMeasure && !ingredients[key].measures.includes(normalizedMeasure)) {
+              ingredients[key].measures.push(normalizedMeasure);
+            }
           }
           ingredients[key].count += 1;
         }
@@ -47,7 +64,14 @@ export async function buildBasket(menu) {
 }
 
 function normalizeIngredientKey(name) {
-  return name.toLowerCase().replace(/\s+/g, '_');
+  const normalized = String(name || '')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const canonical = INGREDIENT_ALIASES[normalized] || normalized;
+  return canonical.replace(/\s+/g, '_');
 }
 
 function groupByCategory(ingredients) {
