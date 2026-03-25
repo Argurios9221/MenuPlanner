@@ -117,6 +117,10 @@ function matchesDietaryExclusions(meal) {
     no_pork: /\bpork|bacon|ham|pancetta|prosciutto|lard\b/i,
     no_beef: /\bbeef|veal|mince\b/i,
     lactose_free: /\bmilk|cream|butter|cheese|yogurt|yoghurt|custard\b/i,
+    no_chicken: /\bchicken|hen|rooster|chicken stock\b/i,
+    no_seafood: /\bfish|seafood|salmon|tuna|cod|anchovy|shrimp|prawn|crab|lobster|oyster|mussel|clam\b/i,
+    no_nuts: /\bnut|peanut|almond|hazelnut|walnut|cashew|pistachio|pecan|sesame|tahini\b/i,
+    gluten_free: /\bwheat|flour|pasta|bread|noodle|breadcrumbs|barley|rye|semolina|couscous\b/i,
   };
   const haystack = [
     meal.strMeal,
@@ -170,6 +174,8 @@ function getCategoriesForCuisine(cuisine) {
   switch (cuisine) {
     case 'Bulgarian':
       return ['Bulgarian', 'Vegetarian', 'Chicken', 'Pork'];
+    case 'Italian':
+      return ['Pasta', 'Chicken', 'Seafood', 'Vegetarian'];
     case 'Vegetarian':
       return ['Vegetarian', 'Vegan', 'Pasta'];
     case 'Vegan':
@@ -245,6 +251,10 @@ function getAllowedAreasForCuisine(cuisine) {
     return ['bulgarian'];
   }
 
+  if (normalized === 'italian') {
+    return ['italian'];
+  }
+
   return [];
 }
 
@@ -266,6 +276,10 @@ function matchesCuisinePreference(meal, cuisine, allowedAreas = []) {
 
   if (normalizedCuisine === 'bulgarian') {
     return haystack.includes('bulgarian') || haystack.includes('българ');
+  }
+
+  if (normalizedCuisine === 'italian') {
+    return haystack.includes('italian');
   }
 
   // For non-geographic cuisine types (e.g. Vegetarian/Vegan/GlutenFree),
@@ -298,7 +312,7 @@ export async function generateMenu(options = {}) {
     const dietPreference = getDietPreference(cuisine, dietary);
     const allowedAreas = getAllowedAreasForCuisine(cuisine);
     _extraDietaryFilter = (dietary || []).filter((d) =>
-      ['no_pork', 'no_beef', 'lactose_free'].includes(d.trim())
+      ['no_pork', 'no_beef', 'lactose_free', 'no_chicken', 'no_seafood', 'no_nuts', 'gluten_free'].includes(d.trim())
     );
 
     // Generate 7 days of meals
@@ -722,17 +736,15 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
   }
 
   _extraDietaryFilter = (dietary || []).filter((d) =>
-    ['no_pork', 'no_beef', 'lactose_free'].includes(d.trim())
+    ['no_pork', 'no_beef', 'lactose_free', 'no_chicken', 'no_seafood', 'no_nuts', 'gluten_free'].includes(d.trim())
   );
 
   const usedMealIds = new Set(
     menu.days.flatMap((d) => d.meals.map((m) => m.idMeal)).filter(Boolean)
   );
-  usedMealIds.delete(oldMeal.idMeal);
   const usedMealSignatures = new Set(
     menu.days.flatMap((d) => d.meals.map((m) => mealSignature(m))).filter(Boolean)
   );
-  usedMealSignatures.delete(mealSignature(oldMeal));
 
   const mealType = oldMeal.type || 'Lunch';
   const cuisineCategories = shuffle([...getCategoriesForCuisine(cuisine)]);
@@ -789,7 +801,7 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
 
   _extraDietaryFilter = [];
 
-  if (!newMeal) {
+  if (!newMeal || newMeal.idMeal === oldMeal.idMeal) {
     return null;
   }
   return { type: mealType, ...newMeal };

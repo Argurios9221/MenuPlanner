@@ -784,6 +784,10 @@ body {
   border-radius: 999px;
   padding: 0.3rem 0.85rem;
   font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--dark-text);
+  transition: background 0.15s, border-color 0.15s;
+}
 
 .market-summary {
   margin: 0.5rem 0 0.8rem;
@@ -822,10 +826,6 @@ body {
   color: #991b1b;
   background: #fee2e2;
   border-color: #fca5a5;
-}
-  cursor: pointer;
-  color: var(--dark-text);
-  transition: background 0.15s, border-color 0.15s;
 }
 
 .market-filter-btn:hover {
@@ -954,6 +954,10 @@ body {
   padding: var(--spacing-md);
 }
 
+.market-card-location-only {
+  background: color-mix(in srgb, var(--light-bg) 86%, #e5f7f3 14%);
+}
+
 .market-card.recommended {
   border-color: var(--success-color);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--success-color) 25%, transparent);
@@ -1027,6 +1031,10 @@ body {
   margin: 0.2rem 0 0.5rem;
   color: var(--muted-text);
   font-size: 0.85rem;
+}
+
+.market-card-location-only .market-card-head {
+  margin-bottom: 0.2rem;
 }
 
 .market-coverage-line {

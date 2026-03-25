@@ -41,10 +41,42 @@ const CHAIN_DEFS = [
     offerPage: 'https://www.tmarket.bg/%D0%B0%D0%BA%D1%82%D1%83%D0%B0%D0%BB%D0%BD%D0%B8-%D0%BE%D1%84%D0%B5%D1%80%D1%82%D0%B8/',
   },
   {
+    id: 'cba',
+    label: 'CBA',
+    aliases: ['cba'],
+    offerPage: 'https://cbamarket.bg/',
+  },
+  {
+    id: 'chain345',
+    label: '345',
+    aliases: ['345', 'триста четиридесет и пет'],
+    offerPage: 'https://345.bg/',
+  },
+  {
+    id: 'fresco',
+    label: 'FRESCO',
+    aliases: ['fresco'],
+    offerPage: 'https://fresco.bg/',
+  },
+  {
     id: 'ebag_online',
     label: 'EBAG.bg (Online)',
     aliases: ['ebag', 'ebag.bg'],
     offerPage: 'https://www.ebag.bg/promotions',
+    onlineOnly: true,
+  },
+  {
+    id: 'supermag_online',
+    label: 'Supermag (Online)',
+    aliases: ['supermag'],
+    offerPage: 'https://supermag.bg/',
+    onlineOnly: true,
+  },
+  {
+    id: 'glovo_market_online',
+    label: 'Glovo Market (Online)',
+    aliases: ['glovo market', 'glovo'],
+    offerPage: 'https://glovoapp.com/bg/bg/sofiya/',
     onlineOnly: true,
   },
 ];
@@ -181,6 +213,52 @@ const FALLBACK_OFFERS = {
     { keyword: 'cheese', title: 'Сирене краве', price: 2.48 },
     { keyword: 'egg', title: 'Яйца 10 бр.', price: 2.01 },
     { keyword: 'chicken', title: 'Пилешко бутче', price: 4.99 },
+  ],
+  cba: [
+    { keyword: 'tomato', title: 'Домати CBA', price: 1.19 },
+    { keyword: 'onion', title: 'Лук кромид', price: 0.57 },
+    { keyword: 'potato', title: 'Картофи', price: 0.74 },
+    { keyword: 'chicken', title: 'Пилешко филе', price: 5.09 },
+    { keyword: 'egg', title: 'Яйца 10 бр.', price: 2.06 },
+    { keyword: 'milk', title: 'Прясно мляко', price: 1.12 },
+    { keyword: 'rice', title: 'Ориз', price: 1.26 },
+    { keyword: 'pasta', title: 'Паста', price: 0.98 },
+  ],
+  chain345: [
+    { keyword: 'tomato', title: 'Домати 345', price: 1.14 },
+    { keyword: 'cucumber', title: 'Краставици 345', price: 0.81 },
+    { keyword: 'pepper', title: 'Чушки', price: 1.06 },
+    { keyword: 'bread', title: 'Хляб', price: 0.89 },
+    { keyword: 'cheese', title: 'Сирене', price: 2.49 },
+    { keyword: 'banana', title: 'Банани', price: 1.11 },
+    { keyword: 'yogurt', title: 'Кисело мляко', price: 0.88 },
+    { keyword: 'bean', title: 'Боб', price: 1.28 },
+  ],
+  fresco: [
+    { keyword: 'tomato', title: 'Домати FRESCO', price: 1.25 },
+    { keyword: 'broccoli', title: 'Броколи', price: 1.15 },
+    { keyword: 'mushroom', title: 'Гъби', price: 1.78 },
+    { keyword: 'salmon', title: 'Сьомга филе', price: 7.20 },
+    { keyword: 'pork', title: 'Свинско месо', price: 4.85 },
+    { keyword: 'egg', title: 'Яйца 10 бр.', price: 2.19 },
+    { keyword: 'milk', title: 'Мляко 1L', price: 1.15 },
+    { keyword: 'pasta', title: 'Италианска паста', price: 1.24 },
+  ],
+  supermag_online: [
+    { keyword: 'tomato', title: 'Домати online', price: 1.29 },
+    { keyword: 'potato', title: 'Картофи online', price: 0.75 },
+    { keyword: 'chicken', title: 'Пилешко филе online', price: 5.29 },
+    { keyword: 'rice', title: 'Ориз online', price: 1.35 },
+    { keyword: 'milk', title: 'Мляко online', price: 1.19 },
+    { keyword: 'egg', title: 'Яйца online', price: 2.15 },
+  ],
+  glovo_market_online: [
+    { keyword: 'tomato', title: 'Домати Glovo', price: 1.33 },
+    { keyword: 'onion', title: 'Лук Glovo', price: 0.62 },
+    { keyword: 'banana', title: 'Банани Glovo', price: 1.19 },
+    { keyword: 'bread', title: 'Хляб Glovo', price: 1.05 },
+    { keyword: 'cheese', title: 'Сирене Glovo', price: 2.69 },
+    { keyword: 'pasta', title: 'Паста Glovo', price: 1.32 },
   ],
 };
 
@@ -575,8 +653,8 @@ export async function buildSupermarketRecommendations(basket) {
 
   const storesWithInfo = [...enriched];
 
-  const onlineChain = CHAIN_DEFS.find((chain) => chain.onlineOnly);
-  if (onlineChain) {
+  const onlineChains = CHAIN_DEFS.filter((chain) => chain.onlineOnly);
+  for (const onlineChain of onlineChains) {
     const onlineOffers = offersByChain[onlineChain.id] || [];
     if (shouldUseFallbackOnly || onlineOffers.length > 0) {
       const onlineCoverage = getCoverage(onlineOffers, ingredientNames);

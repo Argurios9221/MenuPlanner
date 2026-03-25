@@ -91,6 +91,7 @@
             <select id="cuisine-select">
               <option value="mix" data-i18n="cuisineMix" selected>International (Mix)</option>
               <option value="Bulgarian" data-i18n="cuisineBulgarian">Bulgarian</option>
+              <option value="Italian" data-i18n="cuisineItalian">Italian</option>
               <option value="Vegetarian" data-i18n="cuisineVegetarian">Vegetarian</option>
               <option value="Vegan" data-i18n="cuisineVegan">Vegan</option>
               <option value="GlutenFree" data-i18n="cuisineGlutenfree">Gluten-free</option>
@@ -129,6 +130,18 @@
               <label class="diet-check-label">
                 <input type="checkbox" id="diet-lactose-free" value="lactose_free"> <span data-i18n="dietLactoseFree">Lactose-free</span>
               </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-no-chicken" value="no_chicken"> <span data-i18n="dietNoChicken">No chicken</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-no-seafood" value="no_seafood"> <span data-i18n="dietNoSeafood">No seafood</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-no-nuts" value="no_nuts"> <span data-i18n="dietNoNuts">No nuts</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-gluten-free" value="gluten_free"> <span data-i18n="dietGlutenFree">Gluten-free ingredients</span>
+              </label>
             </div>
           </div>
 
@@ -147,7 +160,6 @@
             <button id="btn-generate" class="btn btn-primary" data-i18n="btnGenerate">Generate Menu</button>
           </div>
 
-          <div id="status-text" class="status-text status-ready" data-i18n="statusReady">Ready to generate.</div>
         </aside>
 
         <!-- Tabs -->

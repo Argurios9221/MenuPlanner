@@ -225,7 +225,7 @@ export class MenuPlannerApp {
     document.getElementById('prep-time-select').value = 'any';
     document.getElementById('allergies-input').value = '';
     document.getElementById('notes-input').value = '';
-    ['diet-no-beef', 'diet-no-pork', 'diet-lactose-free'].forEach((id) => {
+    ['diet-no-beef', 'diet-no-pork', 'diet-lactose-free', 'diet-no-chicken', 'diet-no-seafood', 'diet-no-nuts', 'diet-gluten-free'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
         el.checked = false;
@@ -278,7 +278,7 @@ export class MenuPlannerApp {
 
   attachPreferencesListeners() {
     const inputs = document.querySelectorAll(
-      '#people-input, #variety-select, #cuisine-select, #prep-time-select, #allergies-input, #notes-input'
+      '#people-input, #variety-select, #cuisine-select, #prep-time-select, #allergies-input, #notes-input, #budget-input, #diet-no-beef, #diet-no-pork, #diet-lactose-free, #diet-no-chicken, #diet-no-seafood, #diet-no-nuts, #diet-gluten-free'
     );
     inputs.forEach((input) => {
       input.addEventListener('change', () => {
@@ -311,7 +311,15 @@ export class MenuPlannerApp {
   }
 
   getFormPreferences() {
-    const dietaryCheckboxes = ['diet-no-beef', 'diet-no-pork', 'diet-lactose-free'];
+    const dietaryCheckboxes = [
+      'diet-no-beef',
+      'diet-no-pork',
+      'diet-lactose-free',
+      'diet-no-chicken',
+      'diet-no-seafood',
+      'diet-no-nuts',
+      'diet-gluten-free',
+    ];
     const dietary = dietaryCheckboxes
       .filter((id) => document.getElementById(id)?.checked)
       .map((id) => document.getElementById(id).value);
@@ -420,10 +428,18 @@ export class MenuPlannerApp {
 
     card.querySelectorAll('.swap-btn').forEach((btn) => {
       btn.addEventListener('click', async (e) => {
+        e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         const mealItem = btn.closest('.meal-item');
+        if (!mealItem) {
+          return;
+        }
         const dayIndex = parseInt(mealItem.getAttribute('data-day'), 10);
         const mealIndex = parseInt(mealItem.getAttribute('data-meal-index'), 10);
+        if (Number.isNaN(dayIndex) || Number.isNaN(mealIndex)) {
+          return;
+        }
         await this.handleSwapMeal(dayIndex, mealIndex, btn);
       });
     });
@@ -464,8 +480,9 @@ export class MenuPlannerApp {
       btn.classList.add('spinning');
     }
     try {
+      const previousId = this.currentMenu?.days?.[dayIndex]?.meals?.[mealIndex]?.idMeal;
       const newMeal = await swapMealInMenu(this.currentMenu, dayIndex, mealIndex);
-      if (newMeal) {
+      if (newMeal && newMeal.idMeal && newMeal.idMeal !== previousId) {
         this.currentMenu.days[dayIndex].meals[mealIndex] = newMeal;
         this.currentBasket = null;
         this.marketState = { ...this.marketState, report: null, basketKey: '' };
@@ -1122,12 +1139,30 @@ export class MenuPlannerApp {
   }
 
   renderMarketResults(results, report, activeFilter = 'all') {
+    const normalizedFilter = activeFilter || 'all';
+    let storesForRender = report.stores || [];
+
+    if (normalizedFilter === 'all') {
+      const byChainNearest = new Map();
+      for (const store of storesForRender) {
+        const current = byChainNearest.get(store.chainId);
+        const currentDistance = current?.distanceKm ?? Number.POSITIVE_INFINITY;
+        const candidateDistance = store.distanceKm ?? Number.POSITIVE_INFINITY;
+        if (!current || candidateDistance < currentDistance) {
+          byChainNearest.set(store.chainId, store);
+        }
+      }
+      storesForRender = Array.from(byChainNearest.values());
+    } else {
+      storesForRender = storesForRender.filter((store) => store.chainId === normalizedFilter);
+    }
+
     const locationWarning = report.coords.isFallback
       ? `<p class="market-location-warning">&#9888;&#65039; ${t('marketLocationApprox')}</p>`
       : '';
 
     const budget = Number(this.state.preferences?.budget || 0);
-    const storeTotals = report.stores
+    const storeTotals = storesForRender
       .map((store) => Number(store.coverage?.estimatedTotal || 0))
       .filter((total) => total > 0);
     const cheapestTotal = storeTotals.length ? Math.min(...storeTotals) : 0;
@@ -1143,7 +1178,9 @@ export class MenuPlannerApp {
       budgetIndicator = `<p class="budget-indicator ${status}">${statusText}: €${cheapestTotal.toFixed(2)} / €${budget.toFixed(2)}</p>`;
     }
 
-    const cards = report.stores
+    const compactLocationMode = normalizedFilter === 'all';
+
+    const cards = storesForRender
       .map((store) => {
         const distanceHtml = store.distanceKm !== null
           ? `<span class="market-meta-item">&#128205; ${store.distanceKm} km</span>`
@@ -1200,6 +1237,19 @@ export class MenuPlannerApp {
           .filter(Boolean)
           .join('');
 
+        if (compactLocationMode) {
+          return `
+            <article class="market-card market-card-location-only" data-chain-id="${store.chainId}">
+              <div class="market-card-head">
+                <h4>${store.chainLabel}</h4>
+                ${distanceHtml}
+              </div>
+              ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
+              ${links ? `<div class="market-links">${links}</div>` : ''}
+            </article>
+          `;
+        }
+
         return `
           <article class="market-card ${store.id === report.recommendedStoreId ? 'recommended' : ''}" data-chain-id="${store.chainId}">
             <div class="market-card-head">
@@ -1228,44 +1278,35 @@ export class MenuPlannerApp {
       })
       .join('');
 
-    const topStore = report.stores[0] || null;
+    const topStore = storesForRender[0] || null;
     const summaryText = topStore
       ? `${topStore.chainLabel}: ${t('marketCoverage')(topStore.coverage.matchedCount, topStore.coverage.total, topStore.coverage.percent)}${topStore.coverage.estimatedTotal > 0 ? ` · ${t('marketEstimatedPrice')(topStore.coverage.estimatedTotal)}` : ''}`
       : '';
 
     const chainIds = [...new Set(report.stores.map((store) => store.chainId))];
     const filterBtns = [
-      `<button class="market-filter-btn ${activeFilter === 'all' ? 'active' : ''}" data-filter="all">${t('marketFilterAll')}</button>`,
+      `<button class="market-filter-btn ${normalizedFilter === 'all' ? 'active' : ''}" data-filter="all">${t('marketFilterAll')}</button>`,
       ...chainIds.map((id) => {
         const label = report.stores.find((store) => store.chainId === id)?.chainLabel || id;
-        const activeClass = activeFilter === id ? 'active' : '';
+        const activeClass = normalizedFilter === id ? 'active' : '';
         return `<button class="market-filter-btn ${activeClass}" data-filter="${id}">${label}</button>`;
       }),
     ].join('');
 
     results.innerHTML = `
       ${locationWarning}
-      ${summaryText ? `<p class="market-summary">${summaryText}</p>` : ''}
-      ${budgetIndicator}
+      ${summaryText && !compactLocationMode ? `<p class="market-summary">${summaryText}</p>` : ''}
+      ${budgetIndicator && !compactLocationMode ? budgetIndicator : ''}
       <div class="market-filter-bar">${filterBtns}</div>
       <div class="market-cards">${cards}</div>
     `;
 
-    this.applyMarketFilter(results, activeFilter);
     results.querySelectorAll('.market-filter-btn').forEach((button) => {
       button.addEventListener('click', () => {
         const filter = button.dataset.filter || 'all';
         this.marketState.filter = filter;
-        results.querySelectorAll('.market-filter-btn').forEach((item) => item.classList.remove('active'));
-        button.classList.add('active');
-        this.applyMarketFilter(results, filter);
+        this.renderMarketResults(results, report, filter);
       });
-    });
-  }
-
-  applyMarketFilter(results, filter) {
-    results.querySelectorAll('.market-card[data-chain-id]').forEach((card) => {
-      card.style.display = filter === 'all' || card.dataset.chainId === filter ? '' : 'none';
     });
   }
 
