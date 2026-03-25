@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   LANG: 'menuPlanner_lang',
   CURRENT_MENU: 'menuPlanner_currentMenu',
   THEME: 'menuPlanner_theme',
+  MENU_HISTORY: 'menuPlanner_menuHistory',
 };
 
 const DEFAULT_PREFERENCES = {
@@ -251,6 +252,32 @@ function buildMenuSignature(menu) {
     (day.meals || []).map((meal) => meal.idMeal || meal.strMeal || '').join('|')
   );
   return daySignatures.join('::');
+}
+
+const MAX_HISTORY_SIZE = 5;
+
+export function getMenuHistory() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.MENU_HISTORY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addMenuToHistory(menu) {
+  try {
+    const history = getMenuHistory();
+    const entry = { ...menu, historyAt: Date.now() };
+    const filtered = history.filter((m) => m.id !== entry.id);
+    filtered.unshift(entry);
+    localStorage.setItem(
+      STORAGE_KEYS.MENU_HISTORY,
+      JSON.stringify(filtered.slice(0, MAX_HISTORY_SIZE))
+    );
+  } catch (error) {
+    console.error('Failed to save menu history:', error);
+  }
 }
 
 export { STORAGE_KEYS };

@@ -10,6 +10,9 @@ const MAIN_MEAL_CATEGORIES = ['Beef', 'Chicken', 'Goat', 'Lamb', 'Pasta', 'Pork'
 const MIN_EASY_INGREDIENT_RATIO = 0.7;
 const MIX_ALLOWED_CUISINES = ['bulgarian', 'italian', 'german', 'british', 'french', 'mediterranean'];
 
+// Extra dietary exclusions applied during current generation/swap
+let _extraDietaryFilter = [];
+
 const EASY_INGREDIENT_KEYWORDS = [
   'oat',
   'bean',
@@ -104,6 +107,28 @@ function isEasyToShopMeal(meal, minRatio = MIN_EASY_INGREDIENT_RATIO) {
   const easyCount = ingredients.filter((name) => isEasyIngredient(name)).length;
   const ratio = easyCount / ingredients.length;
   return ratio >= minRatio;
+}
+
+function matchesDietaryExclusions(meal) {
+  if (!_extraDietaryFilter.length) {
+    return true;
+  }
+  const exclusionPatterns = {
+    no_pork: /\bpork|bacon|ham|pancetta|prosciutto|lard\b/i,
+    no_beef: /\bbeef|veal|mince\b/i,
+    lactose_free: /\bmilk|cream|butter|cheese|yogurt|yoghurt|custard\b/i,
+  };
+  const haystack = [
+    meal.strMeal,
+    meal.strCategory,
+    ...(meal.ingredients || []).map((ing) => ing.name || ''),
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return _extraDietaryFilter.every((exclusion) => {
+    const pattern = exclusionPatterns[exclusion];
+    return !pattern || !pattern.test(haystack);
+  });
 }
 
 function matchesMealSlot(meal, slotType) {
@@ -272,6 +297,9 @@ export async function generateMenu(options = {}) {
     const cuisineCategories = getCategoriesForCuisine(cuisine);
     const dietPreference = getDietPreference(cuisine, dietary);
     const allowedAreas = getAllowedAreasForCuisine(cuisine);
+    _extraDietaryFilter = (dietary || []).filter((d) =>
+      ['no_pork', 'no_beef', 'lactose_free'].includes(d.trim())
+    );
 
     // Generate 7 days of meals
     for (let day = 0; day < DAYS_OF_WEEK; day++) {
@@ -480,6 +508,7 @@ async function getMealForSlot(
           matchesDietPreference(details, dietPreference) &&
           matchesCuisinePreference(details, cuisinePreference, allowedAreas) &&
           matchesPrepTime(details, prepTimePreference) &&
+          matchesDietaryExclusions(details) &&
           isEasyToShopMeal(details)
         ) {
           return details;
@@ -562,6 +591,7 @@ async function getCompatibleRandomMeal(
         matchesDietPreference(details, dietPreference) &&
         (ignoreCuisine || matchesCuisinePreference(details, cuisinePreference, allowedAreas)) &&
         matchesPrepTime(details, prepTimePreference) &&
+        matchesDietaryExclusions(details) &&
         (ignoreEasyToShop || isEasyToShopMeal(details))
       ) {
         return details;
@@ -610,6 +640,7 @@ async function getFallbackMealFromPools(
             matchesDietPreference(details, dietPreference) &&
             (rules.ignoreCuisine || matchesCuisinePreference(details, cuisinePreference, allowedAreas)) &&
             matchesPrepTime(details, prepTimePreference) &&
+            matchesDietaryExclusions(details) &&
             (rules.ignoreEasyToShop || isEasyToShopMeal(details))
           ) {
             return details;
@@ -670,4 +701,96 @@ export function getMenuStats(menu) {
     generationTime: menu.generationTime,
   };
   return stats;
+}
+
+export async function swapMealInMenu(menu, dayIndex, mealIndex) {
+  const options = menu.options || {};
+  const {
+    variety = 'medium',
+    cuisine = 'mix',
+    prepTime = 'any',
+    dietary = [],
+  } = options;
+
+  const day = menu.days[dayIndex];
+  if (!day) {
+    return null;
+  }
+  const oldMeal = day.meals[mealIndex];
+  if (!oldMeal) {
+    return null;
+  }
+
+  _extraDietaryFilter = (dietary || []).filter((d) =>
+    ['no_pork', 'no_beef', 'lactose_free'].includes(d.trim())
+  );
+
+  const usedMealIds = new Set(
+    menu.days.flatMap((d) => d.meals.map((m) => m.idMeal)).filter(Boolean)
+  );
+  usedMealIds.delete(oldMeal.idMeal);
+  const usedMealSignatures = new Set(
+    menu.days.flatMap((d) => d.meals.map((m) => mealSignature(m))).filter(Boolean)
+  );
+  usedMealSignatures.delete(mealSignature(oldMeal));
+
+  const mealType = oldMeal.type || 'Lunch';
+  const cuisineCategories = shuffle([...getCategoriesForCuisine(cuisine)]);
+  const dietPreference = getDietPreference(cuisine, dietary);
+  const allowedAreas = getAllowedAreasForCuisine(cuisine);
+
+  let newMeal = null;
+
+  if (mealType === 'Breakfast') {
+    newMeal = await getMealForSlot(
+      'Breakfast',
+      'Breakfast',
+      variety,
+      Math.floor(Math.random() * 20),
+      dietPreference,
+      cuisine,
+      allowedAreas,
+      prepTime,
+      usedMealIds,
+      usedMealSignatures
+    );
+  } else {
+    for (const cat of cuisineCategories) {
+      newMeal = await getMealForSlot(
+        cat,
+        mealType,
+        variety,
+        Math.floor(Math.random() * 20),
+        dietPreference,
+        cuisine,
+        allowedAreas,
+        prepTime,
+        usedMealIds,
+        usedMealSignatures
+      );
+      if (newMeal) {
+        break;
+      }
+    }
+  }
+
+  if (!newMeal) {
+    newMeal = await getCompatibleRandomMeal(
+      dietPreference,
+      cuisine,
+      allowedAreas,
+      prepTime,
+      mealType,
+      usedMealIds,
+      usedMealSignatures,
+      { ignoreEasyToShop: true, allowReuse: false }
+    );
+  }
+
+  _extraDietaryFilter = [];
+
+  if (!newMeal) {
+    return null;
+  }
+  return { type: mealType, ...newMeal };
 }

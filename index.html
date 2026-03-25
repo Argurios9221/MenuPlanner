@@ -118,8 +118,28 @@
           </div>
 
           <div class="form-group">
+            <label data-i18n="labelDietaryExclusions">Exclude from meals</label>
+            <div class="dietary-checkboxes">
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-no-beef" value="no_beef"> <span data-i18n="dietNoBeef">No beef</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-no-pork" value="no_pork"> <span data-i18n="dietNoPork">No pork</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-lactose-free" value="lactose_free"> <span data-i18n="dietLactoseFree">Lactose-free</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
             <label for="notes-input" data-i18n="labelNotes">Additional notes</label>
             <textarea id="notes-input" placeholder="Any dietary preferences..." data-placeholder="placeholderNotes"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="budget-input" data-i18n="weeklyBudget">Weekly Budget (€)</label>
+            <input type="number" id="budget-input" min="0" step="5" placeholder="e.g. 80" data-placeholder="placeholderBudget" />
           </div>
 
           <div class="form-actions">

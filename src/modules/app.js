@@ -1,6 +1,6 @@
 // Main application logic - connects all modules
 import { initLang, setLang, getLang, t } from './i18n.js';
-import { generateMenu } from './menu.js';
+import { generateMenu, swapMealInMenu } from './menu.js';
 import { buildBasket, getBasketStats } from './basket.js';
 import { buildSupermarketRecommendations } from './supermarkets.js';
 import { loadRecipe, getTranslatedRecipe, toggleRecipeFavorite } from './recipe.js';
@@ -26,6 +26,8 @@ import {
   removeFavoriteMenu,
   getFavorites,
   saveFavorites,
+  getMenuHistory,
+  addMenuToHistory,
 } from './storage.js';
 import {
   createMenuDayCard,
@@ -40,11 +42,22 @@ import {
 } from './ui.js';
 import { exportMenuToPDF, exportBasketToPDF, exportRecipeToPDF, downloadFile, generatePDFFilename } from './pdf.js';
 
+function scaleIngredientMeasure(measureStr, factor) {
+  if (!measureStr) {
+    return measureStr;
+  }
+  return String(measureStr).replace(/(\d+(?:\.\d+)?)/g, (_match, num) => {
+    const scaled = parseFloat(num) * factor;
+    return scaled % 1 === 0 ? String(scaled) : scaled.toFixed(1);
+  });
+}
+
 export class MenuPlannerApp {
   constructor() {
     this.currentMenu = null;
     this.currentRecipe = null;
     this.currentBasket = null;
+    this.lockedMeals = new Map(); // key: "dayIdx:mealIdx", value: mealObject
     this.marketState = {
       report: null,
       filter: 'all',
@@ -140,6 +153,18 @@ export class MenuPlannerApp {
 
       this.currentMenu = menu;
       this.currentBasket = basket;
+
+      // Restore locked meals (survive regeneration)
+      if (this.lockedMeals.size > 0) {
+        for (const [key, lockedMeal] of this.lockedMeals.entries()) {
+          const [dayIdx, mealIdx] = key.split(':').map(Number);
+          if (menu.days[dayIdx]?.meals[mealIdx]) {
+            menu.days[dayIdx].meals[mealIdx] = { ...lockedMeal };
+          }
+        }
+      }
+
+      addMenuToHistory(menu);
       this.marketState = {
         report: null,
         filter: 'all',
@@ -200,6 +225,16 @@ export class MenuPlannerApp {
     document.getElementById('prep-time-select').value = 'any';
     document.getElementById('allergies-input').value = '';
     document.getElementById('notes-input').value = '';
+    ['diet-no-beef', 'diet-no-pork', 'diet-lactose-free'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.checked = false;
+      }
+    });
+    const budgetInput = document.getElementById('budget-input');
+    if (budgetInput) {
+      budgetInput.value = '';
+    }
 
     const defaultPrefs = {
       people: 4,
@@ -209,6 +244,7 @@ export class MenuPlannerApp {
       dietary: [],
       allergies: [],
       notes: '',
+      budget: 0,
     };
     savePreferences(defaultPrefs);
     this.state.preferences = defaultPrefs;
@@ -275,16 +311,21 @@ export class MenuPlannerApp {
   }
 
   getFormPreferences() {
+    const dietaryCheckboxes = ['diet-no-beef', 'diet-no-pork', 'diet-lactose-free'];
+    const dietary = dietaryCheckboxes
+      .filter((id) => document.getElementById(id)?.checked)
+      .map((id) => document.getElementById(id).value);
     return {
       people: parseInt(document.getElementById('people-input')?.value || 4, 10),
       variety: document.getElementById('variety-select')?.value || 'medium',
       cuisine: document.getElementById('cuisine-select')?.value || 'mix',
       prepTime: document.getElementById('prep-time-select')?.value || 'any',
-      dietary: [],
+      dietary,
       allergies: (document.getElementById('allergies-input')?.value || '')
         .split(',')
         .filter((x) => x.trim()),
       notes: document.getElementById('notes-input')?.value || '',
+      budget: parseFloat(document.getElementById('budget-input')?.value) || 0,
     };
   }
 
@@ -327,7 +368,7 @@ export class MenuPlannerApp {
     grid.className = 'menu-grid';
 
     for (let i = 0; i < this.currentMenu.days.length; i++) {
-      const card = createMenuDayCard(this.currentMenu.days[i], i);
+      const card = createMenuDayCard(this.currentMenu.days[i], i, this.lockedMeals);
       grid.appendChild(card);
       this.attachMealListeners(card);
     }
@@ -377,6 +418,26 @@ export class MenuPlannerApp {
       });
     });
 
+    card.querySelectorAll('.swap-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const mealItem = btn.closest('.meal-item');
+        const dayIndex = parseInt(mealItem.getAttribute('data-day'), 10);
+        const mealIndex = parseInt(mealItem.getAttribute('data-meal-index'), 10);
+        await this.handleSwapMeal(dayIndex, mealIndex, btn);
+      });
+    });
+
+    card.querySelectorAll('.lock-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const mealItem = btn.closest('.meal-item');
+        const dayIndex = parseInt(mealItem.getAttribute('data-day'), 10);
+        const mealIndex = parseInt(mealItem.getAttribute('data-meal-index'), 10);
+        this.handleLockMeal(dayIndex, mealIndex);
+      });
+    });
+
     card.querySelectorAll('.share-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -390,6 +451,71 @@ export class MenuPlannerApp {
         await this.toggleRecipeFavorite(btn.getAttribute('data-meal-id'), btn);
       });
     });
+  }
+
+  async handleSwapMeal(dayIndex, mealIndex, btn) {
+    const lockKey = `${dayIndex}:${mealIndex}`;
+    if (this.lockedMeals.has(lockKey)) {
+      showToast(t('mealLocked'));
+      return;
+    }
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('spinning');
+    }
+    try {
+      const newMeal = await swapMealInMenu(this.currentMenu, dayIndex, mealIndex);
+      if (newMeal) {
+        this.currentMenu.days[dayIndex].meals[mealIndex] = newMeal;
+        this.currentBasket = null;
+        this.marketState = { ...this.marketState, report: null, basketKey: '' };
+        saveCurrentMenu(this.currentMenu);
+        if (getLang() === 'bg') {
+          this.localizeMenuMealNames();
+        }
+        this.renderMenu();
+        showToast(t('mealSwapped'));
+      } else {
+        showToast(t('mealSwapFailed'));
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('spinning');
+        }
+      }
+    } catch (error) {
+      console.error('Swap failed:', error);
+      showToast(t('mealSwapFailed'));
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('spinning');
+      }
+    }
+  }
+
+  handleLockMeal(dayIndex, mealIndex) {
+    const lockKey = `${dayIndex}:${mealIndex}`;
+    const meal = this.currentMenu?.days[dayIndex]?.meals[mealIndex];
+    if (!meal) {
+      return;
+    }
+    if (this.lockedMeals.has(lockKey)) {
+      this.lockedMeals.delete(lockKey);
+      showToast(t('mealUnlocked'));
+    } else {
+      this.lockedMeals.set(lockKey, { ...meal });
+      showToast(t('mealLocked'));
+    }
+    // Re-render only the affected card to update lock icon without full page refresh
+    const card = document.querySelector(`.day-card[data-day="${dayIndex}"]`);
+    if (card) {
+      const newCard = createMenuDayCard(
+        this.currentMenu.days[dayIndex],
+        dayIndex,
+        this.lockedMeals
+      );
+      card.replaceWith(newCard);
+      this.attachMealListeners(newCard);
+    }
   }
 
   async showRecipeModal(mealId, initialName = '') {
@@ -456,6 +582,37 @@ export class MenuPlannerApp {
         } catch (error) {
           console.error('PDF export error:', error);
           showToast(t('failedExportPDF'));
+        }
+      });
+    }
+
+    // Serving scaler
+    const servingCountEl = modal.querySelector('.serving-count');
+    const servingDownBtn = modal.querySelector('.serving-down');
+    const servingUpBtn = modal.querySelector('.serving-up');
+    if (servingCountEl && servingDownBtn && servingUpBtn) {
+      const base = parseInt(servingCountEl.dataset.base, 10) || 4;
+      let current = base;
+      const updateServings = () => {
+        servingCountEl.textContent = current;
+        const factor = current / base;
+        modal.querySelectorAll('.ingredients-list .ing-measure').forEach((span) => {
+          const orig = span.dataset.base;
+          if (orig) {
+            span.textContent = scaleIngredientMeasure(orig, factor);
+          }
+        });
+      };
+      servingDownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (current > 1) {
+          current--; updateServings();
+        }
+      });
+      servingUpBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (current < 20) {
+          current++; updateServings();
         }
       });
     }
@@ -697,6 +854,7 @@ export class MenuPlannerApp {
       <p>${t('itemsChecked')(stats.checkedItems, stats.totalItems)}</p>
       <button class="action-btn export-basket-btn">${t('exportList')}</button>
       <button class="action-btn export-basket-pdf-btn">${t('exportPDF')}</button>
+      <button class="action-btn print-basket-btn">🖨 ${t('printBasket')}</button>
       <button class="action-btn clear-basket-btn">${t('clearSelection')}</button>
     `;
     container.appendChild(actions);
@@ -717,6 +875,10 @@ export class MenuPlannerApp {
         console.error('PDF export error:', error);
         showToast(t('failedExportPDF'));
       }
+    });
+
+    container.querySelector('.print-basket-btn')?.addEventListener('click', () => {
+      window.print();
     });
 
     container.querySelector('.clear-basket-btn')?.addEventListener('click', () => {
@@ -877,6 +1039,14 @@ export class MenuPlannerApp {
     this.state.favorites = getAllFavorites();
     container.innerHTML = '';
 
+    // Recent menus history section (top)
+    const history = getMenuHistory();
+    if (history.length > 0) {
+      const histSection = createFavoritesSection('history', history);
+      container.appendChild(histSection);
+      this.attachFavoritesListeners(histSection, 'history');
+    }
+
     const sections = {
       menus: this.state.favorites.menus,
       recipes: this.state.favorites.recipes,
@@ -898,14 +1068,20 @@ export class MenuPlannerApp {
           return;
         }
 
-        if (type === 'menus') {
+        if (type === 'menus' || type === 'history') {
           const menuId = item.getAttribute('data-menu-id');
-          const selectedMenu = this.state.favorites.menus.find((menu) => menu.id === menuId);
+          let selectedMenu = null;
+          if (type === 'menus') {
+            selectedMenu = this.state.favorites.menus.find((menu) => menu.id === menuId);
+          } else {
+            selectedMenu = getMenuHistory().find((menu) => menu.id === menuId);
+          }
           if (!selectedMenu) {
             return;
           }
           this.currentMenu = selectedMenu;
           this.currentBasket = null;
+          this.lockedMeals = new Map();
           this.marketState = {
             report: null,
             filter: 'all',
@@ -950,6 +1126,23 @@ export class MenuPlannerApp {
       ? `<p class="market-location-warning">&#9888;&#65039; ${t('marketLocationApprox')}</p>`
       : '';
 
+    const budget = Number(this.state.preferences?.budget || 0);
+    const storeTotals = report.stores
+      .map((store) => Number(store.coverage?.estimatedTotal || 0))
+      .filter((total) => total > 0);
+    const cheapestTotal = storeTotals.length ? Math.min(...storeTotals) : 0;
+    let budgetIndicator = '';
+    if (budget > 0 && cheapestTotal > 0) {
+      const ratio = cheapestTotal / budget;
+      const status = ratio > 1 ? 'over' : ratio >= 0.9 ? 'close' : 'ok';
+      const statusText = status === 'over'
+        ? t('budgetOverBudget')
+        : status === 'close'
+          ? t('budgetClose')
+          : t('budgetOnBudget');
+      budgetIndicator = `<p class="budget-indicator ${status}">${statusText}: €${cheapestTotal.toFixed(2)} / €${budget.toFixed(2)}</p>`;
+    }
+
     const cards = report.stores
       .map((store) => {
         const distanceHtml = store.distanceKm !== null
@@ -961,6 +1154,20 @@ export class MenuPlannerApp {
         const minCoverage = report.minRecommendedCoverage || 70;
         const promoCount = store.coverage.promoMatchedCount || 0;
         const thresholdLabel = store.coverage.percent >= minCoverage ? 'OK' : 'LOW';
+
+        let budgetBadgeHtml = '';
+        if (budget > 0) {
+          const total = store.coverage.estimatedTotal;
+          const diff = total - budget;
+          let cls = 'budget-ok';
+          let label = t('budgetOnBudget');
+          if (diff > 0) {
+            cls = 'budget-over'; label = `+€${diff.toFixed(2)} ${t('budgetOverBudget')}`;
+          } else if (diff > -budget * 0.1) {
+            cls = 'budget-close'; label = t('budgetOnBudget');
+          }
+          budgetBadgeHtml = `<span class="budget-indicator ${cls}">${label}</span>`;
+        }
 
         const matchedRows = store.coverage.matchedOffers
           .map((match) => {
@@ -1004,6 +1211,7 @@ export class MenuPlannerApp {
               <span class="market-meta-item coverage-tag">${store.coverage.percent}% ${availabilityLabel}</span>
               <span class="market-meta-item promo-tag">${store.coverage.promoPercent || 0}% ${promoLabel}</span>
               <span class="market-meta-item price-tag">&euro;${store.coverage.estimatedTotal.toFixed(2)}</span>
+              ${budgetBadgeHtml}
             </div>
             <p class="market-coverage-line">${t('marketCoverage')(store.coverage.matchedCount, store.coverage.total, store.coverage.percent)} · min ${minCoverage}%: ${thresholdLabel} · ${t('marketMatchedOffers')(promoCount)} · ${t('marketEstimatedPrice')(store.coverage.estimatedTotal)}</p>
             ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
@@ -1038,6 +1246,7 @@ export class MenuPlannerApp {
     results.innerHTML = `
       ${locationWarning}
       ${summaryText ? `<p class="market-summary">${summaryText}</p>` : ''}
+      ${budgetIndicator}
       <div class="market-filter-bar">${filterBtns}</div>
       <div class="market-cards">${cards}</div>
     `;
