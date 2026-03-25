@@ -1175,7 +1175,16 @@ export class MenuPlannerApp {
           byChainNearest.set(store.chainId, store);
         }
       }
-      storesForRender = Array.from(byChainNearest.values());
+      // Sort: recommended chain first, then by offer coverage % desc
+      storesForRender = Array.from(byChainNearest.values()).sort((a, b) => {
+        if (a.id === report.recommendedStoreId) {
+          return -1;
+        }
+        if (b.id === report.recommendedStoreId) {
+          return 1;
+        }
+        return b.coverage.percent - a.coverage.percent;
+      });
     } else {
       storesForRender = storesForRender.filter((store) => store.chainId === normalizedFilter);
     }
@@ -1200,8 +1209,6 @@ export class MenuPlannerApp {
           : t('budgetOnBudget');
       budgetIndicator = `<p class="budget-indicator ${status}">${statusText}: €${cheapestTotal.toFixed(2)} / €${budget.toFixed(2)}</p>`;
     }
-
-    const compactLocationMode = normalizedFilter === 'all';
 
     const cards = storesForRender
       .map((store) => {
@@ -1260,19 +1267,6 @@ export class MenuPlannerApp {
           .filter(Boolean)
           .join('');
 
-        if (compactLocationMode) {
-          return `
-            <article class="market-card market-card-location-only" data-chain-id="${store.chainId}">
-              <div class="market-card-head">
-                <h4>${store.chainLabel}</h4>
-                ${distanceHtml}
-              </div>
-              ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
-              ${links ? `<div class="market-links">${links}</div>` : ''}
-            </article>
-          `;
-        }
-
         return `
           <article class="market-card ${store.id === report.recommendedStoreId ? 'recommended' : ''}" data-chain-id="${store.chainId}">
             <div class="market-card-head">
@@ -1302,7 +1296,7 @@ export class MenuPlannerApp {
       .join('');
 
     const topStore = storesForRender[0] || null;
-    const summaryText = topStore
+    const summaryText = topStore && topStore.coverage.percent > 0
       ? `${topStore.chainLabel}: ${t('marketCoverage')(topStore.coverage.matchedCount, topStore.coverage.total, topStore.coverage.percent)}${topStore.coverage.estimatedTotal > 0 ? ` · ${t('marketEstimatedPrice')(topStore.coverage.estimatedTotal)}` : ''}`
       : '';
 
@@ -1318,10 +1312,10 @@ export class MenuPlannerApp {
 
     results.innerHTML = `
       ${locationWarning}
-      ${summaryText && !compactLocationMode ? `<p class="market-summary">${summaryText}</p>` : ''}
-      ${budgetIndicator && !compactLocationMode ? budgetIndicator : ''}
+      ${summaryText ? `<p class="market-summary">${summaryText}</p>` : ''}
+      ${budgetIndicator || ''}
       <div class="market-filter-bar">${filterBtns}</div>
-      <div class="market-cards">${cards}</div>
+      <div class="market-cards ${normalizedFilter === 'all' ? 'all-chains' : ''}">${cards}</div>
     `;
 
     results.querySelectorAll('.market-filter-btn').forEach((button) => {

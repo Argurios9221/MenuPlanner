@@ -2,6 +2,91 @@
 import { categorizeIngredient, extractIngredients, fetchMealDetails } from './api.js';
 import { getCheckedItems, saveCheckedItems } from './storage.js';
 
+// ---------- Measure parsing & aggregation ----------
+
+const UNIT_TO_GRAMS = {
+  g: 1, gr: 1, gram: 1, grams: 1,
+  kg: 1000, kilo: 1000,
+  mg: 0.001,
+  ml: 1, milliliter: 1, millilitre: 1,
+  l: 1000, liter: 1000, litre: 1000, lt: 1000,
+  cl: 10,
+  oz: 28.35, ounce: 28.35, ounces: 28.35,
+  lb: 453.6, lbs: 453.6, pound: 453.6, pounds: 453.6,
+  cup: 240, cups: 240,
+  tbsp: 15, tablespoon: 15, tablespoons: 15,
+  tsp: 5, teaspoon: 5, teaspoons: 5,
+};
+
+const UNIT_ALIASES = {
+  g: 'g', gr: 'g', gram: 'g', grams: 'g',
+  kg: 'kg', kilo: 'kg',
+  mg: 'mg',
+  ml: 'ml', milliliter: 'ml', millilitre: 'ml',
+  l: 'l', liter: 'l', litre: 'l', lt: 'l',
+  cl: 'cl',
+  oz: 'oz', ounce: 'oz', ounces: 'oz',
+  lb: 'lb', lbs: 'lb', pound: 'lb', pounds: 'lb',
+  cup: 'cup', cups: 'cup',
+  tbsp: 'tbsp', tablespoon: 'tbsp', tablespoons: 'tbsp',
+  tsp: 'tsp', teaspoon: 'tsp', teaspoons: 'tsp',
+  pcs: 'pcs', pc: 'pcs', piece: 'pcs', pieces: 'pcs',
+  clove: 'pcs', cloves: 'pcs', slice: 'pcs', slices: 'pcs', whole: 'pcs',
+};
+
+function parseSingleMeasure(str) {
+  if (!str) {
+    return null;
+  }
+  const s = String(str).trim().toLowerCase();
+  let amount = 0;
+  let rawUnit = '';
+  // fraction: "1/2 cup"
+  const fracM = s.match(/^(\d+)\s*\/\s*(\d+)\s*([a-z]*)/);
+  // decimal/integer: "200g", "1.5 kg", "3"
+  const numM = s.match(/^(\d+(?:[.,]\d+)?)\s*([a-z]*)/);
+  if (fracM) {
+    amount = parseInt(fracM[1]) / parseInt(fracM[2]);
+    rawUnit = fracM[3] || '';
+  } else if (numM) {
+    amount = parseFloat(numM[1].replace(',', '.'));
+    rawUnit = numM[2] || '';
+  }
+  if (!amount || amount <= 0) {
+    return null;
+  }
+  const unit = UNIT_ALIASES[rawUnit] ?? (rawUnit === '' ? 'pcs' : null);
+  if (!unit) {
+    return null;
+  }
+  const grams = UNIT_TO_GRAMS[rawUnit] ? amount * UNIT_TO_GRAMS[rawUnit] : 0;
+  return { amount, unit, grams };
+}
+
+export function computeIngredientTotals(measureCounts) {
+  const byUnit = new Map();
+  let totalGrams = 0;
+  for (const [measure, cnt] of Object.entries(measureCounts)) {
+    const parsed = parseSingleMeasure(measure);
+    if (parsed && parsed.amount > 0) {
+      byUnit.set(parsed.unit, (byUnit.get(parsed.unit) || 0) + parsed.amount * cnt);
+      if (parsed.grams > 0) {
+        totalGrams += parsed.grams * cnt;
+      }
+    }
+  }
+  const parts = [];
+  for (const [unit, total] of byUnit) {
+    const rounded = total % 1 === 0 ? total : parseFloat(total.toFixed(1));
+    parts.push(unit === 'pcs' ? `${rounded} pcs` : `${rounded}${unit}`);
+  }
+  return {
+    displayMeasure: parts.join(' + '),
+    totalGrams: Math.round(totalGrams),
+    measures: Object.keys(measureCounts),
+  };
+}
+
 const INGREDIENT_ALIASES = {
   tomatoes: 'tomato',
   onions: 'onion',
@@ -44,20 +129,29 @@ export async function buildBasket(menu) {
             ingredients[key] = {
               name: ingredient.name,
               category: categorizeIngredient(ingredient.name),
-              measures: [],
+              measureCounts: {},
               count: 0,
             };
           }
           if (ingredient.measure) {
-            const normalizedMeasure = String(ingredient.measure).trim();
-            if (normalizedMeasure && !ingredients[key].measures.includes(normalizedMeasure)) {
-              ingredients[key].measures.push(normalizedMeasure);
+            const m = String(ingredient.measure).trim();
+            if (m) {
+              ingredients[key].measureCounts[m] = (ingredients[key].measureCounts[m] || 0) + 1;
             }
           }
           ingredients[key].count += 1;
         }
       }
     }
+  }
+
+  // Compute aggregated display measure and total grams for each ingredient
+  for (const ing of Object.values(ingredients)) {
+    const totals = computeIngredientTotals(ing.measureCounts || {});
+    ing.displayMeasure = totals.displayMeasure;
+    ing.totalGrams = totals.totalGrams;
+    ing.measures = totals.measures;
+    delete ing.measureCounts;
   }
 
   return groupByCategory(ingredients);
@@ -145,8 +239,9 @@ export function exportBasketAsText(basket, _lang = 'en') {
   for (const category in basket) {
     text += `${category}\n${'-'.repeat(category.length)}\n`;
     for (const ingredient of basket[category]) {
-      const measures = ingredient.measures.length > 0 ? ` (${ingredient.measures.join(', ')})` : '';
-      text += `☐ ${ingredient.name}${measures}\n`;
+      const measureStr = ingredient.displayMeasure || (ingredient.measures?.length > 0 ? ingredient.measures.join(', ') : '');
+      const countStr = ingredient.count > 1 ? ` ×${ingredient.count}` : '';
+      text += `☐ ${ingredient.name}${countStr}${measureStr ? ` (${measureStr})` : ''}\n`;
     }
     text += '\n';
   }

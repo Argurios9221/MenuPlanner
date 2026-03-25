@@ -543,54 +543,83 @@ async function getChainOffers(chainId, ingredientNames, options = {}) {
   }));
 }
 
-function getCoverage(offers, ingredientNames) {
-  const available = new Set();
-  const promoMatched = new Set();
+// Parse package size from offer title (e.g. "Butter 125g" → 125, "Rice 1kg" → 1000)
+function parsePackageSizeGrams(title) {
+  const m = String(title || '').match(/(\d+(?:[.,]\d+)?)\s*(g|gr|kg|ml|l)\b/i);
+  if (!m) {
+    return null;
+  }
+  const amount = parseFloat(m[1].replace(',', '.'));
+  const unit = m[2].toLowerCase();
+  if (unit === 'kg' || unit === 'l') {
+    return amount * 1000;
+  }
+  if (unit === 'ml') {
+    return amount;
+  }
+  return amount; // g/gr
+}
+
+const DEFAULT_PACKAGE_SIZE_G = 500;
+
+function getCoverage(offers, ingredientItems) {
+  // Accept plain string array or {name, totalGrams, count} array
+  const items = (ingredientItems || []).map((item) =>
+    typeof item === 'string' ? { name: item, totalGrams: 0, count: 1 } : item,
+  );
+
+  const offerMatchedNames = new Set();
+  const assortmentMatchedNames = new Set();
+  const pricedNames = new Set();
   const matchedOffers = [];
   const unmatchedItems = [];
   let estimatedTotal = 0;
 
-  const relevantIngredients = ingredientNames.filter((ingredient) => !isPantryItem(ingredient));
+  const relevantItems = items.filter((item) => !isPantryItem(item.name));
 
-  for (const ingredient of relevantIngredients) {
-    const normalizedIngredient = normalizeText(ingredient);
+  for (const item of relevantItems) {
+    const normalizedName = normalizeText(item.name);
     let foundOffer = null;
     for (const offer of offers) {
-      if (ingredientMatchesOffer(normalizedIngredient, offer.keyword)) {
+      if (ingredientMatchesOffer(normalizedName, offer.keyword)) {
         foundOffer = offer;
         break;
       }
     }
 
-    const matchedByAvailability = Boolean(foundOffer) || isLikelyAvailableInStore(normalizedIngredient);
-
-    if (matchedByAvailability) {
-      available.add(normalizedIngredient);
-    }
-
     if (foundOffer) {
-      if (!promoMatched.has(normalizedIngredient) && foundOffer.price !== null) {
-        estimatedTotal += foundOffer.price;
+      offerMatchedNames.add(normalizedName);
+      matchedOffers.push({ ingredient: item.name, offer: foundOffer });
+      if (foundOffer.price !== null && !pricedNames.has(normalizedName)) {
+        pricedNames.add(normalizedName);
+        const pkgSizeG = parsePackageSizeGrams(foundOffer.title) || DEFAULT_PACKAGE_SIZE_G;
+        const packagesNeeded = item.totalGrams > 0
+          ? Math.max(1, Math.ceil(item.totalGrams / pkgSizeG))
+          : (item.count >= 2 ? item.count : 1);
+        estimatedTotal += foundOffer.price * packagesNeeded;
       }
-      promoMatched.add(normalizedIngredient);
-      matchedOffers.push({ ingredient, offer: foundOffer });
-    }
-
-    if (!matchedByAvailability) {
-      unmatchedItems.push(ingredient);
+    } else if (isLikelyAvailableInStore(normalizedName)) {
+      assortmentMatchedNames.add(normalizedName);
+    } else {
+      unmatchedItems.push(item.name);
     }
   }
 
-  const total = relevantIngredients.length;
-  const availabilityPercent = total > 0 ? Math.round((available.size / total) * 100) : 0;
-  const promoPercent = total > 0 ? Math.round((promoMatched.size / total) * 100) : 0;
+  const total = relevantItems.length;
+  // Offer-based % — varies meaningfully by chain (was inflated by common assortment before)
+  const offerPercent = total > 0 ? Math.round((offerMatchedNames.size / total) * 100) : 0;
+  // Estimated % including common assortment (optimistic upper bound)
+  const estimatedPercent = total > 0
+    ? Math.round(((offerMatchedNames.size + assortmentMatchedNames.size) / total) * 100)
+    : 0;
 
   return {
-    matchedCount: available.size,
-    promoMatchedCount: promoMatched.size,
+    matchedCount: offerMatchedNames.size,
+    promoMatchedCount: offerMatchedNames.size,
     total,
-    percent: availabilityPercent,
-    promoPercent,
+    percent: offerPercent,
+    estimatedPercent,
+    promoPercent: offerPercent,
     estimatedTotal: Number(estimatedTotal.toFixed(2)),
     matchedOffers,
     unmatchedItems,
@@ -618,8 +647,17 @@ export async function buildSupermarketRecommendations(basket) {
     useFallbackOnly = false,
   } = options;
 
-  const basketIngredients = getBasketIngredients(basket).map((item) => item.name);
-  const ingredientNames = Array.from(new Set(basketIngredients.map((name) => normalizeText(name)).filter(Boolean)));
+  const allBasketIngredients = getBasketIngredients(basket);
+  const seenIngredientNames = new Set();
+  const ingredientItems = [];
+  for (const item of allBasketIngredients) {
+    const norm = normalizeText(item.name);
+    if (norm && !seenIngredientNames.has(norm)) {
+      seenIngredientNames.add(norm);
+      ingredientItems.push({ name: item.name, totalGrams: item.totalGrams || 0, count: item.count || 1 });
+    }
+  }
+  const ingredientNames = ingredientItems.map((i) => i.name);
 
   const coords = forceFallbackCoords
     ? { ...DEFAULT_COORDS, isFallback: true }
@@ -636,7 +674,7 @@ export async function buildSupermarketRecommendations(basket) {
 
   const enriched = nearbyStores.map((store) => {
     const offers = offersByChain[store.chainId] || [];
-    const coverage = getCoverage(offers, ingredientNames);
+    const coverage = getCoverage(offers, ingredientItems);
     const distanceKm = store.isFallback ? null : haversineKm(coords, { lat: store.lat, lon: store.lon });
     const score = coverage.percent * 1.2 + coverage.matchedCount * 2 - (distanceKm ?? 5) * 1.5;
 
@@ -657,7 +695,7 @@ export async function buildSupermarketRecommendations(basket) {
   for (const onlineChain of onlineChains) {
     const onlineOffers = offersByChain[onlineChain.id] || [];
     if (shouldUseFallbackOnly || onlineOffers.length > 0) {
-      const onlineCoverage = getCoverage(onlineOffers, ingredientNames);
+      const onlineCoverage = getCoverage(onlineOffers, ingredientItems);
       storesWithInfo.push({
         id: `${onlineChain.id}_virtual`,
         chainId: onlineChain.id,

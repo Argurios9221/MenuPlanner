@@ -166,8 +166,9 @@ function createBasketItem(ingredient) {
   });
 
   const label = document.createElement('label');
-  const measures = ingredient.measures?.length > 0 ? ` (${ingredient.measures.join(', ')})` : '';
-  label.textContent = `${ingredient.name}${measures}`;
+  const measureStr = ingredient.displayMeasure || (ingredient.measures?.length > 0 ? ingredient.measures.join(', ') : '');
+  const countBadge = ingredient.count > 1 ? ` ×${ingredient.count}` : '';
+  label.textContent = `${ingredient.name}${countBadge}${measureStr ? ` — ${measureStr}` : ''}`;
 
   li.appendChild(checkbox);
   li.appendChild(label);
