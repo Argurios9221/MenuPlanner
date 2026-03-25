@@ -1,7 +1,7 @@
 // Recipe translation service using MyMemory API
 import { getCachedTranslation, cacheCachedTranslation } from './storage.js';
 
-const MYMEMORY_API = 'https://api.mymemory.translated.net/get';
+const MYMEMORY_API = 'https://mymemory.translated.net/get';
 const MAX_TRANSLATION_CHUNK = 450;
 
 const bgGlossary = [

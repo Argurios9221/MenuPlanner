@@ -7,6 +7,29 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#6C63FF" />
     <meta name="description" content="Plan your weekly meals with ease using AI-powered recommendations" />
+    <style>
+      html.app-loading #app {
+        opacity: 0;
+      }
+
+      html.app-ready #app {
+        opacity: 1;
+        transition: opacity 220ms ease;
+      }
+    </style>
+    <script>
+      document.documentElement.classList.add('app-loading');
+      try {
+        const savedTheme = localStorage.getItem('menuPlanner_theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      } catch (_) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+      setTimeout(function () {
+        document.documentElement.classList.remove('app-loading');
+        document.documentElement.classList.add('app-ready');
+      }, 1800);
+    </script>
   </head>
   <body>
     <div id="app">
@@ -59,6 +82,7 @@
             <label for="cuisine-select" data-i18n="labelCuisine">Cuisine</label>
             <select id="cuisine-select">
               <option value="mix" data-i18n="cuisineMix" selected>International (Mix)</option>
+              <option value="Bulgarian" data-i18n="cuisineBulgarian">Bulgarian</option>
               <option value="Vegetarian" data-i18n="cuisineVegetarian">Vegetarian</option>
               <option value="Vegan" data-i18n="cuisineVegan">Vegan</option>
               <option value="GlutenFree" data-i18n="cuisineGlutenfree">Gluten-free</option>
@@ -103,6 +127,7 @@
           <div class="tabs">
             <button class="tab active" data-tab="menu" data-i18n="tabMenu">Weekly Menu</button>
             <button class="tab" data-tab="basket" data-i18n="tabBasket">Shopping Basket</button>
+            <button class="tab" data-tab="markets" data-i18n="tabMarkets">Markets</button>
             <button class="tab" data-tab="favorites" data-i18n="tabFavorites">Favorites</button>
           </div>
 
@@ -114,6 +139,11 @@
           <!-- Basket Tab -->
           <section class="pane" data-pane="basket">
             <div id="basket-container" class="basket-container"></div>
+          </section>
+
+          <!-- Markets Tab -->
+          <section class="pane" data-pane="markets">
+            <div id="markets-container" class="markets-container"></div>
           </section>
 
           <!-- Favorites Tab -->

@@ -25,10 +25,10 @@ const STATIC_ASSETS = [
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...');
+  console.warn('Service Worker installing...');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Caching static assets');
+      console.warn('Caching static assets');
       return Promise.all(
         STATIC_ASSETS.map((url) =>
           cache.add(url).catch((err) => console.warn(`Failed to cache ${url}:`, err))
@@ -41,13 +41,13 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...');
+  console.warn('Service Worker activating...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log(`Deleting old cache: ${cacheName}`);
+            console.warn(`Deleting old cache: ${cacheName}`);
             return caches.delete(cacheName);
           }
         })

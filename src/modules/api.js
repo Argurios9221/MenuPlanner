@@ -1,7 +1,10 @@
 // TheMealDB API operations
+import { getLocalRecipes } from '../data/local-recipes.js';
+
 const MEALSDB_API = 'https://www.themealdb.com/api/json/v1/1';
 const DUMMYJSON_API = 'https://dummyjson.com/recipes';
 const SAMPLE_RECIPES_API = 'https://api.sampleapis.com/recipes/recipes';
+const localRecipeCollections = getLocalRecipes();
 
 // Cache responses to limit API calls
 const apiCache = new Map();
@@ -106,6 +109,27 @@ function normalizeSampleRecipe(recipe, fallbackId) {
   };
 }
 
+function normalizeLocalRecipe(recipe, sourceKey, fallbackId) {
+  const ingredients = Array.isArray(recipe.ingredients)
+    ? recipe.ingredients.map(normalizeIngredient).filter(Boolean)
+    : [];
+
+  return {
+    idMeal: `local_${sourceKey}_${recipe.id || fallbackId}`,
+    strMeal: recipe.name || `Local Recipe ${fallbackId}`,
+    strCategory: toTitleCase(recipe.category || 'Main'),
+    strArea: toTitleCase(recipe.cuisine || 'International'),
+    strInstructions: Array.isArray(recipe.instructions)
+      ? recipe.instructions.join('\n')
+      : recipe.instructions || '',
+    strMealThumb: recipe.image || '',
+    strTags: Array.isArray(recipe.tags) ? recipe.tags.join(',') : recipe.tags || '',
+    ingredients,
+    _source: `local_${sourceKey}`,
+    _rawId: recipe.id || fallbackId,
+  };
+}
+
 function categoryKeywords(category) {
   const map = {
     Breakfast: ['breakfast', 'pancake', 'omelette', 'oat', 'toast', 'waffle', 'cereal', 'brunch'],
@@ -185,6 +209,20 @@ async function fetchSampleRecipes() {
   }
 }
 
+async function fetchLocalRecipes() {
+  const cacheKey = 'source_local_all';
+  if (isValidCache(cacheKey)) {
+    return apiCache.get(cacheKey).data;
+  }
+
+  const recipes = Object.entries(localRecipeCollections).flatMap(([sourceKey, rows]) =>
+    rows.map((item, index) => normalizeLocalRecipe(item, sourceKey, index + 1))
+  );
+
+  apiCache.set(cacheKey, { data: recipes, timestamp: Date.now() });
+  return recipes;
+}
+
 function dedupeByMealId(meals) {
   const map = new Map();
   for (const meal of meals) {
@@ -223,16 +261,18 @@ export async function fetchMealsByCategory(category) {
         return [];
       });
 
-    const [mealDbMeals, dummyRecipes, sampleRecipes] = await Promise.all([
+    const [mealDbMeals, dummyRecipes, sampleRecipes, localRecipes] = await Promise.all([
       mealDbPromise,
       fetchDummyRecipes(),
       fetchSampleRecipes(),
+      fetchLocalRecipes(),
     ]);
 
     const merged = dedupeByMealId([
       ...mealDbMeals,
       ...dummyRecipes.filter((recipe) => matchesCategory(recipe, category)),
       ...sampleRecipes.filter((recipe) => matchesCategory(recipe, category)),
+      ...localRecipes.filter((recipe) => matchesCategory(recipe, category)),
     ]);
 
     if (merged.length === 0) {
@@ -259,6 +299,15 @@ export async function fetchMealDetails(mealId) {
 
   if (String(mealId).startsWith('sample_')) {
     const list = await fetchSampleRecipes();
+    const found = list.find((item) => item.idMeal === mealId);
+    if (!found) {
+      throw new Error('Meal not found');
+    }
+    return found;
+  }
+
+  if (String(mealId).startsWith('local_')) {
+    const list = await fetchLocalRecipes();
     const found = list.find((item) => item.idMeal === mealId);
     if (!found) {
       throw new Error('Meal not found');
@@ -315,8 +364,12 @@ export async function getRandomMeal() {
     const useExtraSource = Math.random() < 0.5;
 
     if (useExtraSource) {
-      const [dummyRecipes, sampleRecipes] = await Promise.all([fetchDummyRecipes(), fetchSampleRecipes()]);
-      const combined = dedupeByMealId([...dummyRecipes, ...sampleRecipes]);
+      const [dummyRecipes, sampleRecipes, localRecipes] = await Promise.all([
+        fetchDummyRecipes(),
+        fetchSampleRecipes(),
+        fetchLocalRecipes(),
+      ]);
+      const combined = dedupeByMealId([...dummyRecipes, ...sampleRecipes, ...localRecipes]);
       if (combined.length > 0) {
         return combined[Math.floor(Math.random() * combined.length)];
       }

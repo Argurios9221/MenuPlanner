@@ -13,11 +13,6 @@
     "format:check": "prettier --check src/",
     "test": "playwright test"
   },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^17.3.1",
-    "express": "^4.19.0"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",

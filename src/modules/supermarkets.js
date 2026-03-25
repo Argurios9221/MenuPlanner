@@ -28,11 +28,40 @@ const CHAIN_DEFS = [
     aliases: ['fantastico', 'фантастико'],
     offerPage: 'https://www.fantastico.bg',
   },
+  {
+    id: 'billa',
+    label: 'BILLA',
+    aliases: ['billa', 'билла'],
+    offerPage: 'https://www.billa.bg/oferti',
+  },
+  {
+    id: 'tmarket',
+    label: 'T-Market',
+    aliases: ['t-market', 't market', 'т маркет', 'tmarket'],
+    offerPage: 'https://www.tmarket.bg/%D0%B0%D0%BA%D1%82%D1%83%D0%B0%D0%BB%D0%BD%D0%B8-%D0%BE%D1%84%D0%B5%D1%80%D1%82%D0%B8/',
+  },
 ];
 
 // BGN ÷ 1.96 ≈ EUR  (approximate, indicative prices)
 const FALLBACK_OFFERS = {
   lidl: [
+    { keyword: 'oat', title: 'Овесени ядки', price: 1.12 },
+    { keyword: 'bean', title: 'Боб зрял', price: 1.43 },
+    { keyword: 'chickpea', title: 'Нахут консерва', price: 1.33 },
+    { keyword: 'tofu', title: 'Тофу натурално', price: 2.45 },
+    { keyword: 'cod', title: 'Филе от треска', price: 4.59 },
+    { keyword: 'bread', title: 'Хлебчета за бургер', price: 1.27 },
+    { keyword: 'banana', title: 'Банани premium', price: 1.12 },
+    { keyword: 'strawberry', title: 'Ягоди свежи', price: 1.84 },
+    { keyword: 'onion', title: 'Кромид лук', price: 0.55 },
+    { keyword: 'potato', title: 'Картофи свежи', price: 0.72 },
+    { keyword: 'beef', title: 'Телешко за готвене', price: 6.89 },
+    { keyword: 'pork', title: 'Свинско месо', price: 4.65 },
+    { keyword: 'lamb', title: 'Агнешко месо', price: 8.95 },
+    { keyword: 'garlic', title: 'Чесън', price: 0.89 },
+    { keyword: 'mushroom', title: 'Гъби пресни', price: 1.66 },
+    { keyword: 'pepper', title: 'Чушки пресни', price: 1.05 },
+    { keyword: 'lemon', title: 'Лимони', price: 1.02 },
     { keyword: 'tomato', title: 'Домати (промо)', price: 1.27 },
     { keyword: 'chicken', title: 'Пиле свежо', price: 5.10 },
     { keyword: 'milk', title: 'Прясно мляко 3.5%', price: 1.17 },
@@ -50,6 +79,12 @@ const FALLBACK_OFFERS = {
     { keyword: 'cheese', title: 'Сирене бяло 400g', price: 2.55 },
   ],
   kaufland: [
+    { keyword: 'oat', title: 'Овесени ядки K-Bio', price: 1.02 },
+    { keyword: 'bean', title: 'Червен боб консерва', price: 1.17 },
+    { keyword: 'chickpea', title: 'Нахут K-Classic', price: 1.17 },
+    { keyword: 'tofu', title: 'Тофу класик', price: 2.35 },
+    { keyword: 'cod', title: 'Треска филе', price: 4.49 },
+    { keyword: 'bread', title: 'Питки за бургер', price: 1.22 },
     { keyword: 'pasta', title: 'Паста K-Classic', price: 0.92 },
     { keyword: 'cheese', title: 'Сирене качество', price: 2.55 },
     { keyword: 'onion', title: 'Кромид лук', price: 0.66 },
@@ -67,6 +102,12 @@ const FALLBACK_OFFERS = {
     { keyword: 'milk', title: 'Мляко UHT 1L', price: 1.02 },
   ],
   metro: [
+    { keyword: 'oat', title: 'Овесени ядки premium', price: 1.53 },
+    { keyword: 'bean', title: 'Боб микс 1kg', price: 2.55 },
+    { keyword: 'chickpea', title: 'Нахут сух 1kg', price: 2.24 },
+    { keyword: 'tofu', title: 'Тофу блок', price: 2.86 },
+    { keyword: 'cod', title: 'Треска атлантическа', price: 5.10 },
+    { keyword: 'bread', title: 'Бургер хлебчета', price: 1.43 },
     { keyword: 'rice', title: 'Ориз жасмин 5kg', price: 3.57 },
     { keyword: 'beef', title: 'Телешко T-bone', price: 12.24 },
     { keyword: 'butter', title: 'Масло несол. 500g', price: 3.57 },
@@ -84,6 +125,12 @@ const FALLBACK_OFFERS = {
     { keyword: 'pasta', title: 'Pasta De Cecco', price: 2.04 },
   ],
   fantastico: [
+    { keyword: 'oat', title: 'Овесени ядки БГ', price: 1.17 },
+    { keyword: 'bean', title: 'Бял боб', price: 1.33 },
+    { keyword: 'chickpea', title: 'Нахут буркан', price: 1.43 },
+    { keyword: 'tofu', title: 'Тофу fresh', price: 2.55 },
+    { keyword: 'cod', title: 'Треска филе fresh', price: 4.84 },
+    { keyword: 'bread', title: 'Питки за бургер', price: 1.27 },
     { keyword: 'apple', title: 'Ябълки Pink Lady', price: 1.53 },
     { keyword: 'yogurt', title: 'Кисело мл. БГ', price: 0.87 },
     { keyword: 'potato', title: 'Картофи червени', price: 0.77 },
@@ -100,12 +147,91 @@ const FALLBACK_OFFERS = {
     { keyword: 'carrot', title: 'Моркови местни', price: 0.61 },
     { keyword: 'milk', title: 'Прясно мляко 2%', price: 1.12 },
   ],
+  billa: [
+    { keyword: 'tomato', title: 'Домати BILLA', price: 1.22 },
+    { keyword: 'cucumber', title: 'Краставици BILLA', price: 0.79 },
+    { keyword: 'onion', title: 'Лук жълт', price: 0.52 },
+    { keyword: 'potato', title: 'Картофи готварски', price: 0.69 },
+    { keyword: 'chicken', title: 'Пилешко филе', price: 5.25 },
+    { keyword: 'pork', title: 'Свинско плешка', price: 4.75 },
+    { keyword: 'beef', title: 'Телешко месо', price: 7.15 },
+    { keyword: 'rice', title: 'Ориз бял', price: 1.28 },
+    { keyword: 'egg', title: 'Яйца 10 бр.', price: 2.09 },
+    { keyword: 'cheese', title: 'Бяло саламурено сирене', price: 2.62 },
+    { keyword: 'yogurt', title: 'Кисело мляко', price: 0.89 },
+    { keyword: 'garlic', title: 'Чесън глава', price: 0.91 },
+  ],
+  tmarket: [
+    { keyword: 'tomato', title: 'Домати пресни', price: 1.16 },
+    { keyword: 'pepper', title: 'Чушки зелени', price: 1.04 },
+    { keyword: 'carrot', title: 'Моркови', price: 0.58 },
+    { keyword: 'banana', title: 'Банани', price: 1.09 },
+    { keyword: 'milk', title: 'Прясно мляко', price: 1.09 },
+    { keyword: 'bread', title: 'Хляб / питки', price: 0.96 },
+    { keyword: 'bean', title: 'Боб консерва', price: 1.19 },
+    { keyword: 'pasta', title: 'Паста класик', price: 0.94 },
+    { keyword: 'mushroom', title: 'Гъби', price: 1.71 },
+    { keyword: 'cheese', title: 'Сирене краве', price: 2.48 },
+    { keyword: 'egg', title: 'Яйца 10 бр.', price: 2.01 },
+    { keyword: 'chicken', title: 'Пилешко бутче', price: 4.99 },
+  ],
 };
 
 function normalizeText(value) {
   return String(value || '')
     .toLowerCase()
     .trim();
+}
+
+const PANTRY_SKIP_PATTERN =
+  /salt|pepper|water|olive oil|vegetable oil|vinegar|spice|seasoning|herb|bay leaf|paprika|cinnamon|nutmeg|sauce|soy sauce|mustard|ketchup|mayo|mayonnaise|baking powder|baking soda|yeast|rosemary|parsley|basil|oregano|thyme|dill/;
+
+const INGREDIENT_ALIASES = {
+  tomatoes: 'tomato',
+  onions: 'onion',
+  eggs: 'egg',
+  potatoes: 'potato',
+  carrots: 'carrot',
+  cucumbers: 'cucumber',
+  peppers: 'pepper',
+  mushrooms: 'mushroom',
+  apples: 'apple',
+  bananas: 'banana',
+  oranges: 'orange',
+  lemons: 'lemon',
+  yoghurts: 'yogurt',
+  cheeses: 'cheese',
+  pastas: 'pasta',
+  oats: 'oat',
+  beans: 'bean',
+  chickpeas: 'chickpea',
+  chickens: 'chicken',
+  buns: 'bread',
+  bun: 'bread',
+  'burger bun': 'bread',
+  'burger buns': 'bread',
+  strawberries: 'strawberry',
+};
+
+function canonicalToken(value) {
+  const raw = normalizeText(value).replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!raw) {
+    return '';
+  }
+  return INGREDIENT_ALIASES[raw] || raw;
+}
+
+function isPantryItem(value) {
+  return PANTRY_SKIP_PATTERN.test(normalizeText(value));
+}
+
+function ingredientMatchesOffer(ingredient, offerKeyword) {
+  const ingredientToken = canonicalToken(ingredient);
+  const keywordToken = canonicalToken(offerKeyword);
+  if (!ingredientToken || !keywordToken) {
+    return false;
+  }
+  return ingredientToken.includes(keywordToken) || keywordToken.includes(ingredientToken);
 }
 
 function haversineKm(a, b) {
@@ -176,7 +302,22 @@ async function getUserCoords() {
   }
 }
 
-async function fetchNearbyChains(coords) {
+async function fetchNearbyChains(coords, options = {}) {
+  const { useFallbackOnly = false } = options;
+
+  if (useFallbackOnly) {
+    return CHAIN_DEFS.map((chain) => ({
+      id: `${chain.id}_fallback`,
+      chainId: chain.id,
+      chainLabel: chain.label,
+      name: chain.label,
+      lat: coords.lat,
+      lon: coords.lon,
+      address: '',
+      isFallback: true,
+    }));
+  }
+
   const query = `
     [out:json][timeout:25];
     (
@@ -281,10 +422,15 @@ function extractLiveOffers(text, ingredientNames) {
   return offers;
 }
 
-async function getChainOffers(chainId, ingredientNames) {
+async function getChainOffers(chainId, ingredientNames, options = {}) {
+  const { useFallbackOnly = false } = options;
   const chain = CHAIN_DEFS.find((c) => c.id === chainId);
   if (!chain) {
     return [];
+  }
+
+  if (useFallbackOnly) {
+    return FALLBACK_OFFERS[chainId] || [];
   }
 
   const text = await fetchOfferText(chain.offerPage);
@@ -302,18 +448,19 @@ function getCoverage(offers, ingredientNames) {
   const unmatchedItems = [];
   let estimatedTotal = 0;
 
-  for (const ingredient of ingredientNames) {
+  const relevantIngredients = ingredientNames.filter((ingredient) => !isPantryItem(ingredient));
+
+  for (const ingredient of relevantIngredients) {
     const normalizedIngredient = normalizeText(ingredient);
     let foundOffer = null;
     for (const offer of offers) {
-      const keyword = normalizeText(offer.keyword);
-      if (keyword && normalizedIngredient.includes(keyword)) {
+      if (ingredientMatchesOffer(normalizedIngredient, offer.keyword)) {
         foundOffer = offer;
         break;
       }
     }
     if (foundOffer) {
-      if (!matched.has(normalizedIngredient) && foundOffer.price != null) {
+      if (!matched.has(normalizedIngredient) && foundOffer.price !== null) {
         estimatedTotal += foundOffer.price;
       }
       matched.add(normalizedIngredient);
@@ -325,28 +472,44 @@ function getCoverage(offers, ingredientNames) {
 
   return {
     matchedCount: matched.size,
-    total: ingredientNames.length,
-    percent: ingredientNames.length > 0 ? Math.round((matched.size / ingredientNames.length) * 100) : 0,
+    total: relevantIngredients.length,
+    percent: relevantIngredients.length > 0 ? Math.round((matched.size / relevantIngredients.length) * 100) : 0,
     estimatedTotal: Number(estimatedTotal.toFixed(2)),
     matchedOffers,
     unmatchedItems,
   };
 }
 
-function makeDirectionsUrl(store) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lon}`;
+function makeDirectionsUrl(store, originCoords) {
+  const destination = encodeURIComponent(store.address || `${store.lat},${store.lon}`);
+  const origin = originCoords && !originCoords.isFallback
+    ? `&origin=${encodeURIComponent(`${originCoords.lat},${originCoords.lon}`)}`
+    : '';
+  return `https://www.google.com/maps/dir/?api=1&destination=${destination}${origin}&travelmode=driving`;
 }
 
 export async function buildSupermarketRecommendations(basket) {
+  const options = arguments[1] || {};
+  const {
+    minRecommendedCoverage = 70,
+    forceFallbackCoords = false,
+    useFallbackOnly = false,
+  } = options;
+
   const basketIngredients = getBasketIngredients(basket).map((item) => item.name);
   const ingredientNames = Array.from(new Set(basketIngredients.map((name) => normalizeText(name)).filter(Boolean)));
 
-  const coords = await getUserCoords();
-  const nearbyStores = await fetchNearbyChains(coords);
+  const coords = forceFallbackCoords
+    ? { ...DEFAULT_COORDS, isFallback: true }
+    : await getUserCoords();
+  const shouldUseFallbackOnly = useFallbackOnly || forceFallbackCoords;
+  const nearbyStores = await fetchNearbyChains(coords, { useFallbackOnly: shouldUseFallbackOnly });
 
   const offersByChain = {};
   for (const chain of CHAIN_DEFS) {
-    offersByChain[chain.id] = await getChainOffers(chain.id, ingredientNames);
+    offersByChain[chain.id] = await getChainOffers(chain.id, ingredientNames, {
+      useFallbackOnly: shouldUseFallbackOnly,
+    });
   }
 
   const enriched = nearbyStores.map((store) => {
@@ -361,16 +524,21 @@ export async function buildSupermarketRecommendations(basket) {
       coverage,
       distanceKm: distanceKm !== null ? Number(distanceKm.toFixed(2)) : null,
       score,
-      directionsUrl: makeDirectionsUrl(store),
+      directionsUrl: makeDirectionsUrl(store, coords),
       offerUrl: CHAIN_DEFS.find((c) => c.id === store.chainId)?.offerPage || '',
     };
   });
 
   enriched.sort((a, b) => b.score - a.score);
 
+  const recommended = enriched.find((store) => store.coverage.percent >= minRecommendedCoverage) || null;
+  const bestCoveragePercent = enriched[0]?.coverage?.percent || 0;
+
   return {
     coords,
-    recommendedStoreId: enriched[0]?.id || null,
+    recommendedStoreId: recommended?.id || null,
+    minRecommendedCoverage,
+    bestCoveragePercent,
     stores: enriched,
   };
 }

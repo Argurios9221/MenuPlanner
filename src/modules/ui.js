@@ -175,7 +175,7 @@ function createFavoritesItem(item, type) {
   let content = '';
   if (type === 'recipes') {
     content = `
-      <div class="fav-item-content">
+      <div class="fav-item-content favorite-openable" data-favorite-type="recipe" data-meal-id="${item.idMeal}">
         <strong>${item.strMeal}</strong>
         <small>${item.strCategory} • ${item.strArea}</small>
       </div>
@@ -190,7 +190,7 @@ function createFavoritesItem(item, type) {
     `;
   } else if (type === 'menus') {
     content = `
-      <div class="fav-item-content">
+      <div class="fav-item-content favorite-openable" data-favorite-type="menu" data-menu-id="${item.id}">
         <strong>${t('menuLabel')} ${item.id.substring(0, 8)}</strong>
         <small>${new Date(item.savedAt).toLocaleDateString()}</small>
       </div>

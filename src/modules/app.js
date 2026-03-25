@@ -40,11 +40,19 @@ import {
 } from './ui.js';
 import { exportMenuToPDF, exportBasketToPDF, exportRecipeToPDF, downloadFile, generatePDFFilename } from './pdf.js';
 
+const MIN_RECOMMENDED_MARKET_COVERAGE = 70;
+const MAX_MENU_GENERATION_ATTEMPTS = 6;
+
 export class MenuPlannerApp {
   constructor() {
     this.currentMenu = null;
     this.currentRecipe = null;
     this.currentBasket = null;
+    this.marketState = {
+      report: null,
+      filter: 'all',
+      basketKey: '',
+    };
     this.recipeRequestId = 0;
     this.state = {
       preferences: getPreferences(),
@@ -115,11 +123,47 @@ export class MenuPlannerApp {
 
     try {
       const startTime = Date.now();
-      const menu = await generateMenu(prefs);
+      let menu = null;
+      let basket = null;
+      let coverageReport = null;
+
+      for (let attempt = 1; attempt <= MAX_MENU_GENERATION_ATTEMPTS; attempt++) {
+        menu = await generateMenu(prefs);
+        basket = await buildBasket(menu);
+        coverageReport = await buildSupermarketRecommendations(basket, {
+          minRecommendedCoverage: MIN_RECOMMENDED_MARKET_COVERAGE,
+          forceFallbackCoords: true,
+          useFallbackOnly: true,
+        });
+
+        if (coverageReport.recommendedStoreId) {
+          break;
+        }
+
+        if (attempt < MAX_MENU_GENERATION_ATTEMPTS) {
+          updateStatusText(
+            `${t('statusGenerating')(Math.min(95, 15 + attempt * 12))} (${attempt}/${MAX_MENU_GENERATION_ATTEMPTS})`,
+            'generating'
+          );
+        }
+      }
+
+      if (!coverageReport?.recommendedStoreId) {
+        throw new Error(
+          'Could not generate a weekly menu with at least 70% supermarket coverage. Please try a different cuisine or prep time.'
+        );
+      }
+
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       menu.generationTime = elapsed;
 
       this.currentMenu = menu;
+      this.currentBasket = basket;
+      this.marketState = {
+        report: null,
+        filter: 'all',
+        basketKey: this.getBasketStateKey(basket),
+      };
       saveCurrentMenu(menu);
 
       // Safety net: generation should never mutate favorites without explicit user action.
@@ -664,24 +708,30 @@ export class MenuPlannerApp {
     const basketItems = this.currentBasket
       ? Object.values(this.currentBasket).flat().length
       : 0;
+    const basketKey = this.currentBasket ? this.getBasketStateKey(this.currentBasket) : '';
+
+    const basketSummaryHtml = this.currentBasket
+      ? `<p class="markets-basket-count">\ud83d\uded2 ${typeof t('marketBasketCount') === 'function' ? t('marketBasketCount')(basketItems) : `${basketItems} items in basket`}</p>`
+      : `<p class="markets-no-basket">${t('marketNoBasket')}</p>`;
 
     page.innerHTML = `
       <div class="markets-hero">
         <h2>🏬 ${t('marketPanelTitle')}</h2>
         <p class="markets-hint">${t('marketPanelHint')}</p>
-        ${this.currentBasket
-          ? `<p class="markets-basket-count">\ud83d\uded2 ${typeof t('marketBasketCount') === 'function' ? t('marketBasketCount')(basketItems) : basketItems + ' items in basket'}</p>`
-          : `<p class="markets-no-basket">${t('marketNoBasket')}</p>`
-        }
+        ${basketSummaryHtml}
         <button class="btn btn-primary find-markets-btn" ${!this.currentBasket ? 'disabled' : ''}>📍 ${t('findNearbyMarkets')}</button>
       </div>
       <div class="market-results"></div>
     `;
     container.appendChild(page);
 
+    const results = page.querySelector('.market-results');
+    if (results && this.marketState.report && this.marketState.basketKey === basketKey) {
+      this.renderMarketResults(results, this.marketState.report, this.marketState.filter);
+    }
+
     page.querySelector('.find-markets-btn')?.addEventListener('click', async () => {
       const btn = page.querySelector('.find-markets-btn');
-      const results = page.querySelector('.market-results');
       if (!btn || !results) {
         return;
       }
@@ -717,90 +767,12 @@ export class MenuPlannerApp {
           results.innerHTML = `<p class="market-loading">${t('marketNoStores')}</p>`;
           return;
         }
-
-        const locationWarning = report.coords.isFallback
-          ? `<p class="market-location-warning">⚠️ ${t('marketLocationApprox')}</p>`
-          : '';
-
-        const cards = report.stores
-          .map((store) => {
-            const distanceHtml = store.distanceKm !== null
-              ? `<span class="market-meta-item">📍 ${store.distanceKm} km</span>`
-              : '';
-
-            const matchedRows = store.coverage.matchedOffers
-              .map((mo) => {
-                const priceTag = mo.offer.price != null
-                  ? `<span class="offer-price">&euro;${mo.offer.price.toFixed(2)}</span>`
-                  : '';
-                return `<li><span class="offer-ingredient">${mo.ingredient}</span><span class="offer-title">${mo.offer.title}</span>${priceTag}</li>`;
-              })
-              .join('');
-
-            const unmatchedRows = store.coverage.unmatchedItems
-              .map((item) => `<li class="unmatched-item">${item}</li>`)
-              .join('');
-
-            const unmatchedSection = store.coverage.unmatchedItems.length > 0
-              ? `<details class="market-unmatched">
-                  <summary>${t('marketNotCovered')(store.coverage.unmatchedItems.length)}</summary>
-                  <ul class="market-unmatched-list">${unmatchedRows}</ul>
-                </details>`
-              : '';
-
-            return `
-              <article class="market-card ${store.id === report.recommendedStoreId ? 'recommended' : ''}" data-chain-id="${store.chainId}">
-                <div class="market-card-head">
-                  <h4>${store.chainLabel}</h4>
-                  ${store.id === report.recommendedStoreId ? `<span class="market-badge">${t('marketRecommended')}</span>` : ''}
-                </div>
-                <div class="market-meta">
-                  ${distanceHtml}
-                  <span class="market-meta-item coverage-tag">${store.coverage.percent}% ${t('marketDistance') === 'Distance' ? 'coverage' : '\u043f\u043e\u043a\u0440\u0438\u0442\u0438\u0435'}</span>
-                  ${store.coverage.estimatedTotal > 0 ? `<span class="market-meta-item price-tag">&euro;${store.coverage.estimatedTotal.toFixed(2)}</span>` : ''}
-                </div>
-                ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
-                <div class="market-links">
-                  <a href="${store.directionsUrl}" target="_blank" rel="noopener">🧭 ${t('marketDirections')}</a>
-                  <a href="${store.offerUrl}" target="_blank" rel="noopener">🏷️ ${t('marketOffers')}</a>
-                </div>
-                ${store.coverage.matchedOffers.length > 0 ? `
-                  <div class="market-offers-section">
-                    <h5>${t('marketMatchedOffers')(store.coverage.matchedOffers.length)}</h5>
-                    <ul class="market-offers-list">${matchedRows}</ul>
-                  </div>
-                ` : `<p class="market-no-offers">${t('marketNoOffers')}</p>`}
-                ${unmatchedSection}
-              </article>
-            `;
-          })
-          .join('');
-
-        const chainIds = [...new Set(report.stores.map((s) => s.chainId))];
-        const filterBtns = [
-          `<button class="market-filter-btn active" data-filter="all">${t('marketFilterAll')}</button>`,
-          ...chainIds.map((id) => {
-            const label = report.stores.find((s) => s.chainId === id)?.chainLabel || id;
-            return `<button class="market-filter-btn" data-filter="${id}">${label}</button>`;
-          }),
-        ].join('');
-
-        results.innerHTML = `
-          ${locationWarning}
-          <div class="market-filter-bar">${filterBtns}</div>
-          <div class="market-cards">${cards}</div>
-        `;
-
-        results.querySelectorAll('.market-filter-btn').forEach((filterBtn) => {
-          filterBtn.addEventListener('click', () => {
-            results.querySelectorAll('.market-filter-btn').forEach((b) => b.classList.remove('active'));
-            filterBtn.classList.add('active');
-            const filter = filterBtn.dataset.filter;
-            results.querySelectorAll('.market-card[data-chain-id]').forEach((card) => {
-              card.style.display = filter === 'all' || card.dataset.chainId === filter ? '' : 'none';
-            });
-          });
-        });
+        this.marketState = {
+          report,
+          filter: this.marketState.filter || 'all',
+          basketKey,
+        };
+        this.renderMarketResults(results, report, this.marketState.filter);
       } catch (error) {
         console.error('Failed to build market recommendations:', error);
         results.innerHTML = `<p class="market-loading">${t('marketFailed')}</p>`;
@@ -833,8 +805,37 @@ export class MenuPlannerApp {
   }
 
   attachFavoritesListeners(section, type) {
+    section.querySelectorAll('.favorite-openable').forEach((item) => {
+      item.addEventListener('click', async () => {
+        if (type === 'recipes') {
+          await this.showRecipeModal(item.getAttribute('data-meal-id'));
+          return;
+        }
+
+        if (type === 'menus') {
+          const menuId = item.getAttribute('data-menu-id');
+          const selectedMenu = this.state.favorites.menus.find((menu) => menu.id === menuId);
+          if (!selectedMenu) {
+            return;
+          }
+          this.currentMenu = selectedMenu;
+          this.currentBasket = null;
+          this.marketState = {
+            report: null,
+            filter: 'all',
+            basketKey: '',
+          };
+          saveCurrentMenu(selectedMenu);
+          switchTab('menu');
+          this.renderMenu();
+          showToast(t('menuLoaded'));
+        }
+      });
+    });
+
     section.querySelectorAll('.btn-remove').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (event) => {
+        event.stopPropagation();
         if (type === 'recipes') {
           removeFavoriteRecipe(btn.getAttribute('data-meal-id'));
         }
@@ -844,6 +845,107 @@ export class MenuPlannerApp {
         this.renderFavorites();
         showToast(t('removedFromFav'));
       });
+    });
+  }
+
+  getBasketStateKey(basket) {
+    return Object.values(basket || {})
+      .flat()
+      .map((item) => item.key || item.name)
+      .sort()
+      .join('|');
+  }
+
+  renderMarketResults(results, report, activeFilter = 'all') {
+    const locationWarning = report.coords.isFallback
+      ? `<p class="market-location-warning">⚠️ ${t('marketLocationApprox')}</p>`
+      : '';
+
+    const cards = report.stores
+      .map((store) => {
+        const distanceHtml = store.distanceKm !== null
+          ? `<span class="market-meta-item">📍 ${store.distanceKm} km</span>`
+          : '';
+
+        const matchedRows = store.coverage.matchedOffers
+          .map((match) => {
+            const priceTag = match.offer.price !== null
+              ? `<span class="offer-price">&euro;${match.offer.price.toFixed(2)}</span>`
+              : '';
+            return `<li><span class="offer-ingredient">${match.ingredient}</span><span class="offer-title">${match.offer.title}</span>${priceTag}</li>`;
+          })
+          .join('');
+
+        const unmatchedRows = store.coverage.unmatchedItems
+          .map((item) => `<li class="unmatched-item">${item}</li>`)
+          .join('');
+
+        const unmatchedSection = store.coverage.unmatchedItems.length > 0
+          ? `<details class="market-unmatched">
+              <summary>${t('marketNotCovered')(store.coverage.unmatchedItems.length)}</summary>
+              <ul class="market-unmatched-list">${unmatchedRows}</ul>
+            </details>`
+          : '';
+
+        return `
+          <article class="market-card ${store.id === report.recommendedStoreId ? 'recommended' : ''}" data-chain-id="${store.chainId}">
+            <div class="market-card-head">
+              <h4>${store.chainLabel}</h4>
+              ${store.id === report.recommendedStoreId ? `<span class="market-badge">${t('marketRecommended')}</span>` : ''}
+            </div>
+            <div class="market-meta">
+              ${distanceHtml}
+              <span class="market-meta-item coverage-tag">${store.coverage.percent}% ${t('marketDistance') === 'Distance' ? 'coverage' : 'покритие'}</span>
+              ${store.coverage.estimatedTotal > 0 ? `<span class="market-meta-item price-tag">&euro;${store.coverage.estimatedTotal.toFixed(2)}</span>` : ''}
+            </div>
+            ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
+            <div class="market-links">
+              <a href="${store.directionsUrl}" target="_blank" rel="noopener">🧭 ${t('marketDirections')}</a>
+              <a href="${store.offerUrl}" target="_blank" rel="noopener">🏷️ ${t('marketOffers')}</a>
+            </div>
+            ${store.coverage.matchedOffers.length > 0 ? `
+              <div class="market-offers-section">
+                <h5>${t('marketMatchedOffers')(store.coverage.matchedOffers.length)}</h5>
+                <ul class="market-offers-list">${matchedRows}</ul>
+              </div>
+            ` : `<p class="market-no-offers">${t('marketNoOffers')}</p>`}
+            ${unmatchedSection}
+          </article>
+        `;
+      })
+      .join('');
+
+    const chainIds = [...new Set(report.stores.map((store) => store.chainId))];
+    const filterBtns = [
+      `<button class="market-filter-btn ${activeFilter === 'all' ? 'active' : ''}" data-filter="all">${t('marketFilterAll')}</button>`,
+      ...chainIds.map((id) => {
+        const label = report.stores.find((store) => store.chainId === id)?.chainLabel || id;
+        const activeClass = activeFilter === id ? 'active' : '';
+        return `<button class="market-filter-btn ${activeClass}" data-filter="${id}">${label}</button>`;
+      }),
+    ].join('');
+
+    results.innerHTML = `
+      ${locationWarning}
+      <div class="market-filter-bar">${filterBtns}</div>
+      <div class="market-cards">${cards}</div>
+    `;
+
+    this.applyMarketFilter(results, activeFilter);
+    results.querySelectorAll('.market-filter-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        const filter = button.dataset.filter || 'all';
+        this.marketState.filter = filter;
+        results.querySelectorAll('.market-filter-btn').forEach((item) => item.classList.remove('active'));
+        button.classList.add('active');
+        this.applyMarketFilter(results, filter);
+      });
+    });
+  }
+
+  applyMarketFilter(results, filter) {
+    results.querySelectorAll('.market-card[data-chain-id]').forEach((card) => {
+      card.style.display = filter === 'all' || card.dataset.chainId === filter ? '' : 'none';
     });
   }
 

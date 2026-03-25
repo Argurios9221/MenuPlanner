@@ -990,6 +990,10 @@ body {
   flex: 1;
 }
 
+.favorite-openable {
+  cursor: pointer;
+}
+
 .fav-item-content strong {
   display: block;
   color: var(--dark-text);
