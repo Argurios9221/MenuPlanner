@@ -119,7 +119,8 @@ export class MenuPlannerApp {
       generateBtn.disabled = true;
     }
 
-    updateStatusText(t('statusGenerating')(0), 'generating');
+    updateStatusText(' ', 'generating');
+    this.renderMenuGeneratingLoader();
 
     try {
       const startTime = Date.now();
@@ -141,10 +142,8 @@ export class MenuPlannerApp {
         }
 
         if (attempt < MAX_MENU_GENERATION_ATTEMPTS) {
-          updateStatusText(
-            `${t('statusGenerating')(Math.min(95, 15 + attempt * 12))} (${attempt}/${MAX_MENU_GENERATION_ATTEMPTS})`,
-            'generating'
-          );
+          // Loader animation is shown in menu pane during generation.
+          updateStatusText(' ', 'generating');
         }
       }
 
@@ -184,6 +183,33 @@ export class MenuPlannerApp {
         generateBtn.disabled = false;
       }
     }
+  }
+
+  renderMenuGeneratingLoader() {
+    const container = document.getElementById('menu-container');
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="market-loading-container">
+        <div class="store-visitor">
+          <svg class="visitor-person" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="25" r="12" fill="#4CAF50"/>
+            <rect x="44" y="39" width="12" height="20" fill="#4CAF50"/>
+            <line x1="35" y1="44" x2="65" y2="44" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+            <line x1="42" y1="59" x2="38" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+            <line x1="58" y1="59" x2="62" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <div class="visitor-stores">
+            <div class="store-icon">🍳</div>
+            <div class="store-icon">🥗</div>
+            <div class="store-icon">🍲</div>
+          </div>
+        </div>
+        <p class="market-loading-text">${t('statusGenerating')(0)}</p>
+      </div>
+    `;
   }
 
   handleResetPreferences() {

@@ -529,24 +529,27 @@ export async function buildSupermarketRecommendations(basket) {
     };
   });
 
-  const nearestStore = enriched
-    .filter((store) => store.distanceKm !== null)
-    .sort((a, b) => a.distanceKm - b.distanceKm)[0] || null;
+  const byScore = [...enriched].sort((a, b) => b.score - a.score);
+  const recommended = byScore.find((store) => store.coverage.percent >= minRecommendedCoverage) || null;
+  const bestCoveragePercent = byScore[0]?.coverage?.percent || 0;
 
-  enriched.sort((a, b) => b.score - a.score);
+  const nearestStores = [...enriched]
+    .sort((a, b) => {
+      const aDist = a.distanceKm ?? Number.POSITIVE_INFINITY;
+      const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
+      return aDist - bDist;
+    })
+    .slice(0, 5);
 
-  const selectedStore = nearestStore || enriched[0] || null;
-  const recommended =
-    selectedStore && selectedStore.coverage.percent >= minRecommendedCoverage
-      ? selectedStore
-      : null;
-  const bestCoveragePercent = enriched[0]?.coverage?.percent || 0;
+  if (recommended && !nearestStores.some((store) => store.id === recommended.id)) {
+    nearestStores.unshift(recommended);
+  }
 
   return {
     coords,
     recommendedStoreId: recommended?.id || null,
     minRecommendedCoverage,
     bestCoveragePercent,
-    stores: selectedStore ? [selectedStore] : [],
+    stores: nearestStores,
   };
 }

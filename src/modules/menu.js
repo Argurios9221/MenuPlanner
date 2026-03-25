@@ -333,7 +333,7 @@ export async function generateMenu(options = {}) {
       // Fallback: if any meals are missing, use random
       while (dayMeals.meals.length < MEALS_PER_DAY) {
         const mealType = ['Breakfast', 'Lunch', 'Dinner'][dayMeals.meals.length];
-        const randomMeal = await getCompatibleRandomMeal(
+        let randomMeal = await getCompatibleRandomMeal(
           dietPreference,
           cuisine,
           allowedAreas,
@@ -342,6 +342,40 @@ export async function generateMenu(options = {}) {
           usedMealIds,
           usedMealSignatures
         );
+
+        // Progressive fallback so each day is always fully populated.
+        if (!randomMeal) {
+          randomMeal = await getCompatibleRandomMeal(
+            dietPreference,
+            cuisine,
+            allowedAreas,
+            prepTime,
+            mealType,
+            usedMealIds,
+            usedMealSignatures,
+            {
+              ignoreEasyToShop: true,
+              allowReuse: false,
+            }
+          );
+        }
+
+        if (!randomMeal) {
+          randomMeal = await getCompatibleRandomMeal(
+            dietPreference,
+            cuisine,
+            allowedAreas,
+            prepTime,
+            mealType,
+            usedMealIds,
+            usedMealSignatures,
+            {
+              ignoreEasyToShop: true,
+              allowReuse: true,
+            }
+          );
+        }
+
         if (randomMeal) {
           dayMeals.meals.push({ type: mealType, ...randomMeal });
           usedMealIds.add(randomMeal.idMeal);
@@ -478,8 +512,11 @@ async function getCompatibleRandomMeal(
   prepTimePreference = 'any',
   slotType = '',
   usedMealIds = new Set(),
-  usedMealSignatures = new Set()
+  usedMealSignatures = new Set(),
+  options = {}
 ) {
+  const { ignoreEasyToShop = false, allowReuse = false } = options;
+
   for (let attempt = 0; attempt < 20; attempt++) {
     try {
       const randomMeal = await getRandomMeal();
@@ -491,13 +528,13 @@ async function getCompatibleRandomMeal(
       details.ingredients = extractIngredients(details);
 
       if (
-        !usedMealIds.has(details.idMeal) &&
-        !usedMealSignatures.has(mealSignature(details)) &&
+        (allowReuse || !usedMealIds.has(details.idMeal)) &&
+        (allowReuse || !usedMealSignatures.has(mealSignature(details))) &&
         matchesMealSlot(details, slotType) &&
         matchesDietPreference(details, dietPreference) &&
         matchesCuisinePreference(details, cuisinePreference, allowedAreas) &&
         matchesPrepTime(details, prepTimePreference) &&
-        isEasyToShopMeal(details)
+        (ignoreEasyToShop || isEasyToShopMeal(details))
       ) {
         return details;
       }
