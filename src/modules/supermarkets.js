@@ -40,6 +40,13 @@ const CHAIN_DEFS = [
     aliases: ['t-market', 't market', 'т маркет', 'tmarket'],
     offerPage: 'https://www.tmarket.bg/%D0%B0%D0%BA%D1%82%D1%83%D0%B0%D0%BB%D0%BD%D0%B8-%D0%BE%D1%84%D0%B5%D1%80%D1%82%D0%B8/',
   },
+  {
+    id: 'ebag_online',
+    label: 'EBAG.bg (Online)',
+    aliases: ['ebag', 'ebag.bg'],
+    offerPage: 'https://www.ebag.bg/promotions',
+    onlineOnly: true,
+  },
 ];
 
 // BGN ÷ 1.96 ≈ EUR  (approximate, indicative prices)
@@ -263,7 +270,7 @@ function parseOverpassElement(el) {
 
   const name = el.tags?.name || el.tags?.brand || el.tags?.operator || '';
   const chain = getChainByName(name);
-  if (!chain) {
+  if (!chain || chain.onlineOnly) {
     return null;
   }
 
@@ -306,7 +313,7 @@ async function fetchNearbyChains(coords, options = {}) {
   const { useFallbackOnly = false } = options;
 
   if (useFallbackOnly) {
-    return CHAIN_DEFS.map((chain) => ({
+    return CHAIN_DEFS.filter((chain) => !chain.onlineOnly).map((chain) => ({
       id: `${chain.id}_fallback`,
       chainId: chain.id,
       chainLabel: chain.label,
@@ -351,7 +358,7 @@ async function fetchNearbyChains(coords, options = {}) {
 
     return Array.from(deduped.values());
   } catch {
-    return CHAIN_DEFS.map((chain) => ({
+    return CHAIN_DEFS.filter((chain) => !chain.onlineOnly).map((chain) => ({
       id: `${chain.id}_fallback`,
       chainId: chain.id,
       chainLabel: chain.label,
@@ -481,11 +488,15 @@ function getCoverage(offers, ingredientNames) {
 }
 
 function makeDirectionsUrl(store, originCoords) {
-  const destination = encodeURIComponent(store.address || `${store.lat},${store.lon}`);
+  if (store.isOnline) {
+    return '';
+  }
+
+  const destination = encodeURIComponent(`${store.lat},${store.lon}`);
   const origin = originCoords && !originCoords.isFallback
     ? `&origin=${encodeURIComponent(`${originCoords.lat},${originCoords.lon}`)}`
     : '';
-  return `https://www.google.com/maps/dir/?api=1&destination=${destination}${origin}&travelmode=driving`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${destination}${origin}&travelmode=driving&dir_action=navigate`;
 }
 
 export async function buildSupermarketRecommendations(basket) {
@@ -529,20 +540,55 @@ export async function buildSupermarketRecommendations(basket) {
     };
   });
 
+  const onlineChain = CHAIN_DEFS.find((chain) => chain.onlineOnly);
+  if (onlineChain) {
+    const onlineOffers = offersByChain[onlineChain.id] || [];
+    const onlineCoverage = getCoverage(onlineOffers, ingredientNames);
+    enriched.push({
+      id: `${onlineChain.id}_virtual`,
+      chainId: onlineChain.id,
+      chainLabel: onlineChain.label,
+      name: onlineChain.label,
+      lat: coords.lat,
+      lon: coords.lon,
+      address: '',
+      isOnline: true,
+      offers: onlineOffers,
+      coverage: onlineCoverage,
+      distanceKm: null,
+      score: onlineCoverage.percent * 1.3 + onlineCoverage.matchedCount * 2.2 + 8,
+      directionsUrl: '',
+      offerUrl: onlineChain.offerPage,
+    });
+  }
+
   const byScore = [...enriched].sort((a, b) => b.score - a.score);
   const recommended = byScore.find((store) => store.coverage.percent >= minRecommendedCoverage) || null;
   const bestCoveragePercent = byScore[0]?.coverage?.percent || 0;
 
   const nearestStores = [...enriched]
+    .filter((store) => !store.isOnline)
     .sort((a, b) => {
       const aDist = a.distanceKm ?? Number.POSITIVE_INFINITY;
       const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
       return aDist - bDist;
     })
-    .slice(0, 5);
+    .slice(0, 8);
 
-  if (recommended && !nearestStores.some((store) => store.id === recommended.id)) {
-    nearestStores.unshift(recommended);
+  const bestCoverageStores = byScore.slice(0, 3);
+
+  const selectedStores = [];
+  const selectedIds = new Set();
+
+  for (const store of [recommended, ...bestCoverageStores, ...nearestStores].filter(Boolean)) {
+    if (!selectedIds.has(store.id)) {
+      selectedIds.add(store.id);
+      selectedStores.push(store);
+    }
+  }
+
+  if (recommended && !selectedStores.some((store) => store.id === recommended.id)) {
+    selectedStores.unshift(recommended);
   }
 
   return {
@@ -550,6 +596,6 @@ export async function buildSupermarketRecommendations(basket) {
     recommendedStoreId: recommended?.id || null,
     minRecommendedCoverage,
     bestCoveragePercent,
-    stores: nearestStores,
+    stores: selectedStores,
   };
 }

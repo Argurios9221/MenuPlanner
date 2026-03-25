@@ -5,6 +5,8 @@ const MEALSDB_API = 'https://www.themealdb.com/api/json/v1/1';
 const DUMMYJSON_API = 'https://dummyjson.com/recipes';
 const SAMPLE_RECIPES_API = 'https://api.sampleapis.com/recipes/recipes';
 const localRecipeCollections = getLocalRecipes();
+let extraRandomPool = [];
+let extraRandomIndex = 0;
 
 // Cache responses to limit API calls
 const apiCache = new Map();
@@ -233,6 +235,15 @@ function dedupeByMealId(meals) {
   return Array.from(map.values());
 }
 
+function shuffle(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 function isValidCache(key) {
   if (!apiCache.has(key)) {
     return false;
@@ -361,17 +372,24 @@ export async function getMealsByArea(area) {
 
 export async function getRandomMeal() {
   try {
-    const useExtraSource = Math.random() < 0.5;
+    const useExtraSource = Math.random() < 0.85;
 
     if (useExtraSource) {
-      const [dummyRecipes, sampleRecipes, localRecipes] = await Promise.all([
-        fetchDummyRecipes(),
-        fetchSampleRecipes(),
-        fetchLocalRecipes(),
-      ]);
-      const combined = dedupeByMealId([...dummyRecipes, ...sampleRecipes, ...localRecipes]);
-      if (combined.length > 0) {
-        return combined[Math.floor(Math.random() * combined.length)];
+      if (extraRandomIndex >= extraRandomPool.length) {
+        const [dummyRecipes, sampleRecipes, localRecipes] = await Promise.all([
+          fetchDummyRecipes(),
+          fetchSampleRecipes(),
+          fetchLocalRecipes(),
+        ]);
+        const combined = dedupeByMealId([...dummyRecipes, ...sampleRecipes, ...localRecipes]);
+        extraRandomPool = shuffle(combined);
+        extraRandomIndex = 0;
+      }
+
+      if (extraRandomPool.length > 0 && extraRandomIndex < extraRandomPool.length) {
+        const picked = extraRandomPool[extraRandomIndex];
+        extraRandomIndex += 1;
+        return picked;
       }
     }
 
@@ -389,6 +407,8 @@ export async function getRandomMeal() {
 
 export function clearCache() {
   apiCache.clear();
+  extraRandomPool = [];
+  extraRandomIndex = 0;
 }
 
 export function extractIngredients(mealDetails) {

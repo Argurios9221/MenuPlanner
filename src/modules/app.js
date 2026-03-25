@@ -913,6 +913,17 @@ export class MenuPlannerApp {
             </details>`
           : '';
 
+        const links = [
+          store.directionsUrl
+            ? `<a href="${store.directionsUrl}" target="_blank" rel="noopener">🧭 ${t('marketDirections')}</a>`
+            : '',
+          store.offerUrl
+            ? `<a href="${store.offerUrl}" target="_blank" rel="noopener">🏷️ ${t('marketOffers')}</a>`
+            : '',
+        ]
+          .filter(Boolean)
+          .join('');
+
         return `
           <article class="market-card ${store.id === report.recommendedStoreId ? 'recommended' : ''}" data-chain-id="${store.chainId}">
             <div class="market-card-head">
@@ -925,10 +936,7 @@ export class MenuPlannerApp {
               ${store.coverage.estimatedTotal > 0 ? `<span class="market-meta-item price-tag">&euro;${store.coverage.estimatedTotal.toFixed(2)}</span>` : ''}
             </div>
             ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
-            <div class="market-links">
-              <a href="${store.directionsUrl}" target="_blank" rel="noopener">🧭 ${t('marketDirections')}</a>
-              <a href="${store.offerUrl}" target="_blank" rel="noopener">🏷️ ${t('marketOffers')}</a>
-            </div>
+            ${links ? `<div class="market-links">${links}</div>` : ''}
             ${store.coverage.matchedOffers.length > 0 ? `
               <div class="market-offers-section">
                 <h5>${t('marketMatchedOffers')(store.coverage.matchedOffers.length)}</h5>

@@ -69,6 +69,15 @@ function mealSignature(meal) {
     .trim();
 }
 
+function shuffle(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 function isEasyIngredient(name) {
   const text = normalizeText(name);
   if (!text) {
@@ -372,7 +381,21 @@ export async function generateMenu(options = {}) {
             {
               ignoreEasyToShop: true,
               allowReuse: true,
+              ignoreCuisine: true,
+              maxAttempts: 40,
             }
+          );
+        }
+
+        if (!randomMeal) {
+          randomMeal = await getFallbackMealFromPools(
+            mealType,
+            dietPreference,
+            cuisine,
+            allowedAreas,
+            prepTime,
+            usedMealIds,
+            usedMealSignatures
           );
         }
 
@@ -444,7 +467,7 @@ async function getMealForSlot(
       (index + itemIndex) % meals.length
     );
 
-    for (const candidateIndex of candidateIndexes.slice(0, 12)) {
+    for (const candidateIndex of candidateIndexes.slice(0, 24)) {
       const candidate = meals.at(candidateIndex);
       try {
         const details = await fetchMealDetails(candidate.idMeal);
@@ -515,9 +538,14 @@ async function getCompatibleRandomMeal(
   usedMealSignatures = new Set(),
   options = {}
 ) {
-  const { ignoreEasyToShop = false, allowReuse = false } = options;
+  const {
+    ignoreEasyToShop = false,
+    allowReuse = false,
+    ignoreCuisine = false,
+    maxAttempts = 30,
+  } = options;
 
-  for (let attempt = 0; attempt < 20; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const randomMeal = await getRandomMeal();
       if (!randomMeal) {
@@ -532,7 +560,7 @@ async function getCompatibleRandomMeal(
         (allowReuse || !usedMealSignatures.has(mealSignature(details))) &&
         matchesMealSlot(details, slotType) &&
         matchesDietPreference(details, dietPreference) &&
-        matchesCuisinePreference(details, cuisinePreference, allowedAreas) &&
+        (ignoreCuisine || matchesCuisinePreference(details, cuisinePreference, allowedAreas)) &&
         matchesPrepTime(details, prepTimePreference) &&
         (ignoreEasyToShop || isEasyToShopMeal(details))
       ) {
@@ -540,6 +568,56 @@ async function getCompatibleRandomMeal(
       }
     } catch (error) {
       console.warn('Random meal fallback failed on attempt:', attempt + 1, error);
+    }
+  }
+
+  return null;
+}
+
+async function getFallbackMealFromPools(
+  slotType,
+  dietPreference,
+  cuisinePreference,
+  allowedAreas,
+  prepTimePreference,
+  usedMealIds,
+  usedMealSignatures
+) {
+  const categories =
+    slotType === 'Breakfast'
+      ? ['Breakfast', 'Vegetarian', 'Vegan', 'Pasta']
+      : ['Chicken', 'Beef', 'Pork', 'Lamb', 'Seafood', 'Vegetarian', 'Vegan', 'Pasta'];
+
+  const strictnessLevels = [
+    { allowReuse: false, ignoreEasyToShop: false, ignoreCuisine: false },
+    { allowReuse: false, ignoreEasyToShop: true, ignoreCuisine: false },
+    { allowReuse: true, ignoreEasyToShop: true, ignoreCuisine: false },
+    { allowReuse: true, ignoreEasyToShop: true, ignoreCuisine: true },
+  ];
+
+  for (const rules of strictnessLevels) {
+    for (const category of categories) {
+      try {
+        const meals = shuffle(await fetchMealsByCategory(category));
+        for (const candidate of meals.slice(0, 40)) {
+          const details = await fetchMealDetails(candidate.idMeal);
+          details.ingredients = extractIngredients(details);
+
+          if (
+            (rules.allowReuse || !usedMealIds.has(details.idMeal)) &&
+            (rules.allowReuse || !usedMealSignatures.has(mealSignature(details))) &&
+            matchesMealSlot(details, slotType) &&
+            matchesDietPreference(details, dietPreference) &&
+            (rules.ignoreCuisine || matchesCuisinePreference(details, cuisinePreference, allowedAreas)) &&
+            matchesPrepTime(details, prepTimePreference) &&
+            (rules.ignoreEasyToShop || isEasyToShopMeal(details))
+          ) {
+            return details;
+          }
+        }
+      } catch (error) {
+        console.warn(`Fallback pool failed for ${category}:`, error);
+      }
     }
   }
 
