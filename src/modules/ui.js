@@ -37,7 +37,7 @@ function isReliableImageSrc(meal) {
   if (!src) {
     return false;
   }
-  if (id.startsWith('local_') || src.includes('unsplash.com')) {
+  if (id.startsWith('local_') || src.includes('unsplash.com') || src.includes('/preview/')) {
     return false;
   }
   return true;

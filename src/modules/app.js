@@ -411,7 +411,13 @@ export class MenuPlannerApp {
     showModal(mealId, initialName || t('recipeLoading'), '');
 
     try {
-      const recipe = await getTranslatedRecipe(mealId, lang);
+      let recipe;
+      try {
+        recipe = await getTranslatedRecipe(mealId, lang);
+      } catch {
+        // Fallback to base recipe fetch if translation pipeline fails.
+        recipe = await loadRecipe(mealId);
+      }
 
       if (requestId !== this.recipeRequestId) {
         return;
@@ -1005,6 +1011,11 @@ export class MenuPlannerApp {
       })
       .join('');
 
+    const topStore = report.stores[0] || null;
+    const summaryText = topStore
+      ? `${topStore.chainLabel}: ${t('marketCoverage')(topStore.coverage.matchedCount, topStore.coverage.total, topStore.coverage.percent)}${topStore.coverage.estimatedTotal > 0 ? ` · ${t('marketEstimatedPrice')(topStore.coverage.estimatedTotal)}` : ''}`
+      : '';
+
     const chainIds = [...new Set(report.stores.map((store) => store.chainId))];
     const filterBtns = [
       `<button class="market-filter-btn ${activeFilter === 'all' ? 'active' : ''}" data-filter="all">${t('marketFilterAll')}</button>`,
@@ -1017,6 +1028,7 @@ export class MenuPlannerApp {
 
     results.innerHTML = `
       ${locationWarning}
+      ${summaryText ? `<p class="market-summary">${summaryText}</p>` : ''}
       <div class="market-filter-bar">${filterBtns}</div>
       <div class="market-cards">${cards}</div>
     `;

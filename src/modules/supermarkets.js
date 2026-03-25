@@ -517,12 +517,12 @@ function getCoverage(offers, ingredientNames) {
 }
 
 function makeDirectionsUrl(store, originCoords) {
-  if (store.isOnline) {
+  if (store.isOnline || store.isFallback) {
     return '';
   }
 
-  const destinationLabel = [store.name, store.address].filter(Boolean).join(', ').trim();
-  const destination = encodeURIComponent(destinationLabel || `${store.lat},${store.lon}`);
+  const destinationCoords = `${Number(store.lat).toFixed(6)},${Number(store.lon).toFixed(6)}`;
+  const destination = encodeURIComponent(destinationCoords);
   const origin = originCoords && !originCoords.isFallback
     ? `&origin=${encodeURIComponent(`${originCoords.lat},${originCoords.lon}`)}`
     : '';
@@ -570,9 +570,7 @@ export async function buildSupermarketRecommendations(basket) {
     };
   });
 
-  const storesWithInfo = shouldUseFallbackOnly
-    ? enriched
-    : enriched.filter((store) => !store.isFallback && Array.isArray(store.offers) && store.offers.length > 0);
+  const storesWithInfo = [...enriched];
 
   const onlineChain = CHAIN_DEFS.find((chain) => chain.onlineOnly);
   if (onlineChain) {
@@ -603,37 +601,20 @@ export async function buildSupermarketRecommendations(basket) {
   const recommended =
     physicalByScore.find((store) => store.coverage.percent >= minRecommendedCoverage) ||
     byScore.find((store) => store.coverage.percent >= minRecommendedCoverage) ||
+    byScore[0] ||
     null;
   const bestCoveragePercent = byScore[0]?.coverage?.percent || 0;
 
-  const nearestStores = [...storesWithInfo]
-    .filter((store) => !store.isOnline)
-    .sort((a, b) => {
+  const orderedStores = [
+    ...physicalByScore.sort((a, b) => {
+      if (b.coverage.percent !== a.coverage.percent) {
+        return b.coverage.percent - a.coverage.percent;
+      }
       const aDist = a.distanceKm ?? Number.POSITIVE_INFINITY;
       const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
       return aDist - bDist;
-    })
-    .slice(0, 8);
-
-  const bestCoverageStores = [...physicalByScore.slice(0, 3), ...byScore.filter((store) => store.isOnline).slice(0, 1)];
-
-  const selectedStores = [];
-  const selectedIds = new Set();
-
-  for (const store of [recommended, ...bestCoverageStores, ...nearestStores].filter(Boolean)) {
-    if (!selectedIds.has(store.id)) {
-      selectedIds.add(store.id);
-      selectedStores.push(store);
-    }
-  }
-
-  if (recommended && !recommended.isOnline && !selectedStores.some((store) => store.id === recommended.id)) {
-    selectedStores.unshift(recommended);
-  }
-
-  const orderedStores = [
-    ...selectedStores.filter((store) => !store.isOnline),
-    ...selectedStores.filter((store) => store.isOnline),
+    }),
+    ...byScore.filter((store) => store.isOnline).sort((a, b) => b.coverage.percent - a.coverage.percent),
   ];
 
   return {
