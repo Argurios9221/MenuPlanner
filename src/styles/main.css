@@ -658,9 +658,99 @@ body {
   color: var(--success-color);
 }
 
-.market-loading {
+.market-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 20px;
+}
+
+.store-visitor {
+  position: relative;
+  width: 200px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.visitor-person {
+  width: 80px;
+  height: 80px;
+  animation: walk 2s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+@keyframes walk {
+  0%, 100% {
+    transform: translateX(0) scaleX(1);
+  }
+  25% {
+    transform: translateX(20px) scaleX(1);
+  }
+  50% {
+    transform: translateX(40px) scaleX(1);
+  }
+  75% {
+    transform: translateX(20px) scaleX(1);
+  }
+}
+
+.visitor-stores {
+  display: flex;
+  gap: 15px;
+  position: absolute;
+  width: 100%;
+  justify-content: space-around;
+  padding: 0 10px;
+}
+
+.store-icon {
+  font-size: 32px;
+  opacity: 0.6;
+  animation: pulse-store 2s infinite;
+}
+
+.store-icon:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.store-icon:nth-child(2) {
+  animation-delay: 0.66s;
+}
+
+.store-icon:nth-child(3) {
+  animation-delay: 1.32s;
+}
+
+@keyframes pulse-store {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.market-loading-text {
+  text-align: center;
+  font-size: 16px;
   color: var(--muted-text);
-  font-weight: 500;
+  margin: 0;
+  animation: fadeInOut 2s infinite;
+}
+
+@keyframes fadeInOut {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .market-cards {

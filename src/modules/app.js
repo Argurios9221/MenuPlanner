@@ -687,7 +687,29 @@ export class MenuPlannerApp {
       }
 
       btn.disabled = true;
-      results.innerHTML = `<p class="market-loading">${t('marketLoading')}</p>`;
+      results.innerHTML = `
+        <div class="market-loading-container">
+          <div class="store-visitor">
+            <svg class="visitor-person" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <!-- Head -->
+              <circle cx="50" cy="25" r="12" fill="#4CAF50"/>
+              <!-- Body -->
+              <rect x="44" y="39" width="12" height="20" fill="#4CAF50"/>
+              <!-- Arms -->
+              <line x1="35" y1="44" x2="65" y2="44" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+              <!-- Legs -->
+              <line x1="42" y1="59" x2="38" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+              <line x1="58" y1="59" x2="62" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <div class="visitor-stores">
+              <div class="store-icon">🏪</div>
+              <div class="store-icon">🏬</div>
+              <div class="store-icon">🏢</div>
+            </div>
+          </div>
+          <p class="market-loading-text">${t('marketLoading')}</p>
+        </div>
+      `;
 
       try {
         const report = await buildSupermarketRecommendations(this.currentBasket);
