@@ -2,7 +2,7 @@ import js from '@eslint/js';
 
 export default [
   {
-    ignores: ['dist', 'node_modules', 'vite.config.js', '.prettierrc.json'],
+    ignores: ['dist', 'node_modules', 'vite.config.js', '.prettierrc.json', 'src/data/themealdb-cache.js'],
   },
   {
     files: ['src/**/*.js'],

@@ -1,17 +1,19 @@
 // TheMealDB API operations
 import { getLocalRecipes } from '../data/local-recipes.js';
+import { themealdbSnapshot } from '../data/themealdb-cache.js';
 import {
   fetchSpoonacularByCategory,
   fetchSpoonacularDetails,
   isSpoonacularEnabled,
 } from './spoonacular.js';
 
-const MEALSDB_API = 'https://www.themealdb.com/api/json/v1/1';
 const DUMMYJSON_API = 'https://dummyjson.com/recipes';
 const SAMPLE_RECIPES_API = 'https://api.sampleapis.com/recipes/recipes';
 const localRecipeCollections = getLocalRecipes();
 let extraRandomPool = [];
 let extraRandomIndex = 0;
+const themealdbMeals = Array.isArray(themealdbSnapshot?.meals) ? themealdbSnapshot.meals : [];
+const themealdbMealMap = new Map(themealdbMeals.map((meal) => [String(meal.idMeal), meal]));
 
 // Cache responses to limit API calls
 const apiCache = new Map();
@@ -173,6 +175,40 @@ function matchesCategory(recipe, category) {
   return categoryKeywords(category).some((keyword) => text.includes(keyword));
 }
 
+function getCachedMealDbCategoryMeals(category) {
+  return themealdbMeals
+    .filter((meal) => String(meal?.strCategory || '').toLowerCase() === String(category || '').toLowerCase())
+    .map((meal) => ({
+      idMeal: meal.idMeal,
+      strMeal: meal.strMeal,
+      strMealThumb: meal.strMealThumb,
+    }));
+}
+
+function getCachedMealDbMealDetails(mealId) {
+  return themealdbMealMap.get(String(mealId)) || null;
+}
+
+function searchCachedMealDbMeals(query) {
+  const needle = String(query || '').trim().toLowerCase();
+  if (!needle) {
+    return [];
+  }
+
+  return themealdbMeals.filter((meal) => {
+    const haystack = [meal?.strMeal, meal?.strCategory, meal?.strArea, meal?.strTags]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(needle);
+  });
+}
+
+function getCachedMealDbMealsByArea(area) {
+  const normalizedArea = String(area || '').trim().toLowerCase();
+  return themealdbMeals.filter((meal) => String(meal?.strArea || '').trim().toLowerCase() === normalizedArea);
+}
+
 async function fetchDummyRecipes() {
   const cacheKey = 'source_dummyjson_all';
   if (isValidCache(cacheKey)) {
@@ -264,18 +300,7 @@ export async function fetchMealsByCategory(category) {
   }
 
   try {
-    const mealDbPromise = fetch(`${MEALSDB_API}/filter.php?c=${category}`)
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const data = await response.json();
-        return data.meals || [];
-      })
-      .catch((error) => {
-        console.warn(`MealDB category fetch failed for ${category}:`, error);
-        return [];
-      });
+    const mealDbPromise = Promise.resolve(getCachedMealDbCategoryMeals(category));
 
     const spoonPromise = isSpoonacularEnabled()
       ? fetchSpoonacularByCategory(category).catch(() => [])
@@ -341,48 +366,20 @@ export async function fetchMealDetails(mealId) {
     return found;
   }
 
-  try {
-    const response = await fetch(`${MEALSDB_API}/lookup.php?i=${mealId}`);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    if (!data.meals || data.meals.length === 0) {
-      throw new Error('Meal not found');
-    }
-    return data.meals[0];
-  } catch (error) {
-    console.error(`Failed to fetch meal details for ID ${mealId}:`, error);
-    throw error;
+  const cachedMeal = getCachedMealDbMealDetails(mealId);
+  if (cachedMeal) {
+    return cachedMeal;
   }
+
+  throw new Error('Meal not found');
 }
 
 export async function searchMealsByName(query) {
-  try {
-    const response = await fetch(`${MEALSDB_API}/search.php?s=${encodeURIComponent(query)}`);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    return data.meals || [];
-  } catch (error) {
-    console.error('Failed to search meals:', error);
-    throw error;
-  }
+  return searchCachedMealDbMeals(query);
 }
 
 export async function getMealsByArea(area) {
-  try {
-    const response = await fetch(`${MEALSDB_API}/filter.php?a=${area}`);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    return data.meals || [];
-  } catch (error) {
-    console.error(`Failed to fetch meals for area "${area}":`, error);
-    throw error;
-  }
+  return getCachedMealDbMealsByArea(area);
 }
 
 export async function getRandomMeal() {
@@ -408,12 +405,12 @@ export async function getRandomMeal() {
       }
     }
 
-    const response = await fetch(`${MEALSDB_API}/random.php`);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    if (themealdbMeals.length > 0) {
+      const randomIndex = Math.floor(Math.random() * themealdbMeals.length);
+      return themealdbMeals[randomIndex] || null;
     }
-    const data = await response.json();
-    return data.meals ? data.meals[0] : null;
+
+    return null;
   } catch (error) {
     console.error('Failed to fetch random meal:', error);
     throw error;

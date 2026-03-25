@@ -12,7 +12,8 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
-    "test": "playwright test"
+    "test": "playwright test",
+    "sync:themealdb": "node scripts/sync-themealdb-cache.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
