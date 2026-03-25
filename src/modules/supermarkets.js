@@ -241,13 +241,18 @@ async function getChainOffers(chainId, ingredientNames) {
 
 function getCoverage(offers, ingredientNames) {
   const matched = new Set();
+  let estimatedTotal = 0;
 
   for (const ingredient of ingredientNames) {
     const normalizedIngredient = normalizeText(ingredient);
     for (const offer of offers) {
       const keyword = normalizeText(offer.keyword);
       if (keyword && normalizedIngredient.includes(keyword)) {
+        if (!matched.has(normalizedIngredient) && offer.price != null) {
+          estimatedTotal += offer.price;
+        }
         matched.add(normalizedIngredient);
+        break;
       }
     }
   }
@@ -256,6 +261,7 @@ function getCoverage(offers, ingredientNames) {
     matchedCount: matched.size,
     total: ingredientNames.length,
     percent: ingredientNames.length > 0 ? Math.round((matched.size / ingredientNames.length) * 100) : 0,
+    estimatedTotal: Number(estimatedTotal.toFixed(2)),
   };
 }
 

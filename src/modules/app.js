@@ -683,13 +683,14 @@ export class MenuPlannerApp {
               .join('');
 
             return `
-              <article class="market-card ${store.id === report.recommendedStoreId ? 'recommended' : ''}">
+              <article class="market-card ${store.id === report.recommendedStoreId ? 'recommended' : ''}" data-chain-id="${store.chainId}">
                 <div class="market-card-head">
                   <h4>${store.chainLabel}</h4>
                   ${store.id === report.recommendedStoreId ? `<span class="market-badge">${t('marketRecommended')}</span>` : ''}
                 </div>
                 <p class="market-distance">${t('marketDistance')}: ${store.distanceKm} km</p>
                 <p class="market-coverage">${t('marketCoverage')(store.coverage.matchedCount, store.coverage.total, store.coverage.percent)}</p>
+                ${store.coverage.estimatedTotal > 0 ? `<p class="market-estimated-price">${t('marketEstimatedPrice')(store.coverage.estimatedTotal)}</p>` : ''}
                 ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
                 <div class="market-links">
                   <a href="${store.directionsUrl}" target="_blank" rel="noopener">🧭 ${t('marketDirections')}</a>
@@ -701,7 +702,27 @@ export class MenuPlannerApp {
           })
           .join('');
 
-        results.innerHTML = `<div class="market-cards">${cards}</div>`;
+        const chainIds = [...new Set(report.stores.map((s) => s.chainId))];
+        const filterBtns = [
+          `<button class="market-filter-btn active" data-filter="all">${t('marketFilterAll')}</button>`,
+          ...chainIds.map((id) => {
+            const label = report.stores.find((s) => s.chainId === id)?.chainLabel || id;
+            return `<button class="market-filter-btn" data-filter="${id}">${label}</button>`;
+          }),
+        ].join('');
+
+        results.innerHTML = `<div class="market-filter-bar">${filterBtns}</div><div class="market-cards">${cards}</div>`;
+
+        results.querySelectorAll('.market-filter-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            results.querySelectorAll('.market-filter-btn').forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+            const filter = btn.dataset.filter;
+            results.querySelectorAll('.market-card[data-chain-id]').forEach((card) => {
+              card.style.display = filter === 'all' || card.dataset.chainId === filter ? '' : 'none';
+            });
+          });
+        });
       } catch (error) {
         console.error('Failed to build market recommendations:', error);
         results.innerHTML = `<p class="market-loading">${t('marketFailed')}</p>`;
