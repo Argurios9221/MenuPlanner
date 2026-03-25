@@ -1,0 +1,389 @@
+// Menu generation logic
+import { extractIngredients, fetchMealDetails, fetchMealsByCategory, getRandomMeal } from './api.js';
+import { saveCurrentMenu } from './storage.js';
+import { estimatePrepTime } from './metadata.js';
+
+const DAYS_OF_WEEK = 7;
+const MEALS_PER_DAY = 3; // breakfast, lunch, dinner
+
+const MAIN_MEAL_CATEGORIES = ['Beef', 'Chicken', 'Goat', 'Lamb', 'Pasta', 'Pork', 'Seafood', 'Vegan', 'Vegetarian'];
+
+function matchesMealSlot(meal, slotType) {
+  const category = String(meal?.strCategory || '').toLowerCase();
+  const text = [meal?.strMeal, meal?.strCategory, meal?.strTags]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  const breakfastKeywords = /breakfast|pancake|omelette|omelet|toast|porridge|oat|muesli|granola|cereal|crepe|waffle|smoothie|muffin/;
+  const savoryMealKeywords = /soup|stew|roast|curry|burger|steak|pasta|risotto|grill|bake|fried rice/;
+  const dessertKeywords = /dessert|cake|pie|cookie|brownie|ice cream|pudding|tart/;
+
+  if (slotType === 'Breakfast') {
+    if (category === 'breakfast') {
+      return true;
+    }
+    if (dessertKeywords.test(text) || savoryMealKeywords.test(text) || category === 'starter' || category === 'side') {
+      return false;
+    }
+    return breakfastKeywords.test(text);
+  }
+
+  if (slotType === 'Lunch' || slotType === 'Dinner') {
+    if (category === 'breakfast' || category === 'dessert') {
+      return false;
+    }
+    if (breakfastKeywords.test(text) || dessertKeywords.test(text)) {
+      return false;
+    }
+    return true;
+  }
+
+  return true;
+}
+
+// Map cuisine preference to TheMealDB categories
+function getCategoriesForCuisine(cuisine) {
+  switch (cuisine) {
+    case 'Vegetarian':
+      return ['Vegetarian', 'Vegan', 'Pasta'];
+    case 'Vegan':
+      return ['Vegan', 'Vegetarian'];
+    case 'GlutenFree':
+      return ['Seafood', 'Chicken', 'Vegetarian'];
+    default:
+      return MAIN_MEAL_CATEGORIES;
+  }
+}
+
+function getDietPreference(cuisine, dietary = []) {
+  const values = [cuisine, ...dietary.map((item) => item.trim())].filter(Boolean).join(' ').toLowerCase();
+
+  if (values.includes('vegan')) {
+    return 'vegan';
+  }
+  if (values.includes('vegetarian') || values.includes('вегет')) {
+    return 'vegetarian';
+  }
+  if (values.includes('gluten') || values.includes('безглут')) {
+    return 'gluten_free';
+  }
+
+  return '';
+}
+
+function matchesDietPreference(meal, dietPreference) {
+  if (!dietPreference) {
+    return true;
+  }
+
+  const ingredients = meal.ingredients || [];
+  const haystack = [
+    meal.strMeal,
+    meal.strCategory,
+    meal.strArea,
+    ...(ingredients.map((ingredient) => ingredient.name)),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  const animalProteinPattern =
+    /chicken|beef|pork|lamb|goat|turkey|duck|bacon|ham|sausage|mince|minced|meat|fish|seafood|salmon|tuna|cod|anchovy|shrimp|prawn|crab|lobster|oyster|mussel|clam|gelatin/;
+  const dairyEggPattern =
+    /milk|cream|butter|cheese|yogurt|yoghurt|egg|eggs|mayonnaise|mayo|custard|honey/;
+  const glutenPattern = /wheat|flour|pasta|bread|noodle|breadcrumbs|barley|rye|semolina|couscous/;
+
+  switch (dietPreference) {
+    case 'vegetarian':
+      return !animalProteinPattern.test(haystack);
+    case 'vegan':
+      return !animalProteinPattern.test(haystack) && !dairyEggPattern.test(haystack);
+    case 'gluten_free':
+      return !glutenPattern.test(haystack);
+    default:
+      return true;
+  }
+}
+
+export async function generateMenu(options = {}) {
+  const {
+    people = 4,
+    variety = 'medium',
+    cuisine = 'mix',
+    prepTime = 'any',
+    dietary = [],
+    allergies = [],
+  } = options;
+
+  try {
+    const startTime = performance.now();
+    const menu = {
+      id: generateMenuId(),
+      generatedAt: Date.now(),
+      options: { people, variety, cuisine, prepTime, dietary, allergies },
+      days: [],
+    };
+    const usedMealIds = new Set();
+
+    const cuisineCategories = getCategoriesForCuisine(cuisine);
+    const dietPreference = getDietPreference(cuisine, dietary);
+
+    // Generate 7 days of meals
+    for (let day = 0; day < DAYS_OF_WEEK; day++) {
+      const dayMeals = {
+        day,
+        meals: [],
+      };
+
+      // Breakfast from Breakfast category
+      const breakfast = await getMealForSlot(
+        'Breakfast',
+        'Breakfast',
+        variety,
+        day,
+        dietPreference,
+        prepTime,
+        usedMealIds
+      );
+      if (breakfast) {
+        dayMeals.meals.push({ type: 'Breakfast', ...breakfast });
+        usedMealIds.add(breakfast.idMeal);
+      }
+
+      // Lunch from cuisine categories
+      const lunchCategory = cuisineCategories[day % cuisineCategories.length];
+      const lunch = await getMealForSlot(
+        lunchCategory,
+        'Lunch',
+        variety,
+        day,
+        dietPreference,
+        prepTime,
+        usedMealIds
+      );
+      if (lunch) {
+        dayMeals.meals.push({ type: 'Lunch', ...lunch });
+        usedMealIds.add(lunch.idMeal);
+      }
+
+      // Dinner from cuisine categories (offset to get different category)
+      const dinnerCategory = cuisineCategories[(day + 2) % cuisineCategories.length];
+      const dinner = await getMealForSlot(
+        dinnerCategory,
+        'Dinner',
+        variety,
+        day + 3,
+        dietPreference,
+        prepTime,
+        usedMealIds
+      );
+      if (dinner) {
+        dayMeals.meals.push({ type: 'Dinner', ...dinner });
+        usedMealIds.add(dinner.idMeal);
+      }
+
+      // Fallback: if any meals are missing, use random
+      while (dayMeals.meals.length < MEALS_PER_DAY) {
+        const mealType = ['Breakfast', 'Lunch', 'Dinner'][dayMeals.meals.length];
+        const randomMeal = await getCompatibleRandomMeal(
+          dietPreference,
+          prepTime,
+          mealType,
+          usedMealIds
+        );
+        if (randomMeal) {
+          dayMeals.meals.push({ type: mealType, ...randomMeal });
+          usedMealIds.add(randomMeal.idMeal);
+        } else {
+          break;
+        }
+      }
+
+      menu.days.push(dayMeals);
+    }
+
+    const endTime = performance.now();
+    menu.generationTime = ((endTime - startTime) / 1000).toFixed(1);
+
+    // Save to localStorage
+    saveCurrentMenu(menu);
+    return menu;
+  } catch (error) {
+    console.error('Menu generation failed:', error);
+    throw new Error('Failed to generate menu: ' + error.message);
+  }
+}
+
+async function getMealForSlot(
+  category,
+  slotType,
+  variety,
+  offset = 0,
+  dietPreference = '',
+  prepTimePreference = 'any',
+  usedMealIds = new Set()
+) {
+  try {
+    const meals = await fetchMealsByCategory(category);
+    if (!meals || meals.length === 0) {
+      const random = await getCompatibleRandomMeal(
+        dietPreference,
+        prepTimePreference,
+        slotType,
+        usedMealIds
+      );
+      return random || null;
+    }
+
+    // Select meal based on variety setting
+    let index = 0;
+    if (variety === 'high') {
+      // Random selection for high variety
+      index = Math.floor(Math.random() * meals.length);
+    } else if (variety === 'medium') {
+      // Pseudo-random but not fully random
+      index = (offset * 3 + Math.floor(Math.random() * 5)) % meals.length;
+    } else {
+      // Low variety - use offset to cycle through
+      index = (offset * 3) % meals.length;
+    }
+
+    const candidateIndexes = Array.from({ length: meals.length }, (_, itemIndex) =>
+      (index + itemIndex) % meals.length
+    );
+
+    for (const candidateIndex of candidateIndexes.slice(0, 12)) {
+      const candidate = meals.at(candidateIndex);
+      try {
+        const details = await fetchMealDetails(candidate.idMeal);
+        details.ingredients = extractIngredients(details);
+
+        if (
+          !usedMealIds.has(details.idMeal) &&
+          matchesMealSlot(details, slotType) &&
+          matchesDietPreference(details, dietPreference) &&
+          matchesPrepTime(details, prepTimePreference)
+        ) {
+          return details;
+        }
+      } catch (error) {
+        console.warn(`Skipping candidate ${candidate?.idMeal || 'unknown'}:`, error);
+      }
+    }
+
+    return await getCompatibleRandomMeal(
+      dietPreference,
+      prepTimePreference,
+      slotType,
+      usedMealIds
+    );
+  } catch (error) {
+    console.error('Failed to get meal for slot:', error);
+    return null;
+  }
+}
+
+function matchesPrepTime(meal, prepTimePreference = 'any') {
+  if (!prepTimePreference || prepTimePreference === 'any') {
+    return true;
+  }
+
+  const minutes = estimatePrepTime(meal.strInstructions || '', meal.strCategory || '');
+  meal.metadata = {
+    ...(meal.metadata || {}),
+    prepTime: minutes,
+  };
+
+  if (prepTimePreference === 'quick') {
+    return minutes <= 25;
+  }
+  if (prepTimePreference === 'medium') {
+    return minutes <= 45;
+  }
+  if (prepTimePreference === 'long') {
+    return minutes > 45;
+  }
+
+  return true;
+}
+
+async function getCompatibleRandomMeal(
+  dietPreference,
+  prepTimePreference = 'any',
+  slotType = '',
+  usedMealIds = new Set()
+) {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    try {
+      const randomMeal = await getRandomMeal();
+      if (!randomMeal) {
+        continue;
+      }
+
+      const details = await fetchMealDetails(randomMeal.idMeal);
+      details.ingredients = extractIngredients(details);
+
+      if (
+        !usedMealIds.has(details.idMeal) &&
+        matchesMealSlot(details, slotType) &&
+        matchesDietPreference(details, dietPreference) &&
+        matchesPrepTime(details, prepTimePreference)
+      ) {
+        return details;
+      }
+    } catch (error) {
+      console.warn('Random meal fallback failed on attempt:', attempt + 1, error);
+    }
+  }
+
+  return null;
+}
+
+export async function enrichMenuWithDetails(menu) {
+  // Fetch full details for each meal to get ingredients
+  for (const day of menu.days) {
+    for (const meal of day.meals) {
+      try {
+        // This is async - you'd need to handle it in the UI
+        // For now, just mark that details are available
+        if (!meal.ingredients) {
+          meal.ingredients = [];
+        }
+      } catch (error) {
+        console.error('Failed to enrich meal:', error);
+      }
+    }
+  }
+  return menu;
+}
+
+export function getMealInstructions(mealDetails) {
+  return mealDetails.strInstructions || '';
+}
+
+export function getMealImage(mealDetails) {
+  return mealDetails.strMealThumb || '';
+}
+
+export function getMealCategory(mealDetails) {
+  return mealDetails.strCategory || 'Uncategorized';
+}
+
+export function getMealArea(mealDetails) {
+  return mealDetails.strArea || 'Unknown';
+}
+
+function generateMenuId() {
+  return `menu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+export function getMenuStats(menu) {
+  const stats = {
+    totalMeals: menu.days.length * MEALS_PER_DAY,
+    days: DAYS_OF_WEEK,
+    mealsPerDay: MEALS_PER_DAY,
+    generationTime: menu.generationTime,
+  };
+  return stats;
+}

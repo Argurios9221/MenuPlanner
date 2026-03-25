@@ -1,11 +1,32 @@
 {
+  "name": "fresh-kitchen",
+  "version": "1.0.0",
   "type": "module",
+  "description": "AI-powered weekly meal planner with shopping list",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "test": "playwright test"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^4.19.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2"
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.58.2",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "pdf-lib": "^1.17.1",
+    "prettier": "^3.8.1",
+    "terser": "^5.46.1",
+    "vite": "^8.0.2"
   }
 }

@@ -1,0 +1,72 @@
+{
+  "name": "Fresh Kitchen - Weekly Menu Planner",
+  "short_name": "Fresh Kitchen",
+  "description": "AI-powered weekly meal planner with shopping lists and recipe translations",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#8b5a3c",
+  "background_color": "#f5e6d3",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%238b5a3c' width='192' height='192'/><text x='50%' y='50%' font-size='80' fill='white' text-anchor='middle' dominant-baseline='middle'>🍽️</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%238b5a3c' width='512' height='512'/><text x='50%' y='50%' font-size='200' fill='white' text-anchor='middle' dominant-baseline='middle'>🍽️</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["food", "lifestyle", "productivity"],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%238b5a3c' width='540' height='720'/><text x='270' y='360' font-size='100' fill='white' text-anchor='middle' dominant-baseline='middle'>📱</text></svg>",
+      "sizes": "540x720",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Generate Menu",
+      "short_name": "Menu",
+      "description": "Generate a new weekly menu",
+      "url": "/?action=generate",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%23e8a87c' width='96' height='96'/><text x='50%' y='50%' font-size='48' fill='white' text-anchor='middle' dominant-baseline='middle'>📅</text></svg>",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "View Basket",
+      "short_name": "Basket",
+      "description": "View your shopping basket",
+      "url": "/?action=basket",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%23c9a876' width='96' height='96'/><text x='50%' y='50%' font-size='48' fill='white' text-anchor='middle' dominant-baseline='middle'>🛒</text></svg>",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

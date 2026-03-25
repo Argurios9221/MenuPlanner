@@ -1,0 +1,366 @@
+// UI rendering and DOM manipulation
+import { t } from './i18n.js';
+import { getCheckedItems, toggleCheckedItem, isFavoriteRecipe as isFavRecipe } from './storage.js';
+import { formatIngredients, formatInstructions } from './recipe.js';
+
+function getLocalizedDifficulty(value) {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized.includes('easy') || normalized.includes('лес')) {
+    return t('difficultyEasy');
+  }
+  if (normalized.includes('hard') || normalized.includes('труд')) {
+    return normalized.includes('very') ? t('difficultyVeryHard') : t('difficultyHard');
+  }
+  return t('difficultyMedium');
+}
+
+// DOM Selectors
+const DOM = {
+  app: '#app',
+  tabsContainer: '.tabs',
+  menuTab: '#menu-tab',
+  basketTab: '#basket-tab',
+  favoritesTab: '#favorites-tab',
+  menuContainer: '#menu-container',
+  basketContainer: '#basket-container',
+  favoritesContainer: '#favorites-container',
+  statusText: '#status-text',
+  modal: '#recipe-modal',
+  modalContent: '.modal-content',
+  modalClose: '.modal-close',
+  langBtn: '#lang-btn',
+};
+
+export function createMenuDayCard(day, dayIndex) {
+  const dayNames = t('days') || [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+  const mealTypes = t('mealTypes') || ['Breakfast', 'Lunch', 'Dinner'];
+
+  const card = document.createElement('div');
+  card.className = 'day-card';
+  card.setAttribute('data-day', dayIndex);
+
+  let html = `<div class="day-card-header"><h3>${dayNames[dayIndex]}</h3></div>`;
+
+  for (const meal of day.meals) {
+    const mealName = meal.strMealTranslated || meal.strMeal;
+    const mealTypeLabel = mealTypes[mealTypes.indexOf(meal.type)] || meal.type;
+    html += `
+      <div class="meal-item" data-meal-id="${meal.idMeal}" data-meal-name="${mealName}" data-meal-type="${meal.type}" tabindex="0" role="button" aria-label="${mealTypeLabel}: ${mealName}">
+        <div class="meal-content">
+          ${meal.strMealThumb ? `<img src="${meal.strMealThumb}" alt="${mealName}" class="meal-thumb" loading="lazy">` : ''}
+          <div class="meal-info">
+            <span class="meal-type-badge">${mealTypeLabel}</span>
+            <p class="meal-name">${mealName}</p>
+          </div>
+        </div>
+        <div class="meal-actions">
+          <button class="meal-action-icon share-btn" data-meal-id="${meal.idMeal}" title="${t('shareRecipe')}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          </button>
+          <button class="meal-action-icon fav-btn" data-meal-id="${meal.idMeal}" title="${t('addedToFav')}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  card.innerHTML = html;
+  return card;
+}
+
+export function createBasketCategory(categoryName, ingredients) {
+  const section = document.createElement('div');
+  section.className = 'basket-category';
+  section.setAttribute('data-category', categoryName);
+
+  const heading = document.createElement('h3');
+  heading.textContent = categoryName;
+  section.appendChild(heading);
+
+  const list = document.createElement('ul');
+  list.className = 'ingredient-list';
+
+  for (const ingredient of ingredients) {
+    const item = createBasketItem(ingredient);
+    list.appendChild(item);
+  }
+
+  section.appendChild(list);
+  return section;
+}
+
+function createBasketItem(ingredient) {
+  const li = document.createElement('li');
+  li.className = 'basket-item';
+  li.setAttribute('data-ingredient-key', ingredient.key);
+
+  const checked = getCheckedItems()[ingredient.key] || false;
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.className = 'ingredient-checkbox';
+  checkbox.checked = checked;
+  checkbox.addEventListener('change', () => {
+    toggleCheckedItem(ingredient.key);
+    li.classList.toggle('checked');
+  });
+
+  const label = document.createElement('label');
+  const measures = ingredient.measures?.length > 0 ? ` (${ingredient.measures.join(', ')})` : '';
+  label.textContent = `${ingredient.name}${measures}`;
+
+  li.appendChild(checkbox);
+  li.appendChild(label);
+
+  if (checked) {
+    li.classList.add('checked');
+  }
+
+  return li;
+}
+
+export function createFavoritesSection(type, items) {
+  const section = document.createElement('div');
+  section.className = `favorites-section favorites-${type}`;
+
+  const heading = document.createElement('h3');
+  function getHeading() {
+    if (type === 'menus') {
+      return t('favMenus');
+    }
+    if (type === 'recipes') {
+      return t('favRecipes');
+    }
+    if (type === 'products') {
+      return t('favProducts');
+    }
+    return type;
+  }
+  heading.textContent = getHeading();
+  section.appendChild(heading);
+
+  if (items?.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-state';
+    empty.textContent = t('favEmpty') || 'No items saved yet.';
+    section.appendChild(empty);
+    return section;
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'favorites-list';
+
+  for (const item of items) {
+    const li = createFavoritesItem(item, type);
+    list.appendChild(li);
+  }
+
+  section.appendChild(list);
+  return section;
+}
+
+function createFavoritesItem(item, type) {
+  const li = document.createElement('li');
+  li.className = 'favorites-item';
+
+  let content = '';
+  if (type === 'recipes') {
+    content = `
+      <div class="fav-item-content">
+        <strong>${item.strMeal}</strong>
+        <small>${item.strCategory} • ${item.strArea}</small>
+      </div>
+      <button class="btn-remove" data-meal-id="${item.idMeal}">✕</button>
+    `;
+  } else if (type === 'products') {
+    content = `
+      <div class="fav-item-content">
+        <strong>${item.name}</strong>
+      </div>
+      <button class="btn-remove" data-product-name="${item.name}">✕</button>
+    `;
+  } else if (type === 'menus') {
+    content = `
+      <div class="fav-item-content">
+        <strong>${t('menuLabel')} ${item.id.substring(0, 8)}</strong>
+        <small>${new Date(item.savedAt).toLocaleDateString()}</small>
+      </div>
+      <button class="btn-remove" data-menu-id="${item.id}">✕</button>
+    `;
+  }
+
+  li.innerHTML = content;
+  return li;
+}
+
+export function showToast(message, duration = 3000) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 10);
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      document.body.removeChild(toast);
+    }, 300);
+  }, duration);
+}
+
+export function updateStatusText(message, type = 'ready') {
+  const status = document.querySelector(DOM.statusText);
+  if (status) {
+    status.textContent = message;
+    status.className = `status-text status-${type}`;
+  }
+}
+
+export function showModal(mealId, mealName, _imageUrl) {
+  const modal = document.querySelector(DOM.modal);
+  if (!modal) {
+    return;
+  }
+
+  const content = modal.querySelector('.recipe-modal-content');
+  if (!content) {
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="recipe-header">
+      <h2>${mealName}</h2>
+      <button class="modal-close">✕</button>
+    </div>
+    <div class="recipe-loading">${t('recipeLoading')}</div>
+  `;
+
+  modal.classList.add('open');
+
+  // Content will be loaded by the app module
+  return modal;
+}
+
+export function hideModal() {
+  const modal = document.querySelector(DOM.modal);
+  if (modal) {
+    modal.classList.remove('open');
+  }
+}
+
+export function populateRecipeModal(recipe, lang = 'en') {
+  const modal = document.querySelector(DOM.modal);
+  if (!modal) {
+    return;
+  }
+
+  const content = modal.querySelector('.recipe-modal-content');
+  if (!content) {
+    return;
+  }
+
+  const ingredients = formatIngredients(recipe, lang);
+  const instructions = formatInstructions(recipe, lang);
+
+  let ingredientsHtml = '';
+  for (const ing of ingredients) {
+    ingredientsHtml += `<li>${ing.name} ${ing.measure}</li>`;
+  }
+
+  const isTranslated = lang === 'bg' && recipe.strInstructionsTranslated;
+
+  const recipeName = lang === 'bg' ? recipe.strMealTranslated || recipe.strMeal : recipe.strMeal;
+  const categoryName = lang === 'bg' ? recipe.strCategoryTranslated || recipe.strCategory : recipe.strCategory;
+  const areaName = lang === 'bg' ? recipe.strAreaTranslated || recipe.strArea : recipe.strArea;
+
+  content.innerHTML = `
+    <div class="recipe-header">
+      <h2>${recipeName}</h2>
+      <button class="modal-close">✕</button>
+    </div>
+    
+    ${recipe.strMealThumb ? `<img src="${recipe.strMealThumb}" alt="${recipeName}" class="recipe-image">` : ''}
+    
+    <div class="recipe-meta">
+      <span>📂 ${categoryName}</span>
+      <span>🌍 ${areaName}</span>
+      <span>⏱️ ~${recipe.metadata?.prepTime || 30} ${t('minuteShort')}</span>
+      <span>📊 ${getLocalizedDifficulty(recipe.metadata?.difficulty)}</span>
+      ${recipe.metadata?.nutrition?.estimatedCalories ? `<span>🔥 ${recipe.metadata.nutrition.estimatedCalories}${t('calorieShort')}</span>` : ''}
+      ${recipe.metadata?.nutrition?.allergens?.length > 0 ? `<span>⚠️ ${recipe.metadata.nutrition.allergens.join(', ')}</span>` : ''}
+    </div>
+    
+    <div class="recipe-section">
+      <h3>${t('recipeIngredients')}</h3>
+      <ul class="ingredients-list">
+        ${ingredientsHtml}
+      </ul>
+    </div>
+    
+    <div class="recipe-section">
+      <h3>${t('recipeInstructions')}</h3>
+      <p class="instructions">${instructions}</p>
+      ${isTranslated ? `<small class="translation-note">${t('recipeNote')}</small>` : ''}
+    </div>
+    
+    <div class="recipe-actions">
+      <button class="recipe-action-btn fav-recipe-btn" data-meal-id="${recipe.idMeal}">
+        ${isFavoriteRecipe(recipe.idMeal) ? '❤️' : '🤍'} ${t('favorite')}
+      </button>
+      <button class="recipe-action-btn share-recipe-btn" data-meal-id="${recipe.idMeal}">
+        📤 ${t('shareRecipe')}
+      </button>
+      <button class="recipe-action-btn export-recipe-pdf-btn" data-meal-id="${recipe.idMeal}">
+        📄 ${t('exportPDF')}
+      </button>
+    </div>
+  `;
+}
+
+function isFavoriteRecipe(mealId) {
+  return isFavRecipe(mealId);
+}
+
+export function attachTabListeners(onTabChange) {
+  const tabs = document.querySelectorAll('[data-tab]');
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tabName = tab.getAttribute('data-tab');
+      onTabChange(tabName);
+    });
+  });
+}
+
+export function switchTab(tabName) {
+  // Hide all panes
+  document.querySelectorAll('[data-pane]').forEach((pane) => {
+    pane.classList.remove('active');
+  });
+
+  // Show selected pane
+  const pane = document.querySelector(`[data-pane="${tabName}"]`);
+  if (pane) {
+    pane.classList.add('active');
+  }
+
+  // Update tab buttons
+  document.querySelectorAll('[data-tab]').forEach((btn) => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('data-tab') === tabName) {
+      btn.classList.add('active');
+    }
+  });
+}

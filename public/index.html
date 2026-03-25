@@ -63,6 +63,29 @@
       margin-left: auto;
     }
 
+    .btn-lang {
+      background: rgba(255,255,255,0.85);
+      border: 1px solid var(--border);
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      transition: 0.2s;
+      padding: 0;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .btn-lang:hover {
+      background: #fff;
+      box-shadow: var(--shadow);
+      transform: scale(1.08);
+    }
+
     .app-shell {
       max-width: 1400px;
       margin: 0 auto;
@@ -508,29 +531,215 @@
         flex-direction: column;
       }
     }
+
+    /* Heart / Fav buttons */
+    .btn-fav {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px;
+      line-height: 1;
+      transition: transform 0.2s;
+      opacity: 0.5;
+    }
+    .btn-fav:hover { opacity: 1; transform: scale(1.2); }
+    .btn-fav.active { opacity: 1; color: #e74c3c; }
+
+    /* Share buttons */
+    .btn-share {
+      background: var(--accent-warm);
+      color: var(--accent-strong);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: "Inter", system-ui, sans-serif;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-share:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-share.is-open {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(212, 137, 90, 0.28);
+    }
+
+    .share-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
+      padding: 8px 0;
+      z-index: 1100;
+      min-width: 180px;
+      display: none;
+    }
+    .share-dropdown.visible { display: block; }
+    .share-dropdown button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 16px;
+      background: none;
+      border: none;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text-main);
+      font-family: "Inter", system-ui, sans-serif;
+    }
+    .share-dropdown button:hover { background: var(--bg); }
+
+    /* Menu action bar */
+    .menu-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    /* Basket checkboxes */
+    .basket-item-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+    }
+    .basket-item-row input[type="checkbox"] {
+      accent-color: var(--accent);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .basket-item-row.checked .basket-item-label {
+      text-decoration: line-through;
+      opacity: 0.5;
+    }
+    .basket-item-label {
+      font-size: 13px;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+    .basket-item-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+    }
+    .basket-items {
+      padding: 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    /* Favorites tab content */
+    .fav-section {
+      margin-bottom: 20px;
+    }
+    .fav-section-title {
+      font-family: "Playfair Display", serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--accent-strong);
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 10px;
+    }
+    .fav-empty {
+      color: var(--text-muted);
+      font-size: 14px;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .fav-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+      animation: fadeIn 0.3s ease;
+    }
+    .fav-card img {
+      width: 48px; height: 48px; border-radius: 10px; object-fit: cover;
+    }
+    .fav-card-info {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .fav-card-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .btn-remove-fav {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--text-muted);
+      transition: 0.2s;
+    }
+    .btn-remove-fav:hover { color: #e74c3c; }
+
+    .share-wrap { position: relative; display: inline-block; }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--text-main);
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 2000;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 
 <body>
   <header class="site-header">
     <div class="logo">Fresh Kitchen</div>
-    <div class="tagline">Plan your weekly meals with ease</div>
+    <div class="tagline" data-i18n="tagline">Plan your weekly meals with ease</div>
+    <button class="btn-lang" id="langToggle" title="Switch to Bulgarian">🇧🇬</button>
   </header>
 
   <div class="app-shell">
 
     <div class="tabs">
-      <button class="tab active" data-tab="menu">Weekly Menu</button>
-      <button class="tab" data-tab="basket">Shopping Basket</button>
+      <button class="tab active" data-tab="menu" data-i18n="tabMenu">Weekly Menu</button>
+      <button class="tab" data-tab="basket" data-i18n="tabBasket">Shopping Basket</button>
+      <button class="tab" data-tab="favorites" data-i18n="tabFavorites">Favorites</button>
+      <button class="tab" data-tab="search" data-i18n="tabSearch">Search Recipes</button>
     </div>
 
     <div class="layout">
 
       <!-- LEFT PANEL -->
       <div class="panel">
-        <div class="panel-title">Preferences</div>
+        <div class="panel-title" data-i18n="preferences">Preferences</div>
 
-        <label>Number of people</label>
+        <label data-i18n="labelPeople">Number of people</label>
         <select id="people">
           <option value="1">1</option>
           <option value="2">2</option>
@@ -538,38 +747,50 @@
           <option value="4" selected>4</option>
         </select>
 
-        <label>Variety</label>
+        <label data-i18n="labelVariety">Variety</label>
         <select id="variety">
-          <option value="low">Low</option>
-          <option value="medium" selected>Medium</option>
-          <option value="high">High</option>
+          <option value="low" data-i18n="varietyLow">Low</option>
+          <option value="medium" selected data-i18n="varietyMedium">Medium</option>
+          <option value="high" data-i18n="varietyHigh">High</option>
         </select>
 
-        <label>Cuisine</label>
+        <label data-i18n="labelCuisine">Cuisine</label>
         <select id="cuisine">
-          <option value="mix" selected>Mix of all cuisines</option>
-          <option value="vegetarian">Vegetarian</option>
-          <option value="vegan">Vegan</option>
-          <option value="glutenfree">Gluten-free</option>
-          <option value="italian">Italian</option>
+          <option value="mix" selected data-i18n="cuisineMix">Mix of all cuisines</option>
+          <option value="vegetarian" data-i18n="cuisineVegetarian">Vegetarian</option>
+          <option value="vegan" data-i18n="cuisineVegan">Vegan</option>
+          <option value="glutenfree" data-i18n="cuisineGlutenfree">Gluten-free</option>
+          <option value="italian" data-i18n="cuisineItalian">Italian</option>
         </select>
 
-        <label>Additional notes</label>
-        <textarea id="prompt" placeholder="Any dietary preferences or notes..."></textarea>
+        <label data-i18n="labelPrepTime">Prep time</label>
+        <select id="prepTime">
+          <option value="any" selected data-i18n="prepTimeAny">Any duration</option>
+          <option value="quick" data-i18n="prepTimeQuick">Quick (up to 25 min)</option>
+          <option value="medium" data-i18n="prepTimeMedium">Medium (up to 45 min)</option>
+          <option value="long" data-i18n="prepTimeLong">Long (45+ min)</option>
+        </select>
+
+        <label data-i18n="labelNotes">Additional notes</label>
+        <textarea id="prompt" data-i18n-placeholder="placeholderNotes" placeholder="Any dietary preferences or notes..."></textarea>
 
         <div class="button-row">
-          <button id="reset" class="btn-secondary">Reset</button>
-          <button id="generate" class="btn-primary">Generate Menu</button>
+          <button id="reset" class="btn-secondary" data-i18n="btnReset">Reset</button>
+          <button id="generate" class="btn-primary" data-i18n="btnGenerate">Generate Menu</button>
         </div>
 
-        <div id="status">Ready to generate.</div>
+        <div id="status" data-i18n="statusReady">Ready to generate.</div>
         <div id="error" class="error-box"></div>
       </div>
 
       <!-- RIGHT PANEL -->
       <div class="panel" style="min-height: 400px;">
+        <div id="menuActionsBar" class="menu-actions" style="display:none;"></div>
         <div id="menuContainer" class="days-grid"></div>
         <div id="basketContainer" class="days-grid" style="display:none;"></div>
+        <div id="favoritesContainer" style="display:none;"></div>
+        <div id="search-container" style="display:none;"></div>
+        <div id="search-results-container" style="display:none;"></div>
       </div>
 
     </div>
@@ -580,7 +801,14 @@
     <div class="recipe-modal">
       <div class="recipe-modal-header">
         <h2 id="recipeTitle">Recipe</h2>
-        <button class="recipe-close" id="recipeClose">&times;</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn-fav" id="recipeFavBtn" title="Add to favorites">♡</button>
+          <div class="share-wrap">
+            <button class="btn-share" id="recipeShareBtn">📲 <span data-i18n="shareRecipe">Share</span></button>
+            <div class="share-dropdown" id="recipeShareDrop"></div>
+          </div>
+          <button class="recipe-close" id="recipeClose">&times;</button>
+        </div>
       </div>
       <div class="recipe-modal-body" id="recipeBody">
         <div class="recipe-loading">Loading recipe...</div>
@@ -588,6 +816,7 @@
     </div>
   </div>
 
+  <div class="toast" id="toast"></div>
   <script src="script.js"></script>
 </body>
 </html>
