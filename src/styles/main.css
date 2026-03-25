@@ -1887,6 +1887,13 @@ recipe-modal-content .modal-close {
   border-radius: var(--border-radius);
   background: var(--light-bg);
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem var(--spacing-md);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--dark-text);
 }
 
 .spoonacular-summary {

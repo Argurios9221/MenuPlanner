@@ -292,31 +292,11 @@ export class MenuPlannerApp {
   }
 
   attachSpoonacularListeners() {
-    const keyInput = document.getElementById('spoonacular-key-input');
-    const saveBtn = document.getElementById('spoon-save-btn');
     const dot = document.getElementById('spoon-status-dot');
 
-    const updateDot = () => {
-      if (dot) {
-        dot.classList.toggle('spoon-active', isSpoonacularEnabled());
-        dot.title = isSpoonacularEnabled() ? t('spoonacularActive') : t('spoonacularInactive');
-      }
-    };
-
-    // Pre-fill if key already saved
-    if (keyInput) {
-      keyInput.value = getSpoonacularKey();
-    }
-    updateDot();
-
-    if (saveBtn && keyInput) {
-      saveBtn.addEventListener('click', () => {
-        const key = keyInput.value.trim();
-        setSpoonacularKey(key);
-        clearSpoonacularCache();
-        updateDot();
-        showToast(key ? t('spoonacularSaved') : t('spoonacularCleared'));
-      });
+    if (dot) {
+      dot.classList.toggle('spoon-active', isSpoonacularEnabled());
+      dot.title = isSpoonacularEnabled() ? t('spoonacularActive') : t('spoonacularInactive');
     }
   }
 

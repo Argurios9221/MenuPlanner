@@ -36,6 +36,8 @@ jobs:
         run: npm ci
 
       - name: Build for GitHub Pages
+        env:
+          VITE_SPOONACULAR_KEY: ${{ secrets.VITE_SPOONACULAR_KEY }}
         run: npm run build:pages
 
       - name: Setup Pages
