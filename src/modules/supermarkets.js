@@ -30,26 +30,75 @@ const CHAIN_DEFS = [
   },
 ];
 
+// BGN ÷ 1.96 ≈ EUR  (approximate, indicative prices)
 const FALLBACK_OFFERS = {
   lidl: [
-    { keyword: 'tomato', title: 'Tomatoes weekly offer', price: 2.49 },
-    { keyword: 'chicken', title: 'Fresh chicken promotion', price: 9.99 },
-    { keyword: 'milk', title: 'Dairy week milk', price: 2.29 },
+    { keyword: 'tomato', title: 'Домати (промо)', price: 1.27 },
+    { keyword: 'chicken', title: 'Пиле свежо', price: 5.10 },
+    { keyword: 'milk', title: 'Прясно мляко 3.5%', price: 1.17 },
+    { keyword: 'pasta', title: 'Паста italiana', price: 0.92 },
+    { keyword: 'egg', title: 'Яйца М 10 бр.', price: 2.05 },
+    { keyword: 'bread', title: 'Хляб бял 500g', price: 0.85 },
+    { keyword: 'carrot', title: 'Моркови БГ', price: 0.77 },
+    { keyword: 'orange', title: 'Портокали свежи', price: 1.53 },
+    { keyword: 'yogurt', title: 'Кисело мляко 400g', price: 0.87 },
+    { keyword: 'butter', title: 'Масло 125g', price: 1.84 },
+    { keyword: 'flour', title: 'Брашно тип 500', price: 0.77 },
+    { keyword: 'oil', title: 'Слъл. масло 1L', price: 3.07 },
+    { keyword: 'sugar', title: 'Захар бяла 1kg', price: 0.87 },
+    { keyword: 'rice', title: 'Ориз кръглозърнест', price: 1.02 },
+    { keyword: 'cheese', title: 'Сирене бяло 400g', price: 2.55 },
   ],
   kaufland: [
-    { keyword: 'pasta', title: 'Italian pasta deal', price: 1.79 },
-    { keyword: 'cheese', title: 'Cheese special', price: 4.99 },
-    { keyword: 'onion', title: 'Onions discounted', price: 1.29 },
+    { keyword: 'pasta', title: 'Паста K-Classic', price: 0.92 },
+    { keyword: 'cheese', title: 'Сирене качество', price: 2.55 },
+    { keyword: 'onion', title: 'Кромид лук', price: 0.66 },
+    { keyword: 'beef', title: 'Телешко филе', price: 7.40 },
+    { keyword: 'rice', title: 'Ориз дългозърнест', price: 1.63 },
+    { keyword: 'salmon', title: 'Сьомга филе', price: 5.61 },
+    { keyword: 'potato', title: 'Картофи БГ', price: 0.66 },
+    { keyword: 'broccoli', title: 'Броколи свежо', price: 1.02 },
+    { keyword: 'apple', title: 'Ябълки Golden', price: 1.12 },
+    { keyword: 'pork', title: 'Свинско бонсф.', price: 4.59 },
+    { keyword: 'sugar', title: 'Захар 1kg', price: 0.87 },
+    { keyword: 'cream', title: 'Сметана 30%', price: 1.02 },
+    { keyword: 'tomato', title: 'Домати черешени', price: 1.53 },
+    { keyword: 'egg', title: 'Яйца L 12 бр.', price: 2.55 },
+    { keyword: 'milk', title: 'Мляко UHT 1L', price: 1.02 },
   ],
   metro: [
-    { keyword: 'rice', title: 'Large pack rice promo', price: 3.19 },
-    { keyword: 'beef', title: 'Beef cut offer', price: 14.49 },
-    { keyword: 'butter', title: 'Butter selected brands', price: 3.59 },
+    { keyword: 'rice', title: 'Ориз жасмин 5kg', price: 3.57 },
+    { keyword: 'beef', title: 'Телешко T-bone', price: 12.24 },
+    { keyword: 'butter', title: 'Масло несол. 500g', price: 3.57 },
+    { keyword: 'chicken', title: 'Пиле цяло 1.5kg', price: 5.61 },
+    { keyword: 'seafood', title: 'Миди замр.', price: 8.16 },
+    { keyword: 'lamb', title: 'Агнешко бут', price: 9.69 },
+    { keyword: 'olive oil', title: 'Маслиново масло extra', price: 5.10 },
+    { keyword: 'mushroom', title: 'Шампиньони свежи', price: 1.84 },
+    { keyword: 'garlic', title: 'Чесън БГ', price: 1.02 },
+    { keyword: 'tomato', title: 'Доматено пюре 800g', price: 1.53 },
+    { keyword: 'cream', title: 'Сметана UHT 1L', price: 2.04 },
+    { keyword: 'cheese', title: 'Кашкавал стар.', price: 3.57 },
+    { keyword: 'salmon', title: 'Сьомга атлантич.', price: 7.65 },
+    { keyword: 'pork', title: 'Свинско каре', price: 5.10 },
+    { keyword: 'pasta', title: 'Pasta De Cecco', price: 2.04 },
   ],
   fantastico: [
-    { keyword: 'apple', title: 'Fresh apples deal', price: 2.19 },
-    { keyword: 'yogurt', title: 'Yogurt family pack', price: 1.69 },
-    { keyword: 'potato', title: 'Potatoes promo', price: 1.39 },
+    { keyword: 'apple', title: 'Ябълки Pink Lady', price: 1.53 },
+    { keyword: 'yogurt', title: 'Кисело мл. БГ', price: 0.87 },
+    { keyword: 'potato', title: 'Картофи червени', price: 0.77 },
+    { keyword: 'pepper', title: 'Чушки капия', price: 1.02 },
+    { keyword: 'cucumber', title: 'Краставици БГ', price: 0.77 },
+    { keyword: 'lemon', title: 'Лимони Тунис', price: 1.02 },
+    { keyword: 'banana', title: 'Банани Еквадор', price: 1.12 },
+    { keyword: 'spinach', title: 'Спанак свежо', price: 0.92 },
+    { keyword: 'zucchini', title: 'Тиквички БГ', price: 0.87 },
+    { keyword: 'strawberry', title: 'Ягоди свежи', price: 1.84 },
+    { keyword: 'grapes', title: 'Грозде черно', price: 2.04 },
+    { keyword: 'tomato', title: 'Домати биво', price: 1.02 },
+    { keyword: 'onion', title: 'Кромид лук БГ', price: 0.51 },
+    { keyword: 'carrot', title: 'Моркови местни', price: 0.61 },
+    { keyword: 'milk', title: 'Прясно мляко 2%', price: 1.12 },
   ],
 };
 
@@ -194,6 +243,8 @@ async function fetchOfferText(url) {
   }
 }
 
+const BGN_TO_EUR = 1 / 1.9558; // fixed ECB rate
+
 function extractLiveOffers(text, ingredientNames) {
   const hay = normalizeText(text);
   const offers = [];
@@ -211,7 +262,13 @@ function extractLiveOffers(text, ingredientNames) {
     const idx = hay.indexOf(key);
     const snippet = hay.slice(Math.max(0, idx - 80), idx + 140);
     const priceMatch = snippet.match(/(\d+[.,]\d{1,2})\s*(лв|lv|bgn|€)/i);
-    const price = priceMatch ? Number(priceMatch[1].replace(',', '.')) : null;
+    let price = null;
+    if (priceMatch) {
+      const raw = Number(priceMatch[1].replace(',', '.'));
+      const currency = priceMatch[2].toLowerCase();
+      // Convert BGN to EUR if needed
+      price = Number((currency === '€' ? raw : raw * BGN_TO_EUR).toFixed(2));
+    }
 
     offers.push({
       keyword: key,
@@ -241,19 +298,28 @@ async function getChainOffers(chainId, ingredientNames) {
 
 function getCoverage(offers, ingredientNames) {
   const matched = new Set();
+  const matchedOffers = [];
+  const unmatchedItems = [];
   let estimatedTotal = 0;
 
   for (const ingredient of ingredientNames) {
     const normalizedIngredient = normalizeText(ingredient);
+    let foundOffer = null;
     for (const offer of offers) {
       const keyword = normalizeText(offer.keyword);
       if (keyword && normalizedIngredient.includes(keyword)) {
-        if (!matched.has(normalizedIngredient) && offer.price != null) {
-          estimatedTotal += offer.price;
-        }
-        matched.add(normalizedIngredient);
+        foundOffer = offer;
         break;
       }
+    }
+    if (foundOffer) {
+      if (!matched.has(normalizedIngredient) && foundOffer.price != null) {
+        estimatedTotal += foundOffer.price;
+      }
+      matched.add(normalizedIngredient);
+      matchedOffers.push({ ingredient, offer: foundOffer });
+    } else {
+      unmatchedItems.push(ingredient);
     }
   }
 
@@ -262,6 +328,8 @@ function getCoverage(offers, ingredientNames) {
     total: ingredientNames.length,
     percent: ingredientNames.length > 0 ? Math.round((matched.size / ingredientNames.length) * 100) : 0,
     estimatedTotal: Number(estimatedTotal.toFixed(2)),
+    matchedOffers,
+    unmatchedItems,
   };
 }
 
@@ -284,14 +352,14 @@ export async function buildSupermarketRecommendations(basket) {
   const enriched = nearbyStores.map((store) => {
     const offers = offersByChain[store.chainId] || [];
     const coverage = getCoverage(offers, ingredientNames);
-    const distanceKm = haversineKm(coords, { lat: store.lat, lon: store.lon });
-    const score = coverage.percent * 1.2 + coverage.matchedCount * 2 - distanceKm * 1.5;
+    const distanceKm = store.isFallback ? null : haversineKm(coords, { lat: store.lat, lon: store.lon });
+    const score = coverage.percent * 1.2 + coverage.matchedCount * 2 - (distanceKm ?? 5) * 1.5;
 
     return {
       ...store,
       offers,
       coverage,
-      distanceKm: Number(distanceKm.toFixed(2)),
+      distanceKm: distanceKm !== null ? Number(distanceKm.toFixed(2)) : null,
       score,
       directionsUrl: makeDirectionsUrl(store),
       offerUrl: CHAIN_DEFS.find((c) => c.id === store.chainId)?.offerPage || '',
