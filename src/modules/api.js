@@ -1,5 +1,10 @@
 // TheMealDB API operations
 import { getLocalRecipes } from '../data/local-recipes.js';
+import {
+  fetchSpoonacularByCategory,
+  fetchSpoonacularDetails,
+  isSpoonacularEnabled,
+} from './spoonacular.js';
 
 const MEALSDB_API = 'https://www.themealdb.com/api/json/v1/1';
 const DUMMYJSON_API = 'https://dummyjson.com/recipes';
@@ -272,11 +277,16 @@ export async function fetchMealsByCategory(category) {
         return [];
       });
 
-    const [mealDbMeals, dummyRecipes, sampleRecipes, localRecipes] = await Promise.all([
+    const spoonPromise = isSpoonacularEnabled()
+      ? fetchSpoonacularByCategory(category).catch(() => [])
+      : Promise.resolve([]);
+
+    const [mealDbMeals, dummyRecipes, sampleRecipes, localRecipes, spoonRecipes] = await Promise.all([
       mealDbPromise,
       fetchDummyRecipes(),
       fetchSampleRecipes(),
       fetchLocalRecipes(),
+      spoonPromise,
     ]);
 
     const merged = dedupeByMealId([
@@ -284,6 +294,7 @@ export async function fetchMealsByCategory(category) {
       ...dummyRecipes.filter((recipe) => matchesCategory(recipe, category)),
       ...sampleRecipes.filter((recipe) => matchesCategory(recipe, category)),
       ...localRecipes.filter((recipe) => matchesCategory(recipe, category)),
+      ...spoonRecipes,
     ]);
 
     if (merged.length === 0) {
@@ -299,6 +310,10 @@ export async function fetchMealsByCategory(category) {
 }
 
 export async function fetchMealDetails(mealId) {
+  if (String(mealId).startsWith('spoon_')) {
+    return fetchSpoonacularDetails(mealId);
+  }
+
   if (String(mealId).startsWith('dummy_')) {
     const list = await fetchDummyRecipes();
     const found = list.find((item) => item.idMeal === mealId);

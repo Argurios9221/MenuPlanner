@@ -160,6 +160,40 @@
             <button id="btn-generate" class="btn btn-primary" data-i18n="btnGenerate">Generate Menu</button>
           </div>
 
+          <!-- Spoonacular API Integration -->
+          <details class="spoonacular-section" id="spoonacular-settings">
+            <summary class="spoonacular-summary">
+              <span class="spoon-logo" aria-hidden="true">🥄</span>
+              <span data-i18n="spoonacularTitle">Spoonacular API</span>
+              <span class="spoon-status-dot" id="spoon-status-dot" aria-label="Status"></span>
+            </summary>
+            <div class="spoon-content">
+              <p class="spoon-hint" data-i18n="spoonacularHint">
+                Unlock richer recipes, real nutrition data and smarter search.
+              </p>
+              <div class="form-group spoon-key-group">
+                <label for="spoonacular-key-input" data-i18n="spoonacularKeyLabel">API Key</label>
+                <div class="spoon-key-row">
+                  <input
+                    type="password"
+                    id="spoonacular-key-input"
+                    autocomplete="off"
+                    data-placeholder="spoonacularKeyPlaceholder"
+                    placeholder="Paste your free API key here"
+                  />
+                  <button class="btn btn-secondary spoon-save-btn" id="spoon-save-btn" data-i18n="spoonacularSave">Save</button>
+                </div>
+                <a
+                  class="spoon-get-key-link"
+                  href="https://spoonacular.com/food-api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-i18n="spoonacularGetKey"
+                >Get a free key ↗</a>
+              </div>
+            </div>
+          </details>
+
         </aside>
 
         <!-- Tabs -->

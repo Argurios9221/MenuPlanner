@@ -74,7 +74,9 @@ export function createMenuDayCard(day, dayIndex, lockedMeals = new Map()) {
   card.setAttribute('data-day', dayIndex);
 
   const totalKcal = day.meals.reduce((sum, meal) => {
-    return sum + estimateCalories(meal.ingredients || []);
+    // Prefer Spoonacular's accurate calorie data; fall back to estimation
+    const kcal = meal.nutrition?.calories || estimateCalories(meal.ingredients || []);
+    return sum + kcal;
   }, 0);
 
   let html = `<div class="day-card-header"><h3>${dayNames[dayIndex]}</h3><span class="day-kcal">~${totalKcal} ${t('kcalPerDay')}</span></div>`;
@@ -88,6 +90,9 @@ export function createMenuDayCard(day, dayIndex, lockedMeals = new Map()) {
     const thumbHtml = isReliableImageSrc(meal)
       ? `<img src="${meal.strMealThumb}" alt="${mealName}" class="meal-thumb" loading="lazy">`
       : `<div class="meal-thumb meal-thumb-fallback" aria-hidden="true">${getMealPlaceholderIcon(meal.type)}</div>`;
+    const nutritionBadge = meal.nutrition?.calories
+      ? `<span class="meal-nutrition-badge" title="Per serving">🔥 ${meal.nutrition.calories} kcal</span>`
+      : '';
     html += `
       <div class="meal-item${isLocked ? ' meal-locked' : ''}" data-meal-id="${meal.idMeal}" data-meal-name="${mealName}" data-meal-type="${meal.type}" data-day="${dayIndex}" data-meal-index="${mealIndex}" tabindex="0" role="button" aria-label="${mealTypeLabel}: ${mealName}">
         <div class="meal-content">
@@ -95,6 +100,7 @@ export function createMenuDayCard(day, dayIndex, lockedMeals = new Map()) {
           <div class="meal-info">
             <span class="meal-type-badge">${mealTypeLabel}</span>
             <p class="meal-name">${mealName}</p>
+            ${nutritionBadge}
           </div>
         </div>
         <div class="meal-actions">
@@ -356,11 +362,24 @@ export function populateRecipeModal(recipe, lang = 'en') {
     <div class="recipe-meta">
       <span>📂 ${categoryName}</span>
       <span>🌍 ${areaName}</span>
-      <span>⏱️ ~${recipe.metadata?.prepTime || 30} ${t('minuteShort')}</span>
+      <span>⏱️ ~${recipe.metadata?.prepTime || recipe.readyInMinutes || 30} ${t('minuteShort')}</span>
       <span>📊 ${getLocalizedDifficulty(recipe.metadata?.difficulty)}</span>
       ${recipe.metadata?.nutrition?.estimatedCalories ? `<span>🔥 ${recipe.metadata.nutrition.estimatedCalories}${t('calorieShort')}</span>` : ''}
       ${recipe.metadata?.nutrition?.allergens?.length > 0 ? `<span>⚠️ ${recipe.metadata.nutrition.allergens.join(', ')}</span>` : ''}
     </div>
+    
+    ${recipe.nutrition?.calories ? `
+    <div class="spoon-nutrition-panel">
+      <h4 class="spoon-nutr-title">${t('spoonacularNutritionTitle')}</h4>
+      <div class="spoon-nutr-grid">
+        <div class="spoon-nutr-item"><span class="spoon-nutr-val">🔥 ${recipe.nutrition.calories}</span><span class="spoon-nutr-label">${t('spoonacularNutrCalories')}</span></div>
+        ${recipe.nutrition.protein ? `<div class="spoon-nutr-item"><span class="spoon-nutr-val">💪 ${recipe.nutrition.protein}g</span><span class="spoon-nutr-label">${t('spoonacularNutrProtein')}</span></div>` : ''}
+        ${recipe.nutrition.carbs ? `<div class="spoon-nutr-item"><span class="spoon-nutr-val">🍞 ${recipe.nutrition.carbs}g</span><span class="spoon-nutr-label">${t('spoonacularNutrCarbs')}</span></div>` : ''}
+        ${recipe.nutrition.fat ? `<div class="spoon-nutr-item"><span class="spoon-nutr-val">🧈 ${recipe.nutrition.fat}g</span><span class="spoon-nutr-label">${t('spoonacularNutrFat')}</span></div>` : ''}
+        ${recipe.nutrition.fiber ? `<div class="spoon-nutr-item"><span class="spoon-nutr-val">🌾 ${recipe.nutrition.fiber}g</span><span class="spoon-nutr-label">${t('spoonacularNutrFiber')}</span></div>` : ''}
+      </div>
+      ${recipe.sourceUrl ? `<a class="spoon-source-link" href="${recipe.sourceUrl}" target="_blank" rel="noopener noreferrer">${t('spoonacularViewSource')} ↗</a>` : ''}
+    </div>` : ''}
     
     <div class="recipe-section">
       <h3>${t('recipeIngredients')}</h3>

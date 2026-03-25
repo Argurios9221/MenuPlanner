@@ -1877,3 +1877,204 @@ recipe-modal-content .modal-close {
     display: none !important;
   }
 }
+
+/* ===== Spoonacular Integration ===== */
+
+/* Sidebar section */
+.spoonacular-section {
+  margin-top: var(--spacing-lg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--light-bg);
+  overflow: hidden;
+}
+
+.spoonacular-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem var(--spacing-md);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--dark-text);
+  list-style: none;
+  user-select: none;
+  transition: background var(--transition-speed);
+}
+
+.spoonacular-summary::-webkit-details-marker {
+  display: none;
+}
+
+.spoonacular-summary::after {
+  content: '›';
+  margin-left: auto;
+  font-size: 1.1rem;
+  transform: rotate(90deg);
+  transition: transform 0.2s;
+}
+
+details.spoonacular-section[open] .spoonacular-summary::after {
+  transform: rotate(270deg);
+}
+
+.spoonacular-summary:hover {
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+.spoon-logo {
+  font-size: 1.1rem;
+}
+
+/* Status dot */
+.spoon-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--muted-text);
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+
+.spoon-status-dot.spoon-active {
+  background: var(--success-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success-color) 25%, transparent);
+}
+
+.spoon-content {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.spoon-hint {
+  margin: 0 0 var(--spacing-md);
+  font-size: 0.85rem;
+  color: var(--muted-text);
+  line-height: 1.45;
+}
+
+.spoon-key-group {
+  margin-bottom: 0.5rem;
+}
+
+.spoon-key-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.spoon-key-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.spoon-save-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.spoon-get-key-link {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.spoon-get-key-link:hover {
+  text-decoration: underline;
+}
+
+/* Nutrition badge on meal cards */
+.meal-nutrition-badge {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--dark-text);
+  background: color-mix(in srgb, var(--secondary-color) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--secondary-color) 35%, transparent);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+/* Nutrition panel inside recipe modal */
+.spoon-nutrition-panel {
+  margin: var(--spacing-md) 0 var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: color-mix(in srgb, var(--primary-color) 6%, var(--light-bg));
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.spoon-nutr-title {
+  margin: 0 0 var(--spacing-sm);
+  font-size: 0.95rem;
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.spoon-nutr-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.spoon-nutr-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 0.4rem 0.75rem;
+  min-width: 72px;
+}
+
+.spoon-nutr-val {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--dark-text);
+  white-space: nowrap;
+}
+
+.spoon-nutr-label {
+  font-size: 0.72rem;
+  color: var(--muted-text);
+  margin-top: 0.1rem;
+}
+
+.spoon-source-link {
+  display: inline-block;
+  font-size: 0.82rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  margin-top: 0.25rem;
+}
+
+.spoon-source-link:hover {
+  text-decoration: underline;
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .spoonacular-section {
+  background: #1E293B;
+  border-color: #334155;
+}
+
+[data-theme='dark'] .spoon-content {
+  border-color: #334155;
+}
+
+[data-theme='dark'] .spoon-nutrition-panel {
+  background: #1E293B;
+  border-color: #334155;
+}
+
+[data-theme='dark'] .spoon-nutr-item {
+  background: #0F172A;
+  border-color: #334155;
+}
+

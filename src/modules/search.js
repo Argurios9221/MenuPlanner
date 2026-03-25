@@ -7,6 +7,11 @@ import {
   getRandomMeal,
 } from './api.js';
 import { getRecipeMetadata, detectAllergens } from './metadata.js';
+import {
+  isSpoonacularEnabled,
+  searchSpoonacularRecipes,
+  mapDietaryToSpoonacular,
+} from './spoonacular.js';
 
 const SEARCH_FALLBACK_CATEGORIES = [
   'Breakfast',
@@ -32,22 +37,51 @@ export async function advancedSearch(query, options = {}) {
     excludeAllergens = [],
     dietRestriction = '',
     difficulty = '',
+    dietary = [],
+    cuisine = '',
   } = options;
 
   try {
     let results = [];
+
+    // Spoonacular search (runs in parallel with TheMealDB when key is set)
+    const spoonPromise = isSpoonacularEnabled() && (query || category || cuisine)
+      ? (() => {
+        const { diet, intolerances } = mapDietaryToSpoonacular(dietary);
+        return searchSpoonacularRecipes({
+          query: query || '',
+          cuisine: cuisine || '',
+          diet,
+          intolerances,
+          maxReadyTime: maxPrepTime || undefined,
+          number: 30,
+        }).catch(() => []);
+      })()
+      : Promise.resolve([]);
+
     if (query && query.trim().length >= 1) {
-      results = await searchMealsByName(query);
+      const [mealDbResults, spoonResults] = await Promise.all([
+        searchMealsByName(query),
+        spoonPromise,
+      ]);
+      results = [...mealDbResults, ...spoonResults];
     } else if (category) {
-      results = await fetchMealsByCategory(category);
+      const [catResults, spoonResults] = await Promise.all([
+        fetchMealsByCategory(category),
+        spoonPromise,
+      ]);
+      results = [...catResults, ...spoonResults];
     } else {
-      const categoryResults = await Promise.all(
-        SEARCH_FALLBACK_CATEGORIES.map((item) => fetchMealsByCategory(item).catch(() => []))
-      );
-      const randomResults = await Promise.all(
-        Array.from({ length: 12 }, () => getRandomMeal().catch(() => null))
-      );
-      results = [...categoryResults.flat(), ...randomResults.filter(Boolean)];
+      const [categoryResults, randomResults, spoonResults] = await Promise.all([
+        Promise.all(
+          SEARCH_FALLBACK_CATEGORIES.map((item) => fetchMealsByCategory(item).catch(() => []))
+        ).then((arrays) => arrays.flat()),
+        Promise.all(
+          Array.from({ length: 12 }, () => getRandomMeal().catch(() => null))
+        ).then((meals) => meals.filter(Boolean)),
+        spoonPromise,
+      ]);
+      results = [...categoryResults, ...randomResults, ...spoonResults];
     }
 
     const uniqueResults = Array.from(new Map(results.map((meal) => [meal.idMeal, meal])).values()).slice(0, 90);
