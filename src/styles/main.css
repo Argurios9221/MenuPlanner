@@ -466,13 +466,14 @@ body {
 .meal-content {
   display: flex;
   gap: var(--spacing-md);
-  align-items: center;
+  align-items: stretch;
   margin-bottom: var(--spacing-sm);
 }
 
 .meal-thumb {
-  width: 56px;
-  height: 56px;
+  width: 112px;
+  min-width: 112px;
+  height: 84px;
   border-radius: var(--border-radius-sm);
   object-fit: cover;
   flex-shrink: 0;
@@ -1550,6 +1551,12 @@ recipe-modal-content .modal-close {
 
   .meal-btn {
     min-width: auto;
+  }
+
+  .meal-thumb {
+    width: 92px;
+    min-width: 92px;
+    height: 72px;
   }
 }
 

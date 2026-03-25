@@ -208,9 +208,9 @@ export class MenuPlannerApp {
             <line x1="58" y1="59" x2="62" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
           </svg>
           <div class="visitor-stores">
-            <div class="store-icon">??</div>
-            <div class="store-icon">??</div>
-            <div class="store-icon">??</div>
+            <div class="store-icon">B</div>
+            <div class="store-icon">L</div>
+            <div class="store-icon">D</div>
           </div>
         </div>
         <p class="market-loading-text">${t('statusGenerating')(0)}</p>
@@ -245,14 +245,14 @@ export class MenuPlannerApp {
     const newLang = current === 'en' ? 'bg' : 'en';
     setLang(newLang);
     this.updateUI();
-    showToast(newLang === 'en' ? 'Language: English' : '????: ?????????');
+    showToast(newLang === 'en' ? 'Language: English' : 'Language: Bulgarian');
   }
 
   applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     const themeBtn = document.getElementById('theme-btn');
     if (themeBtn) {
-      themeBtn.textContent = theme === 'dark' ? '??' : '??';
+      themeBtn.textContent = theme === 'dark' ? 'Light' : 'Dark';
       themeBtn.title = theme === 'dark' ? t('themeToLight') : t('themeToDark');
     }
   }
@@ -322,7 +322,7 @@ export class MenuPlannerApp {
     if (!this.currentMenu) {
       container.innerHTML = `
         <div class="empty-state-container">
-          <div class="empty-icon">??</div>
+          <div class="empty-icon">MENU</div>
           <p>${t('emptyMenu') || 'No menu generated yet'}</p>
           <p class="empty-hint">${t('emptyMenuHint') || 'Click "Generate Menu" to create your weekly meal plan'}</p>
         </div>
@@ -335,9 +335,9 @@ export class MenuPlannerApp {
     const actionBar = document.createElement('div');
     actionBar.className = 'menu-actions-bar';
     actionBar.innerHTML = `
-      <button class="action-btn save-menu-btn">?? ${t('saveMenu')}</button>
-      <button class="action-btn share-menu-btn">?? ${t('share')}</button>
-      <button class="action-btn export-pdf-btn">?? ${t('exportPDF')}</button>
+      <button class="action-btn save-menu-btn">${t('saveMenu')}</button>
+      <button class="action-btn share-menu-btn">${t('share')}</button>
+      <button class="action-btn export-pdf-btn">${t('exportPDF')}</button>
     `;
     container.appendChild(actionBar);
 
@@ -445,7 +445,7 @@ export class MenuPlannerApp {
     if (favBtn) {
       favBtn.addEventListener('click', async () => {
         const isFav = await this.toggleRecipeFavorite(recipe.idMeal, favBtn);
-        favBtn.textContent = (isFav ? '??' : '??') + ` ${t('favorite')}`;
+        favBtn.textContent = `${isFav ? 'Saved' : 'Save'} ${t('favorite')}`;
       });
     }
 
@@ -479,7 +479,7 @@ export class MenuPlannerApp {
       const isFav = toggleRecipeFavorite(recipe);
 
       if (btn) {
-        btn.textContent = isFav ? '??' : '??';
+        btn.textContent = isFav ? 'Saved' : 'Save';
       }
 
       showToast(isFav ? t('addedToFav') : t('removedFromFav'));
@@ -517,10 +517,10 @@ export class MenuPlannerApp {
     }
 
     const options = [
-      { label: `?? ${t('copyText')}`, action: () => this.handleCopyShare(text) },
-      { label: `?? ${t('whatsapp')}`, action: () => this.handleWhatsAppShare(text) },
-      { label: `?? ${t('facebook')}`, action: () => this.handleFacebookShare() },
-      { label: `?? ${t('twitter')}`, action: () => this.handleTwitterShare(text) },
+      { label: t('copyText'), action: () => this.handleCopyShare(text) },
+      { label: t('whatsapp'), action: () => this.handleWhatsAppShare(text) },
+      { label: t('facebook'), action: () => this.handleFacebookShare() },
+      { label: t('twitter'), action: () => this.handleTwitterShare(text) },
     ];
 
     const sameTriggerWasOpen = Boolean(triggerEl?.classList.contains('share-trigger-open'));
@@ -661,7 +661,7 @@ export class MenuPlannerApp {
     if (!this.currentMenu) {
       container.innerHTML = `
         <div class="empty-state-container">
-          <div class="empty-icon">??</div>
+          <div class="empty-icon">LIST</div>
           <p>${t('emptyBasket') || 'No shopping list yet'}</p>
           <p class="empty-hint">${t('emptyBasketHint') || 'Generate a menu first to see your shopping list'}</p>
         </div>
@@ -671,7 +671,7 @@ export class MenuPlannerApp {
 
     container.innerHTML = `
       <div class="empty-state-container">
-        <div class="empty-icon">??</div>
+        <div class="empty-icon">LOAD</div>
         <p>${t('loadingBasket') || 'Loading shopping basket...'}</p>
       </div>
     `;
@@ -689,9 +689,9 @@ export class MenuPlannerApp {
     const stats = getBasketStats(this.currentBasket);
     actions.innerHTML = `
       <p>${t('itemsChecked')(stats.checkedItems, stats.totalItems)}</p>
-      <button class="action-btn export-basket-btn">?? ${t('exportList')}</button>
-      <button class="action-btn export-basket-pdf-btn">?? Export PDF</button>
-      <button class="action-btn clear-basket-btn">??? ${t('clearSelection')}</button>
+      <button class="action-btn export-basket-btn">${t('exportList')}</button>
+      <button class="action-btn export-basket-pdf-btn">Export PDF</button>
+      <button class="action-btn clear-basket-btn">${t('clearSelection')}</button>
     `;
     container.appendChild(actions);
 
