@@ -8,6 +8,7 @@ const MEALS_PER_DAY = 3; // breakfast, lunch, dinner
 
 const MAIN_MEAL_CATEGORIES = ['Beef', 'Chicken', 'Goat', 'Lamb', 'Pasta', 'Pork', 'Seafood', 'Vegan', 'Vegetarian'];
 const MIN_EASY_INGREDIENT_RATIO = 0.7;
+const MIX_ALLOWED_CUISINES = ['bulgarian', 'italian', 'german', 'british', 'french', 'mediterranean'];
 
 const EASY_INGREDIENT_KEYWORDS = [
   'oat',
@@ -199,6 +200,45 @@ function matchesDietPreference(meal, dietPreference) {
   }
 }
 
+function getAllowedAreasForCuisine(cuisine) {
+  const normalized = normalizeText(cuisine);
+
+  if (!normalized || normalized === 'mix') {
+    return MIX_ALLOWED_CUISINES;
+  }
+
+  if (normalized === 'bulgarian') {
+    return ['bulgarian'];
+  }
+
+  return [];
+}
+
+function matchesCuisinePreference(meal, cuisine, allowedAreas = []) {
+  const normalizedCuisine = normalizeText(cuisine);
+  if (!normalizedCuisine) {
+    return true;
+  }
+
+  const area = normalizeText(meal?.strArea);
+  const tags = normalizeText(meal?.strTags);
+  const category = normalizeText(meal?.strCategory);
+  const name = normalizeText(meal?.strMeal);
+  const haystack = `${area} ${tags} ${category} ${name}`;
+
+  if (normalizedCuisine === 'mix') {
+    return allowedAreas.some((allowed) => haystack.includes(allowed));
+  }
+
+  if (normalizedCuisine === 'bulgarian') {
+    return haystack.includes('bulgarian') || haystack.includes('българ');
+  }
+
+  // For non-geographic cuisine types (e.g. Vegetarian/Vegan/GlutenFree),
+  // keep diet/category filters as the source of truth.
+  return true;
+}
+
 export async function generateMenu(options = {}) {
   const {
     people = 4,
@@ -222,6 +262,7 @@ export async function generateMenu(options = {}) {
 
     const cuisineCategories = getCategoriesForCuisine(cuisine);
     const dietPreference = getDietPreference(cuisine, dietary);
+    const allowedAreas = getAllowedAreasForCuisine(cuisine);
 
     // Generate 7 days of meals
     for (let day = 0; day < DAYS_OF_WEEK; day++) {
@@ -237,6 +278,8 @@ export async function generateMenu(options = {}) {
         variety,
         day,
         dietPreference,
+        cuisine,
+        allowedAreas,
         prepTime,
         usedMealIds,
         usedMealSignatures
@@ -255,6 +298,8 @@ export async function generateMenu(options = {}) {
         variety,
         day,
         dietPreference,
+        cuisine,
+        allowedAreas,
         prepTime,
         usedMealIds,
         usedMealSignatures
@@ -273,6 +318,8 @@ export async function generateMenu(options = {}) {
         variety,
         day + 3,
         dietPreference,
+        cuisine,
+        allowedAreas,
         prepTime,
         usedMealIds,
         usedMealSignatures
@@ -288,6 +335,8 @@ export async function generateMenu(options = {}) {
         const mealType = ['Breakfast', 'Lunch', 'Dinner'][dayMeals.meals.length];
         const randomMeal = await getCompatibleRandomMeal(
           dietPreference,
+          cuisine,
+          allowedAreas,
           prepTime,
           mealType,
           usedMealIds,
@@ -323,6 +372,8 @@ async function getMealForSlot(
   variety,
   offset = 0,
   dietPreference = '',
+  cuisinePreference = 'mix',
+  allowedAreas = [],
   prepTimePreference = 'any',
   usedMealIds = new Set(),
   usedMealSignatures = new Set()
@@ -332,6 +383,8 @@ async function getMealForSlot(
     if (!meals || meals.length === 0) {
       const random = await getCompatibleRandomMeal(
         dietPreference,
+        cuisinePreference,
+        allowedAreas,
         prepTimePreference,
         slotType,
         usedMealIds,
@@ -368,6 +421,7 @@ async function getMealForSlot(
           !usedMealSignatures.has(mealSignature(details)) &&
           matchesMealSlot(details, slotType) &&
           matchesDietPreference(details, dietPreference) &&
+          matchesCuisinePreference(details, cuisinePreference, allowedAreas) &&
           matchesPrepTime(details, prepTimePreference) &&
           isEasyToShopMeal(details)
         ) {
@@ -380,6 +434,8 @@ async function getMealForSlot(
 
     return await getCompatibleRandomMeal(
       dietPreference,
+      cuisinePreference,
+      allowedAreas,
       prepTimePreference,
       slotType,
       usedMealIds,
@@ -417,6 +473,8 @@ function matchesPrepTime(meal, prepTimePreference = 'any') {
 
 async function getCompatibleRandomMeal(
   dietPreference,
+  cuisinePreference = 'mix',
+  allowedAreas = [],
   prepTimePreference = 'any',
   slotType = '',
   usedMealIds = new Set(),
@@ -437,6 +495,7 @@ async function getCompatibleRandomMeal(
         !usedMealSignatures.has(mealSignature(details)) &&
         matchesMealSlot(details, slotType) &&
         matchesDietPreference(details, dietPreference) &&
+        matchesCuisinePreference(details, cuisinePreference, allowedAreas) &&
         matchesPrepTime(details, prepTimePreference) &&
         isEasyToShopMeal(details)
       ) {

@@ -529,9 +529,17 @@ export async function buildSupermarketRecommendations(basket) {
     };
   });
 
+  const nearestStore = enriched
+    .filter((store) => store.distanceKm !== null)
+    .sort((a, b) => a.distanceKm - b.distanceKm)[0] || null;
+
   enriched.sort((a, b) => b.score - a.score);
 
-  const recommended = enriched.find((store) => store.coverage.percent >= minRecommendedCoverage) || null;
+  const selectedStore = nearestStore || enriched[0] || null;
+  const recommended =
+    selectedStore && selectedStore.coverage.percent >= minRecommendedCoverage
+      ? selectedStore
+      : null;
   const bestCoveragePercent = enriched[0]?.coverage?.percent || 0;
 
   return {
@@ -539,6 +547,6 @@ export async function buildSupermarketRecommendations(basket) {
     recommendedStoreId: recommended?.id || null,
     minRecommendedCoverage,
     bestCoveragePercent,
-    stores: enriched,
+    stores: selectedStore ? [selectedStore] : [],
   };
 }
