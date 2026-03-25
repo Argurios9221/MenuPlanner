@@ -191,6 +191,8 @@ const translations = {
     spoonacularCleared: 'Spoonacular key removed.',
     spoonacularActive: 'Spoonacular active',
     spoonacularInactive: 'Spoonacular inactive',
+    spoonacularMissingKey: '🥄 Spoonacular key not set — add VITE_SPOONACULAR_KEY to enable richer recipes.',
+
     spoonacularNutritionTitle: 'Nutrition per serving',
     spoonacularNutrCalories: 'Calories',
     spoonacularNutrProtein: 'Protein',
@@ -390,6 +392,8 @@ const translations = {
     spoonacularCleared: 'Ключът на Spoonacular е премахнат.',
     spoonacularActive: 'Spoonacular активен',
     spoonacularInactive: 'Spoonacular неактивен',
+    spoonacularMissingKey: '🥄 Spoonacular ключът липсва — добави VITE_SPOONACULAR_KEY за по-богати рецепти.',
+
     spoonacularNutritionTitle: 'Хранителни стойности (на порция)',
     spoonacularNutrCalories: 'Калории',
     spoonacularNutrProtein: 'Протеин',

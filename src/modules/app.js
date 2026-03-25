@@ -293,10 +293,22 @@ export class MenuPlannerApp {
 
   attachSpoonacularListeners() {
     const dot = document.getElementById('spoon-status-dot');
+    const label = document.getElementById('spoon-status-label');
+    const active = isSpoonacularEnabled();
 
     if (dot) {
-      dot.classList.toggle('spoon-active', isSpoonacularEnabled());
-      dot.title = isSpoonacularEnabled() ? t('spoonacularActive') : t('spoonacularInactive');
+      dot.classList.toggle('spoon-active', active);
+      dot.title = active ? t('spoonacularActive') : t('spoonacularInactive');
+    }
+
+    if (label) {
+      label.textContent = active ? t('spoonacularActive') : t('spoonacularInactive');
+      label.classList.toggle('spoon-label-active', active);
+      label.classList.toggle('spoon-label-inactive', !active);
+    }
+
+    if (!active) {
+      showToast(t('spoonacularMissingKey'));
     }
   }
 
