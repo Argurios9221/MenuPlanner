@@ -9,6 +9,7 @@ import {
 
 const DUMMYJSON_API = 'https://dummyjson.com/recipes';
 const SAMPLE_RECIPES_API = 'https://api.sampleapis.com/recipes/recipes';
+const ENABLE_DUMMYJSON_SOURCE = false;
 const localRecipeCollections = getLocalRecipes();
 let extraRandomPool = [];
 let extraRandomIndex = 0;
@@ -210,6 +211,10 @@ function getCachedMealDbMealsByArea(area) {
 }
 
 async function fetchDummyRecipes() {
+  if (!ENABLE_DUMMYJSON_SOURCE) {
+    return [];
+  }
+
   const cacheKey = 'source_dummyjson_all';
   if (isValidCache(cacheKey)) {
     return apiCache.get(cacheKey).data;
@@ -340,6 +345,9 @@ export async function fetchMealDetails(mealId) {
   }
 
   if (String(mealId).startsWith('dummy_')) {
+    if (!ENABLE_DUMMYJSON_SOURCE) {
+      throw new Error('Meal not found');
+    }
     const list = await fetchDummyRecipes();
     const found = list.find((item) => item.idMeal === mealId);
     if (!found) {
