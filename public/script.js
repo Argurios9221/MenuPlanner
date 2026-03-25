@@ -824,6 +824,7 @@ const recipeFavBtn = document.getElementById("recipeFavBtn");
 const recipeShareBtn = document.getElementById("recipeShareBtn");
 const recipeShareDrop = document.getElementById("recipeShareDrop");
 const favoritesContainer = document.getElementById("favoritesContainer");
+const marketsContainer = document.getElementById("marketsContainer");
 
 let currentRecipeId = null;
 let currentRecipeName = null;
@@ -915,6 +916,18 @@ async function showRecipe(mealId) {
   }
 }
 
+// ── Render Markets ──
+function renderMarkets() {
+  marketsContainer.innerHTML = `
+    <div style="text-align: center; padding: 2rem;">
+      <p style="color: var(--text-muted);">
+        🏬 ${t("marketPanelTitle") || "Supermarket Assistant"}<br/>
+        <small>${t("marketPanelHint") || "Feature available in the modern Vite version. Please use the dev server: npm run dev"}</small>
+      </p>
+    </div>
+  `;
+}
+
 // ── Render Favorites ──
 function renderFavorites() {
   favoritesContainer.innerHTML = "";
@@ -980,14 +993,23 @@ function renderFavorites() {
     fav.recipes.forEach(recipe => {
       const card = document.createElement("div");
       card.className = "fav-card";
+      const thumbUrl = recipe.thumb && typeof recipe.thumb === 'string' 
+        ? (recipe.thumb.includes('http') ? recipe.thumb : recipe.thumb + '/preview')
+        : 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23ddd%22 width=%22300%22 height=%22300%22/%3E%3C/svg%3E';
       card.innerHTML = `
-        <img src="${recipe.thumb}/preview" alt="${recipe.name}">
+        <img src="${thumbUrl}" alt="${recipe.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23ddd%22 width=%22300%22 height=%22300%22/%3E%3C/svg%3E'">
         <div class="fav-card-info">${recipe.name}</div>
       `;
       const viewBtn = document.createElement("button");
       viewBtn.className = "btn-recipe";
       viewBtn.textContent = t("recipe");
-      viewBtn.addEventListener("click", () => showRecipe(recipe.id));
+      viewBtn.addEventListener("click", () => {
+        if (!recipe.id) {
+          showToast(t("failedLoadRecipe"));
+          return;
+        }
+        showRecipe(recipe.id);
+      });
       const removeBtn = document.createElement("button");
       removeBtn.className = "btn-remove-fav";
       removeBtn.textContent = "\u2715";
@@ -1042,11 +1064,15 @@ document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.add("active");
     menuContainer.style.display = "none";
     basketContainer.style.display = "none";
+    marketsContainer.style.display = "none";
     favoritesContainer.style.display = "none";
     if (tab.dataset.tab === "menu") {
       menuContainer.style.display = "grid";
     } else if (tab.dataset.tab === "basket") {
       basketContainer.style.display = "grid";
+    } else if (tab.dataset.tab === "markets") {
+      marketsContainer.style.display = "block";
+      renderMarkets();
     } else if (tab.dataset.tab === "favorites") {
       favoritesContainer.style.display = "block";
       renderFavorites();
