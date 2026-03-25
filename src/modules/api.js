@@ -10,6 +10,7 @@ import {
 const DUMMYJSON_API = 'https://dummyjson.com/recipes';
 const SAMPLE_RECIPES_API = 'https://api.sampleapis.com/recipes/recipes';
 const ENABLE_DUMMYJSON_SOURCE = false;
+const ENABLE_LOCAL_SOURCE = false;
 const localRecipeCollections = getLocalRecipes();
 let extraRandomPool = [];
 let extraRandomIndex = 0;
@@ -258,6 +259,10 @@ async function fetchSampleRecipes() {
 }
 
 async function fetchLocalRecipes() {
+  if (!ENABLE_LOCAL_SOURCE) {
+    return [];
+  }
+
   const cacheKey = 'source_local_all';
   if (isValidCache(cacheKey)) {
     return apiCache.get(cacheKey).data;
@@ -366,6 +371,9 @@ export async function fetchMealDetails(mealId) {
   }
 
   if (String(mealId).startsWith('local_')) {
+    if (!ENABLE_LOCAL_SOURCE) {
+      throw new Error('Meal not found');
+    }
     const list = await fetchLocalRecipes();
     const found = list.find((item) => item.idMeal === mealId);
     if (!found) {

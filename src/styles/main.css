@@ -523,6 +523,23 @@ body {
   -webkit-box-orient: vertical;
 }
 
+.meal-source-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.meal-source-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted-text);
+  background: color-mix(in srgb, var(--highlight) 75%, white 25%);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-pill);
+  padding: 2px 8px;
+}
+
 .meal-actions {
   display: flex;
   gap: 6px;
@@ -2085,6 +2102,27 @@ details.spoonacular-section[open] .spoonacular-summary::after {
 
 .spoon-source-link:hover {
   text-decoration: underline;
+}
+
+.recipe-source-badge {
+  font-weight: 700;
+  color: var(--success-color);
+}
+
+.recipe-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.2rem;
+}
+
+.recipe-tag-chip {
+  font-size: 0.72rem;
+  color: var(--muted-text);
+  background: var(--light-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-pill);
+  padding: 2px 8px;
 }
 
 /* Dark mode adjustments */

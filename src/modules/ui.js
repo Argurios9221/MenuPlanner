@@ -93,6 +93,15 @@ export function createMenuDayCard(day, dayIndex, lockedMeals = new Map()) {
     const nutritionBadge = meal.nutrition?.calories
       ? `<span class="meal-nutrition-badge" title="Per serving">🔥 ${meal.nutrition.calories} kcal</span>`
       : '';
+    const spoonBadges = meal._source === 'spoonacular'
+      ? `
+        <div class="meal-source-meta">
+          <span class="meal-source-chip">🥄 Spoonacular</span>
+          ${meal.readyInMinutes ? `<span class="meal-source-chip">⏱️ ${meal.readyInMinutes} ${t('minuteShort')}</span>` : ''}
+          ${meal.servings ? `<span class="meal-source-chip">👥 ${meal.servings} ${t('servings')}</span>` : ''}
+        </div>
+      `
+      : '';
     html += `
       <div class="meal-item${isLocked ? ' meal-locked' : ''}" data-meal-id="${meal.idMeal}" data-meal-name="${mealName}" data-meal-type="${meal.type}" data-day="${dayIndex}" data-meal-index="${mealIndex}" tabindex="0" role="button" aria-label="${mealTypeLabel}: ${mealName}">
         <div class="meal-content">
@@ -101,6 +110,7 @@ export function createMenuDayCard(day, dayIndex, lockedMeals = new Map()) {
             <span class="meal-type-badge">${mealTypeLabel}</span>
             <p class="meal-name">${mealName}</p>
             ${nutritionBadge}
+            ${spoonBadges}
           </div>
         </div>
         <div class="meal-actions">
@@ -351,6 +361,15 @@ export function populateRecipeModal(recipe, lang = 'en') {
   const recipeName = lang === 'bg' ? recipe.strMealTranslated || recipe.strMeal : recipe.strMeal;
   const categoryName = lang === 'bg' ? recipe.strCategoryTranslated || recipe.strCategory : recipe.strCategory;
   const areaName = lang === 'bg' ? recipe.strAreaTranslated || recipe.strArea : recipe.strArea;
+  const prepMinutes = recipe.readyInMinutes || recipe.metadata?.prepTime || 30;
+  const servings = recipe.servings || recipe.metadata?.servings || 4;
+  const calories = recipe.nutrition?.calories || recipe.metadata?.nutrition?.estimatedCalories;
+  const spoonSource = recipe._source === 'spoonacular';
+  const spoonTags = String(recipe.strTags || '')
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .slice(0, 4);
 
   content.innerHTML = `
     <div class="recipe-header">
@@ -363,11 +382,15 @@ export function populateRecipeModal(recipe, lang = 'en') {
     <div class="recipe-meta">
       <span>📂 ${categoryName}</span>
       <span>🌍 ${areaName}</span>
-      <span>⏱️ ~${recipe.metadata?.prepTime || recipe.readyInMinutes || 30} ${t('minuteShort')}</span>
+      <span>⏱️ ~${prepMinutes} ${t('minuteShort')}</span>
+      <span>👥 ${servings} ${t('servings')}</span>
       <span>📊 ${getLocalizedDifficulty(recipe.metadata?.difficulty)}</span>
-      ${recipe.metadata?.nutrition?.estimatedCalories ? `<span>🔥 ${recipe.metadata.nutrition.estimatedCalories}${t('calorieShort')}</span>` : ''}
+      ${calories ? `<span>🔥 ${calories}${t('calorieShort')}</span>` : ''}
       ${recipe.metadata?.nutrition?.allergens?.length > 0 ? `<span>⚠️ ${recipe.metadata.nutrition.allergens.join(', ')}</span>` : ''}
+      ${spoonSource ? '<span class="recipe-source-badge">🥄 Spoonacular</span>' : ''}
     </div>
+
+    ${spoonTags.length > 0 ? `<div class="recipe-tag-row">${spoonTags.map((tag) => `<span class="recipe-tag-chip">${tag}</span>`).join('')}</div>` : ''}
     
     ${recipe.nutrition?.calories ? `
     <div class="spoon-nutrition-panel">
