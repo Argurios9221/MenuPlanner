@@ -1366,14 +1366,29 @@ recipe-modal-content .modal-close {
   opacity: 0.5;
 }
 
+.empty-state-svg {
+  width: 80px;
+  height: 80px;
+  margin-bottom: var(--spacing-md);
+}
+
 .empty-state-container p {
   font-size: 1rem;
   margin-bottom: var(--spacing-sm);
 }
 
+.empty-state-container p:first-of-type {
+  color: var(--dark-text);
+  font-weight: 600;
+}
+
 .empty-state-container .empty-hint {
   font-size: 0.85rem;
   color: #bbb;
+}
+
+.new-menu-btn {
+  background: linear-gradient(135deg, #f97316, #fb923c) !important;
 }
 
 /* Dark Mode */

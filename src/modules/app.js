@@ -40,9 +40,6 @@ import {
 } from './ui.js';
 import { exportMenuToPDF, exportBasketToPDF, exportRecipeToPDF, downloadFile, generatePDFFilename } from './pdf.js';
 
-const MIN_RECOMMENDED_MARKET_COVERAGE = 70;
-const MAX_MENU_GENERATION_ATTEMPTS = 6;
-
 export class MenuPlannerApp {
   constructor() {
     this.currentMenu = null;
@@ -122,40 +119,22 @@ export class MenuPlannerApp {
       generateBtn.disabled = true;
     }
 
-    updateStatusText(' ', 'generating');
+    const startTime = Date.now();
+    updateStatusText(t('statusGenerating')(0), 'generating');
     this.renderMenuGeneratingLoader();
 
+    const timerInterval = setInterval(() => {
+      const elapsed = Math.round((Date.now() - startTime) / 1000);
+      updateStatusText(t('statusGenerating')(elapsed), 'generating');
+      const loaderText = document.querySelector('.market-loading-text');
+      if (loaderText) {
+        loaderText.textContent = t('statusGenerating')(elapsed);
+      }
+    }, 1000);
+
     try {
-      const startTime = Date.now();
-      let menu = null;
-      let basket = null;
-      let coverageReport = null;
-
-      for (let attempt = 1; attempt <= MAX_MENU_GENERATION_ATTEMPTS; attempt++) {
-        menu = await generateMenu(prefs);
-        basket = await buildBasket(menu);
-        coverageReport = await buildSupermarketRecommendations(basket, {
-          minRecommendedCoverage: MIN_RECOMMENDED_MARKET_COVERAGE,
-          forceFallbackCoords: true,
-          useFallbackOnly: true,
-        });
-
-        if (coverageReport.recommendedStoreId) {
-          break;
-        }
-
-        if (attempt < MAX_MENU_GENERATION_ATTEMPTS) {
-          // Loader animation is shown in menu pane during generation.
-          updateStatusText(' ', 'generating');
-        }
-      }
-
-      if (!coverageReport?.recommendedStoreId) {
-        throw new Error(
-          'Could not generate a weekly menu with at least 70% supermarket coverage. Please try a different cuisine or prep time.'
-        );
-      }
-
+      const menu = await generateMenu(prefs);
+      const basket = await buildBasket(menu);
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       menu.generationTime = elapsed;
 
@@ -185,6 +164,7 @@ export class MenuPlannerApp {
       updateStatusText(t('statusError'), 'error');
       showToast(error.message);
     } finally {
+      clearInterval(timerInterval);
       if (generateBtn) {
         generateBtn.disabled = false;
       }
@@ -317,9 +297,15 @@ export class MenuPlannerApp {
     if (!this.currentMenu) {
       container.innerHTML = `
         <div class="empty-state-container">
-          <div class="empty-icon">MENU</div>
-          <p>${t('emptyMenu') || 'No menu generated yet'}</p>
-          <p class="empty-hint">${t('emptyMenuHint') || 'Click "Generate Menu" to create your weekly meal plan'}</p>
+          <svg class="empty-state-svg" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="40" cy="40" r="36" fill="var(--highlight)"/>
+            <rect x="22" y="26" width="36" height="28" rx="4" stroke="var(--primary-color)" stroke-width="2.2" fill="none"/>
+            <line x1="28" y1="34" x2="52" y2="34" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round"/>
+            <line x1="28" y1="40" x2="46" y2="40" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round"/>
+            <line x1="28" y1="46" x2="50" y2="46" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p>${t('emptyMenu')}</p>
+          <p class="empty-hint">${t('emptyMenuHint')}</p>
         </div>
       `;
       return;
@@ -333,6 +319,7 @@ export class MenuPlannerApp {
       <button class="action-btn save-menu-btn">${t('saveMenu')}</button>
       <button class="action-btn share-menu-btn">${t('share')}</button>
       <button class="action-btn export-pdf-btn">${t('exportPDF')}</button>
+      <button class="action-btn new-menu-btn">&#8635; ${t('btnRegenerate')}</button>
     `;
     container.appendChild(actionBar);
 
@@ -446,7 +433,7 @@ export class MenuPlannerApp {
     if (favBtn) {
       favBtn.addEventListener('click', async () => {
         const isFav = await this.toggleRecipeFavorite(recipe.idMeal, favBtn);
-        favBtn.textContent = `${isFav ? 'Saved' : 'Save'} ${t('favorite')}`;
+        favBtn.textContent = isFav ? t('savedFav') : t('saveFav');
       });
     }
 
@@ -480,7 +467,7 @@ export class MenuPlannerApp {
       const isFav = toggleRecipeFavorite(recipe);
 
       if (btn) {
-        btn.textContent = isFav ? 'Saved' : 'Save';
+        btn.textContent = isFav ? t('savedFav') : t('saveFav');
       }
 
       showToast(isFav ? t('addedToFav') : t('removedFromFav'));
@@ -651,6 +638,11 @@ export class MenuPlannerApp {
     if (exportBtn) {
       exportBtn.addEventListener('click', () => this.handleExportPDF());
     }
+
+    const newMenuBtn = document.querySelector('.new-menu-btn');
+    if (newMenuBtn) {
+      newMenuBtn.addEventListener('click', () => this.handleGenerateMenu());
+    }
   }
 
   async renderBasket() {
@@ -662,9 +654,14 @@ export class MenuPlannerApp {
     if (!this.currentMenu) {
       container.innerHTML = `
         <div class="empty-state-container">
-          <div class="empty-icon">LIST</div>
-          <p>${t('emptyBasket') || 'No shopping list yet'}</p>
-          <p class="empty-hint">${t('emptyBasketHint') || 'Generate a menu first to see your shopping list'}</p>
+          <svg class="empty-state-svg" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="40" cy="40" r="36" fill="var(--highlight)"/>
+            <path d="M20 30h4l5 20h22l5-16H30" stroke="var(--primary-color)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="35" cy="55" r="2.5" fill="var(--primary-color)"/>
+            <circle cx="52" cy="55" r="2.5" fill="var(--primary-color)"/>
+          </svg>
+          <p>${t('emptyBasket')}</p>
+          <p class="empty-hint">${t('emptyBasketHint')}</p>
         </div>
       `;
       return;
@@ -672,8 +669,16 @@ export class MenuPlannerApp {
 
     container.innerHTML = `
       <div class="empty-state-container">
-        <div class="empty-icon">LOAD</div>
-        <p>${t('loadingBasket') || 'Loading shopping basket...'}</p>
+        <svg class="empty-state-svg" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="36" fill="var(--highlight)"/>
+          <rect x="20" y="34" width="40" height="18" rx="4" stroke="var(--primary-color)" stroke-width="2.2" fill="none"/>
+          <line x1="32" y1="34" x2="32" y2="28" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="48" y1="34" x2="48" y2="28" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="30" cy="45" r="2" fill="var(--primary-color)"/>
+          <circle cx="40" cy="45" r="2" fill="var(--primary-color)"/>
+          <circle cx="50" cy="45" r="2" fill="var(--primary-color)"/>
+        </svg>
+        <p>${t('loadingBasket')}</p>
       </div>
     `;
 
@@ -691,7 +696,7 @@ export class MenuPlannerApp {
     actions.innerHTML = `
       <p>${t('itemsChecked')(stats.checkedItems, stats.totalItems)}</p>
       <button class="action-btn export-basket-btn">${t('exportList')}</button>
-      <button class="action-btn export-basket-pdf-btn">Export PDF</button>
+      <button class="action-btn export-basket-pdf-btn">${t('exportPDF')}</button>
       <button class="action-btn clear-basket-btn">${t('clearSelection')}</button>
     `;
     container.appendChild(actions);
