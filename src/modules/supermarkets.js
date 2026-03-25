@@ -218,7 +218,12 @@ const INGREDIENT_ALIASES = {
   'burger bun': 'bread',
   'burger buns': 'bread',
   strawberries: 'strawberry',
+  lentils: 'lentil',
+  seafoods: 'seafood',
 };
+
+const COMMON_ASSORTMENT_PATTERN =
+  /tomato|potato|onion|garlic|carrot|pepper|cucumber|mushroom|broccoli|zucchini|spinach|apple|banana|orange|lemon|strawberry|grapes|bread|bun|egg|milk|yogurt|cheese|butter|pasta|rice|flour|oil|sugar|bean|chickpea|lentil|chicken|beef|pork|lamb|fish|salmon|tuna|cod|seafood/;
 
 function canonicalToken(value) {
   const raw = normalizeText(value).replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -239,6 +244,14 @@ function ingredientMatchesOffer(ingredient, offerKeyword) {
     return false;
   }
   return ingredientToken.includes(keywordToken) || keywordToken.includes(ingredientToken);
+}
+
+function isLikelyAvailableInStore(ingredient) {
+  const token = canonicalToken(ingredient);
+  if (!token) {
+    return false;
+  }
+  return COMMON_ASSORTMENT_PATTERN.test(token);
 }
 
 function haversineKm(a, b) {
@@ -446,11 +459,12 @@ async function getChainOffers(chainId, ingredientNames, options = {}) {
     return live.slice(0, 30);
   }
 
-  return FALLBACK_OFFERS[chainId] || [];
+  return [];
 }
 
 function getCoverage(offers, ingredientNames) {
-  const matched = new Set();
+  const available = new Set();
+  const promoMatched = new Set();
   const matchedOffers = [];
   const unmatchedItems = [];
   let estimatedTotal = 0;
@@ -466,21 +480,36 @@ function getCoverage(offers, ingredientNames) {
         break;
       }
     }
+
+    const matchedByAvailability = Boolean(foundOffer) || isLikelyAvailableInStore(normalizedIngredient);
+
+    if (matchedByAvailability) {
+      available.add(normalizedIngredient);
+    }
+
     if (foundOffer) {
-      if (!matched.has(normalizedIngredient) && foundOffer.price !== null) {
+      if (!promoMatched.has(normalizedIngredient) && foundOffer.price !== null) {
         estimatedTotal += foundOffer.price;
       }
-      matched.add(normalizedIngredient);
+      promoMatched.add(normalizedIngredient);
       matchedOffers.push({ ingredient, offer: foundOffer });
-    } else {
+    }
+
+    if (!matchedByAvailability) {
       unmatchedItems.push(ingredient);
     }
   }
 
+  const total = relevantIngredients.length;
+  const availabilityPercent = total > 0 ? Math.round((available.size / total) * 100) : 0;
+  const promoPercent = total > 0 ? Math.round((promoMatched.size / total) * 100) : 0;
+
   return {
-    matchedCount: matched.size,
-    total: relevantIngredients.length,
-    percent: relevantIngredients.length > 0 ? Math.round((matched.size / relevantIngredients.length) * 100) : 0,
+    matchedCount: available.size,
+    promoMatchedCount: promoMatched.size,
+    total,
+    percent: availabilityPercent,
+    promoPercent,
     estimatedTotal: Number(estimatedTotal.toFixed(2)),
     matchedOffers,
     unmatchedItems,
@@ -540,33 +569,43 @@ export async function buildSupermarketRecommendations(basket) {
     };
   });
 
+  const storesWithInfo = shouldUseFallbackOnly
+    ? enriched
+    : enriched.filter((store) => Array.isArray(store.offers) && store.offers.length > 0);
+
   const onlineChain = CHAIN_DEFS.find((chain) => chain.onlineOnly);
   if (onlineChain) {
     const onlineOffers = offersByChain[onlineChain.id] || [];
-    const onlineCoverage = getCoverage(onlineOffers, ingredientNames);
-    enriched.push({
-      id: `${onlineChain.id}_virtual`,
-      chainId: onlineChain.id,
-      chainLabel: onlineChain.label,
-      name: onlineChain.label,
-      lat: coords.lat,
-      lon: coords.lon,
-      address: '',
-      isOnline: true,
-      offers: onlineOffers,
-      coverage: onlineCoverage,
-      distanceKm: null,
-      score: onlineCoverage.percent * 1.3 + onlineCoverage.matchedCount * 2.2 + 8,
-      directionsUrl: '',
-      offerUrl: onlineChain.offerPage,
-    });
+    if (shouldUseFallbackOnly || onlineOffers.length > 0) {
+      const onlineCoverage = getCoverage(onlineOffers, ingredientNames);
+      storesWithInfo.push({
+        id: `${onlineChain.id}_virtual`,
+        chainId: onlineChain.id,
+        chainLabel: onlineChain.label,
+        name: onlineChain.label,
+        lat: coords.lat,
+        lon: coords.lon,
+        address: '',
+        isOnline: true,
+        offers: onlineOffers,
+        coverage: onlineCoverage,
+        distanceKm: null,
+        score: onlineCoverage.percent * 1.3 + onlineCoverage.matchedCount * 2.2 + 8,
+        directionsUrl: '',
+        offerUrl: onlineChain.offerPage,
+      });
+    }
   }
 
-  const byScore = [...enriched].sort((a, b) => b.score - a.score);
-  const recommended = byScore.find((store) => store.coverage.percent >= minRecommendedCoverage) || null;
+  const byScore = [...storesWithInfo].sort((a, b) => b.score - a.score);
+  const physicalByScore = byScore.filter((store) => !store.isOnline);
+  const recommended =
+    physicalByScore.find((store) => store.coverage.percent >= minRecommendedCoverage) ||
+    byScore.find((store) => store.coverage.percent >= minRecommendedCoverage) ||
+    null;
   const bestCoveragePercent = byScore[0]?.coverage?.percent || 0;
 
-  const nearestStores = [...enriched]
+  const nearestStores = [...storesWithInfo]
     .filter((store) => !store.isOnline)
     .sort((a, b) => {
       const aDist = a.distanceKm ?? Number.POSITIVE_INFINITY;
@@ -575,7 +614,7 @@ export async function buildSupermarketRecommendations(basket) {
     })
     .slice(0, 8);
 
-  const bestCoverageStores = byScore.slice(0, 3);
+  const bestCoverageStores = [...physicalByScore.slice(0, 3), ...byScore.filter((store) => store.isOnline).slice(0, 1)];
 
   const selectedStores = [];
   const selectedIds = new Set();
@@ -587,15 +626,20 @@ export async function buildSupermarketRecommendations(basket) {
     }
   }
 
-  if (recommended && !selectedStores.some((store) => store.id === recommended.id)) {
+  if (recommended && !recommended.isOnline && !selectedStores.some((store) => store.id === recommended.id)) {
     selectedStores.unshift(recommended);
   }
+
+  const orderedStores = [
+    ...selectedStores.filter((store) => !store.isOnline),
+    ...selectedStores.filter((store) => store.isOnline),
+  ];
 
   return {
     coords,
     recommendedStoreId: recommended?.id || null,
     minRecommendedCoverage,
     bestCoveragePercent,
-    stores: selectedStores,
+    stores: orderedStores,
   };
 }

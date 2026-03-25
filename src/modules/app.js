@@ -1,4 +1,4 @@
-﻿// Main application logic - connects all modules
+// Main application logic - connects all modules
 import { initLang, setLang, getLang, t } from './i18n.js';
 import { generateMenu } from './menu.js';
 import { buildBasket, getBasketStats } from './basket.js';
@@ -52,6 +52,9 @@ export class MenuPlannerApp {
       report: null,
       filter: 'all',
       basketKey: '',
+      loading: false,
+      error: '',
+      requestId: 0,
     };
     this.recipeRequestId = 0;
     this.state = {
@@ -162,6 +165,9 @@ export class MenuPlannerApp {
         report: null,
         filter: 'all',
         basketKey: this.getBasketStateKey(basket),
+        loading: false,
+        error: '',
+        requestId: 0,
       };
       saveCurrentMenu(menu);
 
@@ -202,9 +208,9 @@ export class MenuPlannerApp {
             <line x1="58" y1="59" x2="62" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
           </svg>
           <div class="visitor-stores">
-            <div class="store-icon">🍳</div>
-            <div class="store-icon">🥗</div>
-            <div class="store-icon">🍲</div>
+            <div class="store-icon">??</div>
+            <div class="store-icon">??</div>
+            <div class="store-icon">??</div>
           </div>
         </div>
         <p class="market-loading-text">${t('statusGenerating')(0)}</p>
@@ -239,14 +245,14 @@ export class MenuPlannerApp {
     const newLang = current === 'en' ? 'bg' : 'en';
     setLang(newLang);
     this.updateUI();
-    showToast(newLang === 'en' ? 'Language: English' : 'Език: Български');
+    showToast(newLang === 'en' ? 'Language: English' : '????: ?????????');
   }
 
   applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     const themeBtn = document.getElementById('theme-btn');
     if (themeBtn) {
-      themeBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+      themeBtn.textContent = theme === 'dark' ? '??' : '??';
       themeBtn.title = theme === 'dark' ? t('themeToLight') : t('themeToDark');
     }
   }
@@ -316,7 +322,7 @@ export class MenuPlannerApp {
     if (!this.currentMenu) {
       container.innerHTML = `
         <div class="empty-state-container">
-          <div class="empty-icon">📅</div>
+          <div class="empty-icon">??</div>
           <p>${t('emptyMenu') || 'No menu generated yet'}</p>
           <p class="empty-hint">${t('emptyMenuHint') || 'Click "Generate Menu" to create your weekly meal plan'}</p>
         </div>
@@ -329,9 +335,9 @@ export class MenuPlannerApp {
     const actionBar = document.createElement('div');
     actionBar.className = 'menu-actions-bar';
     actionBar.innerHTML = `
-      <button class="action-btn save-menu-btn">❤️ ${t('saveMenu')}</button>
-      <button class="action-btn share-menu-btn">📤 ${t('share')}</button>
-      <button class="action-btn export-pdf-btn">📄 ${t('exportPDF')}</button>
+      <button class="action-btn save-menu-btn">?? ${t('saveMenu')}</button>
+      <button class="action-btn share-menu-btn">?? ${t('share')}</button>
+      <button class="action-btn export-pdf-btn">?? ${t('exportPDF')}</button>
     `;
     container.appendChild(actionBar);
 
@@ -439,7 +445,7 @@ export class MenuPlannerApp {
     if (favBtn) {
       favBtn.addEventListener('click', async () => {
         const isFav = await this.toggleRecipeFavorite(recipe.idMeal, favBtn);
-        favBtn.textContent = (isFav ? '❤️' : '🤍') + ` ${t('favorite')}`;
+        favBtn.textContent = (isFav ? '??' : '??') + ` ${t('favorite')}`;
       });
     }
 
@@ -473,7 +479,7 @@ export class MenuPlannerApp {
       const isFav = toggleRecipeFavorite(recipe);
 
       if (btn) {
-        btn.textContent = isFav ? '❤️' : '🤍';
+        btn.textContent = isFav ? '??' : '??';
       }
 
       showToast(isFav ? t('addedToFav') : t('removedFromFav'));
@@ -511,10 +517,10 @@ export class MenuPlannerApp {
     }
 
     const options = [
-      { label: `📋 ${t('copyText')}`, action: () => this.handleCopyShare(text) },
-      { label: `💬 ${t('whatsapp')}`, action: () => this.handleWhatsAppShare(text) },
-      { label: `📘 ${t('facebook')}`, action: () => this.handleFacebookShare() },
-      { label: `🐦 ${t('twitter')}`, action: () => this.handleTwitterShare(text) },
+      { label: `?? ${t('copyText')}`, action: () => this.handleCopyShare(text) },
+      { label: `?? ${t('whatsapp')}`, action: () => this.handleWhatsAppShare(text) },
+      { label: `?? ${t('facebook')}`, action: () => this.handleFacebookShare() },
+      { label: `?? ${t('twitter')}`, action: () => this.handleTwitterShare(text) },
     ];
 
     const sameTriggerWasOpen = Boolean(triggerEl?.classList.contains('share-trigger-open'));
@@ -655,7 +661,7 @@ export class MenuPlannerApp {
     if (!this.currentMenu) {
       container.innerHTML = `
         <div class="empty-state-container">
-          <div class="empty-icon">🛒</div>
+          <div class="empty-icon">??</div>
           <p>${t('emptyBasket') || 'No shopping list yet'}</p>
           <p class="empty-hint">${t('emptyBasketHint') || 'Generate a menu first to see your shopping list'}</p>
         </div>
@@ -665,7 +671,7 @@ export class MenuPlannerApp {
 
     container.innerHTML = `
       <div class="empty-state-container">
-        <div class="empty-icon">🛒</div>
+        <div class="empty-icon">??</div>
         <p>${t('loadingBasket') || 'Loading shopping basket...'}</p>
       </div>
     `;
@@ -683,9 +689,9 @@ export class MenuPlannerApp {
     const stats = getBasketStats(this.currentBasket);
     actions.innerHTML = `
       <p>${t('itemsChecked')(stats.checkedItems, stats.totalItems)}</p>
-      <button class="action-btn export-basket-btn">📋 ${t('exportList')}</button>
-      <button class="action-btn export-basket-pdf-btn">📄 Export PDF</button>
-      <button class="action-btn clear-basket-btn">🗑️ ${t('clearSelection')}</button>
+      <button class="action-btn export-basket-btn">?? ${t('exportList')}</button>
+      <button class="action-btn export-basket-pdf-btn">?? Export PDF</button>
+      <button class="action-btn clear-basket-btn">??? ${t('clearSelection')}</button>
     `;
     container.appendChild(actions);
 
@@ -742,18 +748,22 @@ export class MenuPlannerApp {
 
     page.innerHTML = `
       <div class="markets-hero">
-        <h2>🏬 ${t('marketPanelTitle')}</h2>
+        <h2>&#127970; ${t('marketPanelTitle')}</h2>
         <p class="markets-hint">${t('marketPanelHint')}</p>
         ${basketSummaryHtml}
-        <button class="btn btn-primary find-markets-btn" ${!this.currentBasket ? 'disabled' : ''}>📍 ${t('findNearbyMarkets')}</button>
+        <button class="btn btn-primary find-markets-btn" ${!this.currentBasket || this.marketState.loading ? 'disabled' : ''}>&#128205; ${t('findNearbyMarkets')}</button>
       </div>
       <div class="market-results"></div>
     `;
     container.appendChild(page);
 
     const results = page.querySelector('.market-results');
-    if (results && this.marketState.report && this.marketState.basketKey === basketKey) {
+    if (results && this.marketState.loading && this.marketState.basketKey === basketKey) {
+      results.innerHTML = this.getMarketsLoadingMarkup();
+    } else if (results && this.marketState.report && this.marketState.basketKey === basketKey) {
       this.renderMarketResults(results, this.marketState.report, this.marketState.filter);
+    } else if (results && this.marketState.error && this.marketState.basketKey === basketKey) {
+      results.innerHTML = `<p class="market-loading">${this.marketState.error}</p>`;
     }
 
     page.querySelector('.find-markets-btn')?.addEventListener('click', async () => {
@@ -762,50 +772,94 @@ export class MenuPlannerApp {
         return;
       }
 
+      if (this.marketState.loading) {
+        return;
+      }
+
       btn.disabled = true;
-      results.innerHTML = `
-        <div class="market-loading-container">
-          <div class="store-visitor">
-            <svg class="visitor-person" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <!-- Head -->
-              <circle cx="50" cy="25" r="12" fill="#4CAF50"/>
-              <!-- Body -->
-              <rect x="44" y="39" width="12" height="20" fill="#4CAF50"/>
-              <!-- Arms -->
-              <line x1="35" y1="44" x2="65" y2="44" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
-              <!-- Legs -->
-              <line x1="42" y1="59" x2="38" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
-              <line x1="58" y1="59" x2="62" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-            <div class="visitor-stores">
-              <div class="store-icon">🏪</div>
-              <div class="store-icon">🏬</div>
-              <div class="store-icon">🏢</div>
-            </div>
-          </div>
-          <p class="market-loading-text">${t('marketLoading')}</p>
-        </div>
-      `;
+      this.marketState = {
+        ...this.marketState,
+        report: null,
+        loading: true,
+        error: '',
+        basketKey,
+        requestId: Date.now(),
+      };
+      const requestId = this.marketState.requestId;
+      results.innerHTML = this.getMarketsLoadingMarkup();
 
       try {
         const report = await buildSupermarketRecommendations(this.currentBasket);
+        if (requestId !== this.marketState.requestId) {
+          return;
+        }
         if (!report.stores.length) {
-          results.innerHTML = `<p class="market-loading">${t('marketNoStores')}</p>`;
+          this.marketState = {
+            ...this.marketState,
+            report: null,
+            loading: false,
+            error: t('marketNoStores'),
+            basketKey,
+          };
+          if (document.querySelector('.pane.active[data-pane="markets"]')) {
+            this.renderMarkets();
+          }
           return;
         }
         this.marketState = {
           report,
           filter: this.marketState.filter || 'all',
           basketKey,
+          loading: false,
+          error: '',
+          requestId,
         };
-        this.renderMarketResults(results, report, this.marketState.filter);
+        if (document.querySelector('.pane.active[data-pane="markets"]')) {
+          this.renderMarkets();
+        }
       } catch (error) {
         console.error('Failed to build market recommendations:', error);
-        results.innerHTML = `<p class="market-loading">${t('marketFailed')}</p>`;
+        this.marketState = {
+          ...this.marketState,
+          report: null,
+          loading: false,
+          error: t('marketFailed'),
+          basketKey,
+        };
+        if (document.querySelector('.pane.active[data-pane="markets"]')) {
+          this.renderMarkets();
+        }
       } finally {
-        btn.disabled = false;
+        if (document.querySelector('.pane.active[data-pane="markets"]')) {
+          const activeButton = document.querySelector('.find-markets-btn');
+          if (activeButton) {
+            activeButton.disabled = this.marketState.loading || !this.currentBasket;
+          }
+        }
       }
     });
+  }
+
+  getMarketsLoadingMarkup() {
+    return `
+      <div class="market-loading-container">
+        <div class="store-visitor">
+          <svg class="visitor-person" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="25" r="12" fill="#4CAF50"/>
+            <rect x="44" y="39" width="12" height="20" fill="#4CAF50"/>
+            <line x1="35" y1="44" x2="65" y2="44" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+            <line x1="42" y1="59" x2="38" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+            <line x1="58" y1="59" x2="62" y2="75" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <div class="visitor-stores">
+            <div class="store-icon">&#127978;</div>
+            <div class="store-icon">&#127970;</div>
+            <div class="store-icon">&#127970;</div>
+          </div>
+        </div>
+        <p class="market-loading-text">${t('marketLoading')}</p>
+      </div>
+    `;
   }
 
   renderFavorites() {
@@ -850,6 +904,9 @@ export class MenuPlannerApp {
             report: null,
             filter: 'all',
             basketKey: '',
+            loading: false,
+            error: '',
+            requestId: 0,
           };
           saveCurrentMenu(selectedMenu);
           switchTab('menu');
@@ -884,14 +941,17 @@ export class MenuPlannerApp {
 
   renderMarketResults(results, report, activeFilter = 'all') {
     const locationWarning = report.coords.isFallback
-      ? `<p class="market-location-warning">⚠️ ${t('marketLocationApprox')}</p>`
+      ? `<p class="market-location-warning">&#9888;&#65039; ${t('marketLocationApprox')}</p>`
       : '';
 
     const cards = report.stores
       .map((store) => {
         const distanceHtml = store.distanceKm !== null
-          ? `<span class="market-meta-item">📍 ${store.distanceKm} km</span>`
+          ? `<span class="market-meta-item">&#128205; ${store.distanceKm} km</span>`
           : '';
+
+        const availabilityLabel = t('marketAvailability') || 'availability';
+        const promoLabel = t('marketPromoCoverage') || 'promo';
 
         const matchedRows = store.coverage.matchedOffers
           .map((match) => {
@@ -915,10 +975,10 @@ export class MenuPlannerApp {
 
         const links = [
           store.directionsUrl
-            ? `<a href="${store.directionsUrl}" target="_blank" rel="noopener">🧭 ${t('marketDirections')}</a>`
+            ? `<a href="${store.directionsUrl}" target="_blank" rel="noopener">&#129517; ${t('marketDirections')}</a>`
             : '',
           store.offerUrl
-            ? `<a href="${store.offerUrl}" target="_blank" rel="noopener">🏷️ ${t('marketOffers')}</a>`
+            ? `<a href="${store.offerUrl}" target="_blank" rel="noopener">&#127991;&#65039; ${t('marketOffers')}</a>`
             : '',
         ]
           .filter(Boolean)
@@ -932,7 +992,8 @@ export class MenuPlannerApp {
             </div>
             <div class="market-meta">
               ${distanceHtml}
-              <span class="market-meta-item coverage-tag">${store.coverage.percent}% ${t('marketDistance') === 'Distance' ? 'coverage' : 'покритие'}</span>
+              <span class="market-meta-item coverage-tag">${store.coverage.percent}% ${availabilityLabel}</span>
+              <span class="market-meta-item promo-tag">${store.coverage.promoPercent || 0}% ${promoLabel}</span>
               ${store.coverage.estimatedTotal > 0 ? `<span class="market-meta-item price-tag">&euro;${store.coverage.estimatedTotal.toFixed(2)}</span>` : ''}
             </div>
             ${store.address ? `<p class="market-address">${store.address}</p>` : ''}

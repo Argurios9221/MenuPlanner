@@ -31,6 +31,31 @@ const DOM = {
   langBtn: '#lang-btn',
 };
 
+function isReliableImageSrc(meal) {
+  const src = String(meal?.strMealThumb || '').trim().toLowerCase();
+  const id = String(meal?.idMeal || '').toLowerCase();
+  if (!src) {
+    return false;
+  }
+  if (id.startsWith('local_') || src.includes('unsplash.com')) {
+    return false;
+  }
+  return true;
+}
+
+function getMealPlaceholderIcon(mealType) {
+  if (mealType === 'Breakfast') {
+    return '🍳';
+  }
+  if (mealType === 'Lunch') {
+    return '🥗';
+  }
+  if (mealType === 'Dinner') {
+    return '🍲';
+  }
+  return '🍽️';
+}
+
 export function createMenuDayCard(day, dayIndex) {
   const dayNames = t('days') || [
     'Monday',
@@ -52,10 +77,13 @@ export function createMenuDayCard(day, dayIndex) {
   for (const meal of day.meals) {
     const mealName = meal.strMealTranslated || meal.strMeal;
     const mealTypeLabel = mealTypes[mealTypes.indexOf(meal.type)] || meal.type;
+    const thumbHtml = isReliableImageSrc(meal)
+      ? `<img src="${meal.strMealThumb}" alt="${mealName}" class="meal-thumb" loading="lazy">`
+      : `<div class="meal-thumb meal-thumb-fallback" aria-hidden="true">${getMealPlaceholderIcon(meal.type)}</div>`;
     html += `
       <div class="meal-item" data-meal-id="${meal.idMeal}" data-meal-name="${mealName}" data-meal-type="${meal.type}" tabindex="0" role="button" aria-label="${mealTypeLabel}: ${mealName}">
         <div class="meal-content">
-          ${meal.strMealThumb ? `<img src="${meal.strMealThumb}" alt="${mealName}" class="meal-thumb" loading="lazy">` : ''}
+          ${thumbHtml}
           <div class="meal-info">
             <span class="meal-type-badge">${mealTypeLabel}</span>
             <p class="meal-name">${mealName}</p>
@@ -223,8 +251,10 @@ export function showToast(message, duration = 3000) {
 export function updateStatusText(message, type = 'ready') {
   const status = document.querySelector(DOM.statusText);
   if (status) {
-    status.textContent = message;
+    const text = String(message || '').trim();
+    status.textContent = text;
     status.className = `status-text status-${type}`;
+    status.style.display = text ? '' : 'none';
   }
 }
 
@@ -291,7 +321,7 @@ export function populateRecipeModal(recipe, lang = 'en') {
       <button class="modal-close">✕</button>
     </div>
     
-    ${recipe.strMealThumb ? `<img src="${recipe.strMealThumb}" alt="${recipeName}" class="recipe-image">` : ''}
+    ${isReliableImageSrc(recipe) ? `<img src="${recipe.strMealThumb}" alt="${recipeName}" class="recipe-image">` : ''}
     
     <div class="recipe-meta">
       <span>📂 ${categoryName}</span>
