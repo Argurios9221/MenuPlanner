@@ -2,6 +2,7 @@
 import { initLang, setLang, getLang, t } from './i18n.js';
 import { generateMenu } from './menu.js';
 import { buildBasket, getBasketStats } from './basket.js';
+import { buildSupermarketRecommendations } from './supermarkets.js';
 import { loadRecipe, getTranslatedRecipe, toggleRecipeFavorite } from './recipe.js';
 import { translateText } from './translation.js';
 import { getAllFavorites, removeFavoriteRecipe } from './favorites.js';
@@ -638,6 +639,75 @@ export class MenuPlannerApp {
         cb.checked = false;
         cb.dispatchEvent(new Event('change'));
       });
+    });
+
+    const marketPanel = document.createElement('div');
+    marketPanel.className = 'market-panel';
+    marketPanel.innerHTML = `
+      <div class="market-panel-header">
+        <h3>🏬 ${t('marketPanelTitle')}</h3>
+        <p>${t('marketPanelHint')}</p>
+      </div>
+      <div class="market-panel-actions">
+        <button class="action-btn find-markets-btn">📍 ${t('findNearbyMarkets')}</button>
+      </div>
+      <div class="market-results"></div>
+    `;
+    container.appendChild(marketPanel);
+
+    marketPanel.querySelector('.find-markets-btn')?.addEventListener('click', async () => {
+      const btn = marketPanel.querySelector('.find-markets-btn');
+      const results = marketPanel.querySelector('.market-results');
+      if (!btn || !results) {
+        return;
+      }
+
+      btn.disabled = true;
+      results.innerHTML = `<p class="market-loading">${t('marketLoading')}</p>`;
+
+      try {
+        const report = await buildSupermarketRecommendations(this.currentBasket);
+        if (!report.stores.length) {
+          results.innerHTML = `<p class="market-loading">${t('marketNoStores')}</p>`;
+          return;
+        }
+
+        const cards = report.stores
+          .map((store) => {
+            const offerList = store.offers
+              .slice(0, 6)
+              .map((offer) => {
+                const price = offer.price ? ` - ${offer.price.toFixed(2)} лв` : '';
+                return `<li>${offer.title}${price}</li>`;
+              })
+              .join('');
+
+            return `
+              <article class="market-card ${store.id === report.recommendedStoreId ? 'recommended' : ''}">
+                <div class="market-card-head">
+                  <h4>${store.chainLabel}</h4>
+                  ${store.id === report.recommendedStoreId ? `<span class="market-badge">${t('marketRecommended')}</span>` : ''}
+                </div>
+                <p class="market-distance">${t('marketDistance')}: ${store.distanceKm} km</p>
+                <p class="market-coverage">${t('marketCoverage')(store.coverage.matchedCount, store.coverage.total, store.coverage.percent)}</p>
+                ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
+                <div class="market-links">
+                  <a href="${store.directionsUrl}" target="_blank" rel="noopener">🧭 ${t('marketDirections')}</a>
+                  <a href="${store.offerUrl}" target="_blank" rel="noopener">🏷️ ${t('marketOffers')}</a>
+                </div>
+                <ul class="market-offers-list">${offerList || `<li>${t('marketNoOffers')}</li>`}</ul>
+              </article>
+            `;
+          })
+          .join('');
+
+        results.innerHTML = `<div class="market-cards">${cards}</div>`;
+      } catch (error) {
+        console.error('Failed to build market recommendations:', error);
+        results.innerHTML = `<p class="market-loading">${t('marketFailed')}</p>`;
+      } finally {
+        btn.disabled = false;
+      }
     });
   }
 
