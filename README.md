@@ -1,60 +1,60 @@
-# Fresh Kitchen � Weekly Menu Planner
+﻿# Fresh Kitchen 🍽️ Weekly Menu Planner
 
-> **"Argurios is generating your menu�"**  
+> **"Argurios is generating your menu…"**  
 > A smart, bilingual weekly meal planner built with Vanilla JS, powered by multiple recipe APIs and Spoonacular integration.
 
-?? **Live app:** [https://argurios9221.github.io/MenuPlanner/](https://argurios9221.github.io/MenuPlanner/)
+🌐 **Live app:** [https://argurios9221.github.io/MenuPlanner/](https://argurios9221.github.io/MenuPlanner/)
 
 ---
 
 ## Features
 
-### ??? Menu Generation
+### 🗓️ Menu Generation
 - Generates a full **7-day meal plan** (Breakfast, Lunch, Dinner) with a single click
 - Respects cuisine preference, prep time, dietary exclusions, allergies and number of servings
 - **Swap** individual meals without regenerating the whole menu
 - **Lock** meals you want to keep across regenerations
-- Menu history � browse and reload previously generated menus
+- Menu history — browse and reload previously generated menus
 
-### ?? Shopping Basket
+### 🛒 Shopping Basket
 - Auto-builds an organised shopping list from the current menu
 - Categorised by ingredient type (Meat, Vegetables, Dairy, etc.)
 - Check off items as you shop
-- Scalable serving sizes � adjust quantities on the fly
+- Scalable serving sizes — adjust quantities on the fly
 - Export basket as **PDF** or copy as text
 
-### ?? Spoonacular Integration
+### 🥄 Spoonacular Integration
 - Set `VITE_SPOONACULAR_KEY` in `.env` to unlock:
   - Richer recipes from Spoonacular's database (5,000+ recipes)
-  - **Real nutritional data** per serving � calories, protein, carbs, fat, fiber � shown as badges on meal cards and in the recipe modal
-  - Smarter search � filters by cuisine, diet, intolerances and prep time in parallel with TheMealDB
+  - **Real nutritional data** per serving — calories, protein, carbs, fat, fiber — shown as badges on meal cards and in the recipe modal
+  - Smarter search — filters by cuisine, diet, intolerances and prep time in parallel with TheMealDB
   - Ingredient substitutes lookup
   - Direct link to original recipe source
-- Fully optional � the app works without a key using TheMealDB + DummyJSON + SampleAPIs + local recipes
+- Fully optional — the app works without a key using TheMealDB + DummyJSON + SampleAPIs + local recipes
 
-### ?? Markets Assistant
+### 🏪 Markets Assistant
 - Detects **nearby supermarkets** (Lidl, Kaufland, Metro, Fantastico, BILLA, T-Market, CBA, 345, FRESCO) via Overpass API using your location
 - Online stores: **EBAG.bg, Supermag, Glovo Market**
 - Filter by chain; **All Chains** view shows the nearest location per chain
 - Promotional offer matching against your basket
-- Budget indicator � see at a glance which stores are within your weekly budget
+- Budget indicator — see at a glance which stores are within your weekly budget
 
-### ?? Favorites
+### ⭐ Favorites
 - Save whole menus, individual recipes and products
 - Click a saved menu to reload it directly into the planner
 
-### ?? Sharing & Export
+### 📤 Sharing & Export
 - Share menus and recipes via **WhatsApp, Facebook, Twitter** or copy link
 - Export menus, basket and individual recipes as **PDF**
 
-### ?? Bilingual UI
+### 🌍 Bilingual UI
 - Full **English / Bulgarian** interface toggle
 - Meal names auto-translated to Bulgarian via MyMemory API
 - All labels, hints and status messages available in both languages
 
-### ?? UX & Accessibility
+### ♿ UX & Accessibility
 - Light / Dark mode
-- Responsive � works on mobile, tablet and desktop
+- Responsive — works on mobile, tablet and desktop
 - Keyboard navigable with ARIA labels
 - PWA-ready (installable on home screen)
 
@@ -66,8 +66,8 @@
 |-------|-----------|
 | Frontend | Vanilla JS (ES Modules), no framework |
 | Build | Vite 8 + Terser |
-| Styling | CSS3 � Custom Properties, CSS Grid, `color-mix()` |
-| Recipe APIs | TheMealDB � DummyJSON � SampleAPIs � Local recipes � Spoonacular |
+| Styling | CSS3 — Custom Properties, CSS Grid, `color-mix()` |
+| Recipe APIs | TheMealDB · DummyJSON · SampleAPIs · Local recipes · Spoonacular |
 | Maps | Overpass API (OpenStreetMap) |
 | Translation | MyMemory API |
 | PDF | pdf-lib |
@@ -81,47 +81,47 @@
 
 ```
 MenuPlanner/
-+-- index.html                  # Root HTML (Vite entry)
-+-- src/
-�   +-- main.js                 # App entry point
-�   +-- index.html              # Dev HTML template
-�   +-- modules/
-�   �   +-- app.js              # Main controller � wires all modules
-�   �   +-- api.js              # TheMealDB + multi-source recipe fetching
-�   �   +-- spoonacular.js      # Spoonacular API client
-�   �   +-- menu.js             # Menu generation & swap logic
-�   �   +-- basket.js           # Shopping basket builder
-�   �   +-- supermarkets.js     # Nearby stores & offer matching
-�   �   +-- recipe.js           # Recipe loading & translation pipeline
-�   �   +-- search.js           # Advanced multi-source recipe search
-�   �   +-- favorites.js        # Favorites management
-�   �   +-- sharing.js          # Social share helpers
-�   �   +-- translation.js      # MyMemory translation client
-�   �   +-- metadata.js         # Prep time, difficulty, calorie estimates
-�   �   +-- storage.js          # localStorage abstraction
-�   �   +-- ui.js               # DOM rendering helpers
-�   �   +-- ui-advanced.js      # Advanced UI components
-�   �   +-- pdf.js              # PDF export
-�   �   +-- i18n.js             # EN / BG translation dictionary
-�   +-- styles/
-�   �   +-- main.css            # All styles incl. dark mode & responsive
-�   +-- data/
-�   �   +-- local-recipes.js    # Bundled local recipe collections
-�   +-- utils/
-�   �   +-- constants.js
-�   �   +-- helpers.js
-�   �   +-- errors.js
-�   +-- sw.js                   # Service Worker (PWA / offline)
-+-- public/
-�   +-- manifest.json           # PWA manifest
-+-- tests/
-�   +-- app.spec.js             # Playwright E2E tests
-+-- .env                        # Local secrets � never committed
-+-- vite.config.js
-+-- playwright.config.js
-+-- package.json
-+-- .eslintrc.json
-+-- .prettierrc.json
+├── index.html                  # Root HTML (Vite entry)
+├── src/
+│   ├── main.js                 # App entry point
+│   ├── index.html              # Dev HTML template
+│   ├── modules/
+│   │   ├── app.js              # Main controller — wires all modules
+│   │   ├── api.js              # TheMealDB + multi-source recipe fetching
+│   │   ├── spoonacular.js      # Spoonacular API client
+│   │   ├── menu.js             # Menu generation & swap logic
+│   │   ├── basket.js           # Shopping basket builder
+│   │   ├── supermarkets.js     # Nearby stores & offer matching
+│   │   ├── recipe.js           # Recipe loading & translation pipeline
+│   │   ├── search.js           # Advanced multi-source recipe search
+│   │   ├── favorites.js        # Favorites management
+│   │   ├── sharing.js          # Social share helpers
+│   │   ├── translation.js      # MyMemory translation client
+│   │   ├── metadata.js         # Prep time, difficulty, calorie estimates
+│   │   ├── storage.js          # localStorage abstraction
+│   │   ├── ui.js               # DOM rendering helpers
+│   │   ├── ui-advanced.js      # Advanced UI components
+│   │   ├── pdf.js              # PDF export
+│   │   └── i18n.js             # EN / BG translation dictionary
+│   ├── styles/
+│   │   └── main.css            # All styles incl. dark mode & responsive
+│   ├── data/
+│   │   └── local-recipes.js    # Bundled local recipe collections
+│   ├── utils/
+│   │   ├── constants.js
+│   │   ├── helpers.js
+│   │   └── errors.js
+│   └── sw.js                   # Service Worker (PWA / offline)
+├── public/
+│   └── manifest.json           # PWA manifest
+├── tests/
+│   └── app.spec.js             # Playwright E2E tests
+├── .env                        # Local secrets — never committed
+├── vite.config.js
+├── playwright.config.js
+├── package.json
+├── .eslintrc.json
+└── .prettierrc.json
 ```
 
 ---
@@ -183,10 +183,10 @@ npm test           # Playwright E2E tests
 ## Supported Supermarkets
 
 ### Physical (Bulgaria)
-Lidl � Kaufland � Metro � Fantastico � BILLA � T-Market � CBA � 345 � FRESCO
+Lidl · Kaufland · Metro · Fantastico · BILLA · T-Market · CBA · 345 · FRESCO
 
 ### Online
-EBAG.bg � Supermag � Glovo Market
+EBAG.bg · Supermag · Glovo Market
 
 ---
 
@@ -205,7 +205,7 @@ EBAG.bg � Supermag � Glovo Market
 
 ## Browser Support
 
-Chrome/Edge >= 90 � Firefox >= 88 � Safari >= 14 � iOS Safari � Chrome Mobile
+Chrome/Edge >= 90 · Firefox >= 88 · Safari >= 14 · iOS Safari · Chrome Mobile
 
 ---
 
