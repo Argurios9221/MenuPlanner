@@ -303,6 +303,15 @@ function isValidCache(key) {
   return Date.now() - timestamp < CACHE_DURATION;
 }
 
+function withTimeout(promise, timeoutMs, fallbackValue) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => {
+      setTimeout(() => resolve(fallbackValue), timeoutMs);
+    }),
+  ]);
+}
+
 export async function fetchMealsByCategory(category) {
   const cacheKey = getCacheKey(category);
   if (isValidCache(cacheKey)) {
@@ -313,7 +322,7 @@ export async function fetchMealsByCategory(category) {
     const mealDbPromise = Promise.resolve(getCachedMealDbCategoryMeals(category));
 
     const spoonPromise = isSpoonacularEnabled()
-      ? fetchSpoonacularByCategory(category).catch(() => [])
+      ? withTimeout(fetchSpoonacularByCategory(category).catch(() => []), 2200, [])
       : Promise.resolve([]);
 
     const [mealDbMeals, dummyRecipes, sampleRecipes, localRecipes, spoonRecipes] = await Promise.all([

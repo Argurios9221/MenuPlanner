@@ -109,6 +109,13 @@ function isEasyToShopMeal(meal, minRatio = MIN_EASY_INGREDIENT_RATIO) {
   return ratio >= minRatio;
 }
 
+function hasRequiredIngredients(meal) {
+  const ingredients = (meal?.ingredients || [])
+    .map((item) => item?.name)
+    .filter((name) => String(name || '').trim().length > 0);
+  return ingredients.length > 0;
+}
+
 function matchesDietaryExclusions(meal) {
   if (!_extraDietaryFilter.length) {
     return true;
@@ -516,6 +523,7 @@ async function getMealForSlot(
         details.ingredients = extractIngredients(details);
 
         if (
+          hasRequiredIngredients(details) &&
           !usedMealIds.has(details.idMeal) &&
           !usedMealSignatures.has(mealSignature(details)) &&
           matchesMealSlot(details, slotType) &&
@@ -599,6 +607,7 @@ async function getCompatibleRandomMeal(
       details.ingredients = extractIngredients(details);
 
       if (
+        hasRequiredIngredients(details) &&
         (allowReuse || !usedMealIds.has(details.idMeal)) &&
         (allowReuse || !usedMealSignatures.has(mealSignature(details))) &&
         matchesMealSlot(details, slotType) &&
@@ -648,6 +657,7 @@ async function getFallbackMealFromPools(
           details.ingredients = extractIngredients(details);
 
           if (
+            hasRequiredIngredients(details) &&
             (rules.allowReuse || !usedMealIds.has(details.idMeal)) &&
             (rules.allowReuse || !usedMealSignatures.has(mealSignature(details))) &&
             matchesMealSlot(details, slotType) &&
