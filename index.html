@@ -237,8 +237,7 @@
           <div class="tabs">
             <button class="tab active" data-tab="menu" data-i18n="tabMenu">Weekly Menu</button>
             <button class="tab" data-tab="basket" data-i18n="tabBasket">Shopping Basket</button>
-            <button class="tab" data-tab="markets" data-i18n="tabMarkets">Markets</button>
-            <button class="tab" data-tab="favorites" data-i18n="tabFavorites">Favorites</button>
+            <button class="tab" data-tab="markets" data-i18n="tabMarkets">Markets</button>            <button class="tab" data-tab="barcode" data-i18n="tabBarcode">Barcode</button>            <button class="tab" data-tab="favorites" data-i18n="tabFavorites">Favorites</button>
           </div>
 
           <!-- Menu Tab -->
@@ -254,6 +253,22 @@
           <!-- Markets Tab -->
           <section class="pane" data-pane="markets">
             <div id="markets-container" class="markets-container"></div>
+          </section>
+
+          <!-- Barcode Scanner Tab -->
+          <section class="pane" data-pane="barcode">
+            <div id="barcode-container" class="barcode-container">
+              <div class="barcode-hero">
+                <h2>🔍 Barcode Scanner</h2>
+                <p class="barcode-hint">Scan products to check allergens and menu compliance</p>
+                <button class="btn btn-primary start-scanner-btn" id="start-scanner-btn">📷 Start Camera</button>
+              </div>
+              <div id="scanner-preview" class="scanner-preview" style="display: none;">
+                <video id="barcode-video" class="barcode-video"></video>
+                <button class="btn btn-secondary stop-scanner-btn" id="stop-scanner-btn">Stop</button>
+              </div>
+              <div id="scan-results" class="scan-results"></div>
+            </div>
           </section>
 
           <!-- Favorites Tab -->
@@ -325,6 +340,7 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

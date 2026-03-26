@@ -27,6 +27,7 @@
     "vite": "^8.0.2"
   },
   "dependencies": {
-    "firebase": "^12.11.0"
+    "firebase": "^12.11.0",
+    "quagga": "^0.12.1"
   }
 }
