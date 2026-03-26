@@ -2196,9 +2196,7 @@ export class MenuPlannerApp {
     const locationWarning = report.coords.isFallback
       ? `<p class="market-location-warning">&#9888;&#65039; ${t('marketLocationApprox')}</p>`
       : '';
-    const analysisNote = report.analysisProvider
-      ? `<p class="market-analysis-note">${report.analysisProvider} analysis${report.searchRadiusKm ? ` · ${report.searchRadiusKm} km radius` : ''}${report.analysisSummary ? ` · ${report.analysisSummary}` : ''}</p>`
-      : '';
+    const analysisNote = '';
     const eurToBgn = Number(report?.fx?.BGN || 1.9558);
     const formatTotal = (eurValue) => {
       const eur = Number(eurValue || 0);
