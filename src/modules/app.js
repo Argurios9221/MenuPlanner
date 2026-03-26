@@ -1581,11 +1581,7 @@ export class MenuPlannerApp {
       storesForRender = storesForRender.filter((store) => store.chainLabel === normalizedFilter);
     }
     
-    // Filter: only show stores with coverage >= 70%
-    const minCoverageForDisplay = 70;
-    storesForRender = storesForRender.filter((store) => store.coverage.percent >= minCoverageForDisplay);
-    
-    console.log('🏪 [UI] After coverage filter (>= 70%):', storesForRender.length, 'stores to render');
+    console.log('🏪 [UI] After filter:', storesForRender.length, 'stores to render');
     
     // Sort: recommended store first, then by offer coverage % desc, then by distance
     storesForRender = storesForRender.sort((a, b) => {
