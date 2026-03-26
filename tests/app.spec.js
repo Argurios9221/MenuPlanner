@@ -329,9 +329,11 @@ test.describe('MenuPlanner full app coverage', () => {
   });
 
   test('supports language toggle and translated recipe fields', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('menuPlanner_lang', 'bg');
+    });
     await page.goto('/');
 
-    await page.click('#lang-btn', { force: true });
     await page.click('#btn-generate', { force: true });
 
     await expect(page.locator('.day-card')).toHaveCount(7, { timeout: 30000 });
@@ -342,9 +344,10 @@ test.describe('MenuPlanner full app coverage', () => {
   });
 
   test('renders Bulgarian translations for key labels and placeholders', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('menuPlanner_lang', 'bg');
+    });
     await page.goto('/');
-
-    await page.click('#lang-btn');
 
     await expect(page.locator('h2[data-i18n="preferences"]')).toHaveText('Настройки');
     await expect(page.locator('[data-i18n="tabMenu"]')).toHaveText('Седмично меню');
@@ -365,7 +368,6 @@ test.describe('MenuPlanner full app coverage', () => {
       'Диетични предпочитания или забележки...'
     );
 
-    await expect(page.locator('#theme-btn')).toHaveAttribute('title', 'Превключи към тъмен режим');
   });
 
   test('supports core controls: budget mode, lock/unlock, swap and tab navigation', async ({ page }) => {

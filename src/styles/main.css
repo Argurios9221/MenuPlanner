@@ -219,6 +219,12 @@ body.authenticated #auth-gate {
   gap: 0.7rem;
 }
 
+.header-controls #lang-btn,
+.header-controls #theme-btn,
+.header-controls #auth-user-label {
+  display: none !important;
+}
+
 .auth-user-label {
   max-width: 220px;
   padding: 0.35rem 0.65rem;

@@ -491,16 +491,6 @@ export class MenuPlannerApp {
       budgetCrisisBtn.addEventListener('click', () => this.handleBudgetCrisisMode());
     }
 
-    const langBtn = document.getElementById('lang-btn');
-    if (langBtn) {
-      langBtn.addEventListener('click', () => this.handleLanguageToggle());
-    }
-
-    const themeBtn = document.getElementById('theme-btn');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => this.handleThemeToggle());
-    }
-
     const authBtn = document.getElementById('auth-btn');
     if (authBtn) {
       authBtn.addEventListener('click', () => this.openAuthModal());
@@ -793,7 +783,6 @@ export class MenuPlannerApp {
     const forceGuestMode = localStorage.getItem('menuPlanner_forceGuest') === '1';
     const guestMode = !isAuthConfigured() || forceGuestMode;
     const authBtn = document.getElementById('auth-btn');
-    const userLabel = document.getElementById('auth-user-label');
     const loggedOut = document.getElementById('auth-logged-out');
     const loggedIn = document.getElementById('auth-logged-in');
     const userEmail = document.getElementById('auth-user-email');
@@ -803,8 +792,10 @@ export class MenuPlannerApp {
     if (authBtn) {
       authBtn.textContent = user ? t('authManage') : t('authLogin');
     }
+    const userLabel = document.getElementById('auth-user-label');
     if (userLabel) {
-      userLabel.textContent = user?.email || (isAuthConfigured() ? '' : t('authNotConfiguredShort'));
+      userLabel.textContent = '';
+      userLabel.hidden = true;
     }
 
     if (loggedOut) {
@@ -1016,12 +1007,6 @@ export class MenuPlannerApp {
       text: theme === 'dark' ? 'Light' : 'Dark',
       title: theme === 'dark' ? t('themeToLight') : t('themeToDark'),
     };
-
-    const themeBtn = document.getElementById('theme-btn');
-    if (themeBtn) {
-      themeBtn.textContent = labels.text;
-      themeBtn.title = labels.title;
-    }
 
     const accountThemeBtn = document.getElementById('account-theme-btn');
     if (accountThemeBtn) {
@@ -2615,12 +2600,6 @@ export class MenuPlannerApp {
       const key = el.getAttribute('data-placeholder');
       el.setAttribute('placeholder', t(key));
     });
-
-    const langBtn = document.getElementById('lang-btn');
-    if (langBtn) {
-      langBtn.textContent = t('langBtn');
-      langBtn.title = t('langTitle');
-    }
 
     const accountLangBtn = document.getElementById('account-lang-btn');
     if (accountLangBtn) {
