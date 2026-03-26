@@ -3,10 +3,7 @@ import { getPricesForStore } from './price-scraper.js';
 
 const DEFAULT_COORDS = { lat: 42.6977, lon: 23.3219 }; // Sofia fallback (will be overridden by geolocation)
 const OVERPASS_API = 'https://overpass-api.de/api/interpreter';
-const CACHE_TTL_MS = 10 * 60 * 1000;
 const FX_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const storesCache = new Map();
-const offersCache = new Map();
 let fxCache = null;
 
 // Generic fallback offers - realistic European supermarket prices
@@ -287,12 +284,6 @@ async function getUserCoords() {
 
 async function fetchNearbyChains(coords, options = {}) {
   const { useFallbackOnly = false } = options;
-  const cacheKey = `${Number(coords.lat).toFixed(3)}:${Number(coords.lon).toFixed(3)}:${useFallbackOnly ? 1 : 0}`;
-  const cacheHit = storesCache.get(cacheKey);
-  if (cacheHit && Date.now() - cacheHit.ts < CACHE_TTL_MS) {
-    console.log('🏪 [Supermarkets] Using cached stores:', cacheHit.value.length, 'stores');
-    return cacheHit.value;
-  }
 
   console.log('🏪 [Supermarkets] Fetching nearby stores. Coords:', coords);
   
@@ -347,7 +338,6 @@ async function fetchNearbyChains(coords, options = {}) {
     }];
     
     console.log('🏪 [Supermarkets] Final result:', finalResult.length, 'stores');
-    storesCache.set(cacheKey, { ts: Date.now(), value: finalResult });
     return finalResult;
   } catch (err) {
     console.error('🏪 [Supermarkets] Overpass API error:', err);
@@ -360,7 +350,6 @@ async function fetchNearbyChains(coords, options = {}) {
       address: '',
       isFallback: true,
     }];
-    storesCache.set(cacheKey, { ts: Date.now(), value: fallback });
     return fallback;
   }
 }
@@ -391,17 +380,6 @@ async function getFxRates() {
 async function getChainOffers(storeId, chainLabel, ingredientNames, options = {}) {
   const { useFallbackOnly = false } = options;
 
-  const signature = ingredientNames
-    .map((name) => canonicalToken(name))
-    .filter(Boolean)
-    .sort()
-    .join('|');
-  const cacheKey = `${storeId}:${chainLabel}:${useFallbackOnly ? 'fallback' : 'live'}:${signature}`;
-  const cacheHit = offersCache.get(cacheKey);
-  if (cacheHit && Date.now() - cacheHit.ts < CACHE_TTL_MS) {
-    return cacheHit.value;
-  }
-
   // Try to get real prices from scraper database
   let offers = getPricesForStore(storeId, chainLabel, ingredientNames);
 
@@ -410,8 +388,6 @@ async function getChainOffers(storeId, chainLabel, ingredientNames, options = {}
     console.log(`🛒 [Supermarkets] No scraped prices found for ${chainLabel}, using fallback`);
     offers = FALLBACK_OFFERS['generic'] || [];
   }
-
-  offersCache.set(cacheKey, { ts: Date.now(), value: offers });
   return offers;
 }
 
