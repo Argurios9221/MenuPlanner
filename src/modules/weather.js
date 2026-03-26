@@ -75,3 +75,73 @@ export async function getWeatherHint() {
     };
   }
 }
+
+/**
+ * Get meal category recommendations based on weather
+ * Returns: 'hot', 'light', 'comfort'
+ */
+export function getWeatherMealCategory(hint) {
+  if (!hint) return 'balanced';
+
+  // Rainy → comfort meals
+  if (hint.isRainy) {
+    return 'comfort';
+  }
+
+  // Cold → hot meals
+  if (hint.isCold) {
+    return 'hot';
+  }
+
+  // Hot → light meals
+  if (hint.isHot) {
+    return 'light';
+  }
+
+  return 'balanced';
+}
+
+/**
+ * Get meal keyword filters based on weather category
+ */
+export function getWeatherMealKeywords(category) {
+  const keywords = {
+    light: ['salad', 'vegetable', 'fresh', 'cold', 'smoothie', 'gazpacho'],
+    hot: ['soup', 'stew', 'roasted', 'baked', 'warm', 'curry', 'chili', 'broiled'],
+    comfort: ['pasta', 'rice', 'potato', 'comfort', 'creamy', 'cheese', 'pie', 'risotto'],
+    balanced: [],
+  };
+  return keywords[category] || [];
+}
+
+/**
+ * Get weather description for UI
+ */
+export function getWeatherDescription(hint) {
+  if (!hint) return '🌤️ No data';
+
+  const { temperature, precipitation, isCold, isHot, isRainy } = hint;
+
+  if (isRainy) {
+    return `🌧️ Rainy, ${Math.round(temperature)}°C`;
+  } else if (isHot) {
+    return `☀️ Hot, ${Math.round(temperature)}°C`;
+  } else if (isCold) {
+    return `❄️ Cold, ${Math.round(temperature)}°C`;
+  } else {
+    return `🌤️ Mild, ${Math.round(temperature)}°C`;
+  }
+}
+
+/**
+ * Get meal suggestion text
+ */
+export function getWeatherMealSuggestion(category) {
+  const suggestions = {
+    light: '💡 Light & fresh meals recommended today',
+    hot: '🔥 Warm & hearty meals recommended today',
+    comfort: '🍲 Comfort meals recommended today',
+    balanced: '⚖️ Perfect weather for any meal!',
+  };
+  return suggestions[category] || suggestions.balanced;
+}

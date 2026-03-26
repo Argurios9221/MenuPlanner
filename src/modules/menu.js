@@ -2,7 +2,7 @@
 import { extractIngredients, fetchMealDetails, fetchMealsByCategory, getRandomMeal } from './api.js';
 import { saveCurrentMenu } from './storage.js';
 import { estimateCalories, estimatePrepTime } from './metadata.js';
-import { getWeatherHint } from './weather.js';
+import { getWeatherHint, getWeatherMealCategory, getWeatherMealKeywords } from './weather.js';
 
 const DAYS_OF_WEEK = 7;
 const MEALS_PER_DAY = 3; // breakfast, lunch, dinner
@@ -370,6 +370,32 @@ function matchesDietPreference(meal, dietPreference) {
   }
 }
 
+function matchesWeatherPreference(meal, weatherCategory) {
+  if (!weatherCategory || weatherCategory === 'balanced') {
+    return true; // No filtering for balanced weather
+  }
+
+  const mealName = (meal.strMeal || '').toLowerCase();
+  const mealCategory = (meal.strCategory || '').toLowerCase();
+  const ingredients = (meal.ingredients || []).map((i) => i.name.toLowerCase()).join(' ');
+  const haystack = `${mealName} ${mealCategory} ${ingredients}`;
+
+  // Define meal patterns for each weather
+  const patterns = {
+    light: /salad|fresh|light|vegetable|fruit|gazpacho|smoothie|raw|cold|ceviche|light|brunch/,
+    hot: /soup|stew|roasted|baked|warm|curry|chili|broiled|hot pot|braise|stew|goulash|cassoulet/,
+    comfort: /pasta|rice|risotto|potato|creamy|cheese|pot pie|mac and cheese|casserole|baked|gratin/,
+  };
+
+  const pattern = patterns[weatherCategory];
+  if (!pattern) {
+    return true;
+  }
+
+  // Light penalty if meal doesn't match perfectly, but still allow it
+  return pattern.test(haystack);
+}
+
 function getAllowedAreasForCuisine(cuisine) {
   const normalized = normalizeText(cuisine);
 
@@ -671,6 +697,11 @@ async function getMealForSlot(
         const details = await fetchMealDetails(candidate.idMeal);
         details.ingredients = extractIngredients(details);
 
+        // Get weather recommendation for this meal
+        const weatherCategory = _generationContext?.weatherHint
+          ? getWeatherMealCategory(_generationContext.weatherHint)
+          : 'balanced';
+
         if (
           hasRequiredIngredients(details) &&
           !usedMealIds.has(details.idMeal) &&
@@ -681,6 +712,7 @@ async function getMealForSlot(
           matchesCuisinePreference(details, cuisinePreference, allowedAreas) &&
           matchesPrepTime(details, prepTimePreference) &&
           matchesDietaryExclusions(details) &&
+          matchesWeatherPreference(details, weatherCategory) &&
           isEasyToShopMeal(details)
         ) {
           return details;
