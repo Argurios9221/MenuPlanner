@@ -22,14 +22,52 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
 };
 
+function normalizeConfigValue(value) {
+  return String(value || '').trim();
+}
+
+function sanitizeAuthDomain(value) {
+  return normalizeConfigValue(value)
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/.*$/, '');
+}
+
+function isPlaceholder(value) {
+  const normalized = normalizeConfigValue(value).toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+  return /^(your_|example|changeme|replace_|todo|test_)/.test(normalized) || normalized.includes('your_project');
+}
+
+function isLikelyValidAuthDomain(value) {
+  const domain = sanitizeAuthDomain(value);
+  if (!domain || domain.includes(' ')) {
+    return false;
+  }
+  if (isPlaceholder(domain)) {
+    return false;
+  }
+  return !domain.includes('/');
+}
+
 let _auth = null;
 
 function hasFirebaseConfig() {
+  const apiKey = normalizeConfigValue(firebaseConfig.apiKey);
+  const authDomain = sanitizeAuthDomain(firebaseConfig.authDomain);
+  const projectId = normalizeConfigValue(firebaseConfig.projectId);
+  const appId = normalizeConfigValue(firebaseConfig.appId);
+
   return Boolean(
-    firebaseConfig.apiKey &&
-    firebaseConfig.authDomain &&
-    firebaseConfig.projectId &&
-    firebaseConfig.appId,
+    apiKey &&
+    authDomain &&
+    projectId &&
+    appId &&
+    !isPlaceholder(apiKey) &&
+    !isPlaceholder(projectId) &&
+    !isPlaceholder(appId) &&
+    isLikelyValidAuthDomain(authDomain),
   );
 }
 
@@ -43,6 +81,7 @@ export function initAuth(onChange) {
   }
 
   if (!_auth) {
+    firebaseConfig.authDomain = sanitizeAuthDomain(firebaseConfig.authDomain);
     const app = initializeApp(firebaseConfig);
     _auth = getAuth(app);
   }

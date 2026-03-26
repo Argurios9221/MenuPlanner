@@ -683,6 +683,11 @@ export class MenuPlannerApp {
         'auth/popup-blocked': t('authPopupBlocked'),
         'auth/cancelled-popup-request': t('authPopupClosed'),
         'auth/operation-not-supported-in-this-environment': t('authRedirecting'),
+        'auth/configuration-not-found': t('authNotConfigured'),
+        'auth/invalid-api-key': t('authNotConfigured'),
+        'auth/app-not-authorized': t('authNotConfigured'),
+        'auth/unauthorized-domain': t('authNotConfigured'),
+        'auth/operation-not-allowed': t('authNotConfigured'),
         'auth/network-request-failed': t('authNetworkError'),
         'auth/invalid-credential': t('authInvalidCredential'),
         'auth/email-already-in-use': t('authEmailInUse'),
@@ -691,7 +696,9 @@ export class MenuPlannerApp {
         'auth/too-many-requests': t('authTooManyRequests'),
         'auth/requires-recent-login': t('authReloginRequired'),
       };
-      showToast(known[code] || t('authUnexpectedError'));
+      const message = String(error?.message || '').toLowerCase();
+      const looksLikeConfig404 = message.includes('404') && (message.includes('identitytoolkit') || message.includes('/__/auth/'));
+      showToast(looksLikeConfig404 ? t('authNotConfigured') : (known[code] || t('authUnexpectedError')));
     }
   }
 
