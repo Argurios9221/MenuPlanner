@@ -478,6 +478,11 @@ export class MenuPlannerApp {
 
     document.body.classList.toggle('authenticated', Boolean(user));
 
+    // Close auth modal when user logs in
+    if (user) {
+      this.closeAuthModal();
+    }
+
     if (authBtn) {
       authBtn.textContent = user ? t('authManage') : t('authLogin');
     }

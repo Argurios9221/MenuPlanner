@@ -54,6 +54,14 @@ body:not(.authenticated) #app {
   display: none;
 }
 
+body:not(.authenticated) #auth-gate {
+  display: flex !important;
+}
+
+body:not(.authenticated) #auth-modal {
+  display: none !important;
+}
+
 body.authenticated #auth-gate {
   display: none;
 }
