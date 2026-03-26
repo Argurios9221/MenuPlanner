@@ -79,6 +79,22 @@ const FALLBACK_OFFERS = {
   ],
 };
 
+const CHAIN_FALLBACK_MULTIPLIERS = {
+  lidl: 0.98,
+  kaufland: 0.97,
+  billa: 1.05,
+  metro: 1.01,
+  fantastico: 1.04,
+  't-market': 0.99,
+  cba: 1.03,
+  '345': 1.0,
+  fresco: 1.02,
+  dar: 1.01,
+  ebag: 1.06,
+  supermag: 1.05,
+  'glovo-market': 1.08,
+};
+
 const SMART_BUDGET_SWAPS = [
   { from: 'beef', to: 'pork', fromLabel: 'beef', toLabel: 'pork' },
   { from: 'lamb', to: 'chicken', fromLabel: 'lamb', toLabel: 'chicken' },
@@ -89,6 +105,40 @@ function normalizeText(value) {
   return String(value || '')
     .toLowerCase()
     .trim();
+}
+
+function hashString(value) {
+  let hash = 0;
+  const text = String(value || '');
+  for (let i = 0; i < text.length; i += 1) {
+    hash = (hash << 5) - hash + text.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function getChainFallbackOffers(chainId, chainLabel) {
+  const chainKey = normalizeText(chainId || chainLabel).replace(/\s+/g, '-');
+  const multiplier = CHAIN_FALLBACK_MULTIPLIERS[chainKey] || 1;
+
+  return (FALLBACK_OFFERS.generic || []).map((offer) => {
+    const seed = hashString(`${chainKey}:${offer.keyword}`);
+    const promoApplied = seed % 7 === 0;
+    const promoPercent = promoApplied ? 8 + (seed % 13) : 0;
+    const basePrice = Number(offer.price || 0);
+    const chainAdjusted = basePrice * multiplier;
+    const finalPrice = promoPercent > 0
+      ? chainAdjusted * (1 - promoPercent / 100)
+      : chainAdjusted;
+
+    return {
+      ...offer,
+      title: `${offer.title} (${chainLabel})`,
+      price: Number(finalPrice.toFixed(2)),
+      discountPercent: promoPercent,
+      sourceType: 'fallback_estimate',
+    };
+  });
 }
 
 const PANTRY_SKIP_PATTERN =
@@ -533,9 +583,10 @@ async function getFxRates() {
 
 async function getChainOffers(storeId, chainLabel, ingredientNames, options = {}) {
   const { useFallbackOnly = false } = options;
+  const chainId = String(storeId || '').replace(/^online_/, '');
 
   if (useFallbackOnly) {
-    return FALLBACK_OFFERS.generic || [];
+    return getChainFallbackOffers(chainId, chainLabel);
   }
 
   // Try to get real prices from scraper database
@@ -543,7 +594,7 @@ async function getChainOffers(storeId, chainLabel, ingredientNames, options = {}
 
   // If no offers found for this store, use generic fallback
   if (!offers || offers.length === 0) {
-    offers = FALLBACK_OFFERS['generic'] || [];
+    offers = getChainFallbackOffers(chainId, chainLabel);
   }
   return offers.map((offer) => addOfferConfidence(offer, chainLabel));
 }
