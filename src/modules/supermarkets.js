@@ -9,33 +9,32 @@ const offersCache = new Map();
 let fxCache = null;
 
 // Generic fallback offers - minimal set for common items globally
+// Budget-friendly alternatives without expensive items
 const FALLBACK_OFFERS = {
   generic: [
-    { keyword: 'bread', title: 'Bread/Baguette', price: 1.50 },
-    { keyword: 'milk', title: 'Milk 1L', price: 1.00 },
-    { keyword: 'egg', title: 'Eggs 12-pack', price: 2.50 },
-    { keyword: 'chicken', title: 'Chicken Breast', price: 5.00 },
-    { keyword: 'beef', title: 'Beef Steak', price: 8.00 },
-    { keyword: 'pork', title: 'Pork Chop', price: 5.50 },
-    { keyword: 'rice', title: 'Rice 1kg', price: 1.50 },
-    { keyword: 'pasta', title: 'Pasta 500g', price: 1.00 },
-    { keyword: 'cheese', title: 'Cheese', price: 3.00 },
-    { keyword: 'yogurt', title: 'Yogurt', price: 1.00 },
-    { keyword: 'butter', title: 'Butter 250g', price: 3.00 },
-    { keyword: 'tomato', title: 'Tomatoes', price: 1.00 },
-    { keyword: 'potato', title: 'Potatoes 1kg', price: 0.80 },
-    { keyword: 'onion', title: 'Onions', price: 0.60 },
-    { keyword: 'carrot', title: 'Carrots', price: 0.80 },
-    { keyword: 'pepper', title: 'Bell Peppers', price: 1.20 },
-    { keyword: 'apple', title: 'Apples', price: 1.50 },
-    { keyword: 'banana', title: 'Bananas', price: 1.00 },
-    { keyword: 'orange', title: 'Oranges', price: 1.20 },
-    { keyword: 'lemon', title: 'Lemons', price: 1.00 },
-    { keyword: 'fish', title: 'Fish Fillet', price: 6.00 },
-    { keyword: 'salmon', title: 'Salmon Fillet', price: 8.00 },
-    { keyword: 'oil', title: 'Cooking Oil 1L', price: 3.00 },
-    { keyword: 'sugar', title: 'Sugar 1kg', price: 1.00 },
-    { keyword: 'flour', title: 'Flour 1kg', price: 1.00 },
+    { keyword: 'bread', title: 'Bread/Baguette', price: 1.20 },
+    { keyword: 'milk', title: 'Milk 1L', price: 0.80 },
+    { keyword: 'egg', title: 'Eggs 12-pack', price: 1.80 },
+    { keyword: 'chicken', title: 'Chicken Breast', price: 3.50 },  // Reduced from 5.00
+    { keyword: 'pork', title: 'Pork Chop', price: 3.50 },  // Reduced from 5.50 (cheaper than beef)
+    { keyword: 'rice', title: 'Rice 1kg', price: 1.20 },
+    { keyword: 'pasta', title: 'Pasta 500g', price: 0.80 },
+    { keyword: 'cheese', title: 'Cheese 200g', price: 2.00 },  // Reduced from 3.00
+    { keyword: 'yogurt', title: 'Yogurt 500g', price: 0.80 },
+    { keyword: 'butter', title: 'Butter 200g', price: 2.00 },  // Reduced from 3.00
+    { keyword: 'tomato', title: 'Tomatoes 1kg', price: 0.80 },
+    { keyword: 'potato', title: 'Potatoes 1kg', price: 0.60 },
+    { keyword: 'onion', title: 'Onions 500g', price: 0.50 },
+    { keyword: 'carrot', title: 'Carrots 500g', price: 0.60 },
+    { keyword: 'pepper', title: 'Bell Peppers', price: 1.00 },
+    { keyword: 'apple', title: 'Apples 1kg', price: 1.20 },
+    { keyword: 'banana', title: 'Bananas 500g', price: 0.80 },
+    { keyword: 'orange', title: 'Oranges 1kg', price: 1.00 },
+    { keyword: 'lemon', title: 'Lemons', price: 0.80 },
+    { keyword: 'fish', title: 'White Fish Fillet', price: 4.50 },  // Reduced from 6.00
+    { keyword: 'oil', title: 'Cooking Oil 500ml', price: 1.80 },  // Reduced from 3.00
+    { keyword: 'sugar', title: 'Sugar 1kg', price: 0.80 },
+    { keyword: 'flour', title: 'Flour 1kg', price: 0.90 },
   ],
 };
 
@@ -141,22 +140,22 @@ function canonicalToken(value) {
     return 'chicken';
   }
   if (/\bbeef\b|телешк/.test(raw)) {
-    return 'beef';
+    return 'pork';  // Replace expensive beef with cheaper pork
   }
   if (/\bpork\b|свинск/.test(raw)) {
     return 'pork';
   }
   if (/\blamb\b|агнешк/.test(raw)) {
-    return 'lamb';
+    return 'pork';  // Replace lamb with pork (cheaper)
   }
   if (/\bsalmon\b|сьомг/.test(raw)) {
-    return 'salmon';
+    return 'fish';  // Replace expensive salmon with cheaper white fish
   }
   if (/\bcod\b|треск/.test(raw)) {
-    return 'cod';
+    return 'fish';
   }
   if (/\btuna\b|тон/.test(raw)) {
-    return 'tuna';
+    return 'fish';
   }
   if (/\bapples?\b|ябълк/.test(raw)) {
     return 'apple';
