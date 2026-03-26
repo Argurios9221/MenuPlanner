@@ -3,6 +3,16 @@ import { initLang, setLang, getLang, t } from './i18n.js';
 import { generateMenu, swapMealInMenu } from './menu.js';
 import { buildBasket, getBasketStats } from './basket.js';
 import { buildSupermarketRecommendations } from './supermarkets.js';
+import {
+  initBarcodeScanner,
+  stopBarcodeScanner,
+  onBarcodeDetected,
+  checkAllergens,
+  checkDietaryRestrictions,
+  isProductInMenu,
+  getProductAlternatives,
+  logScannedProduct,
+} from './barcode.js';
 import { loadRecipe, getTranslatedRecipe, toggleRecipeFavorite } from './recipe.js';
 import { translateText } from './translation.js';
 import { getAllFavorites, removeFavoriteRecipe } from './favorites.js';
@@ -133,6 +143,7 @@ export class MenuPlannerApp {
       authUser: null,
     };
     this.authUnsubscribe = null;
+    this.barcodeListenersBound = false;
   }
 
   async init() {
@@ -735,6 +746,9 @@ export class MenuPlannerApp {
         }
         if (tabName === 'markets') {
           this.renderMarkets();
+        }
+        if (tabName === 'barcode') {
+          this.renderBarcodeScanner();
         }
         if (tabName === 'favorites') {
           this.renderFavorites();
@@ -1578,20 +1592,24 @@ export class MenuPlannerApp {
 
   renderMarketResults(results, report, activeFilter = 'all') {
     console.log('🏪 [UI] renderMarketResults called. Report has', report.stores?.length || 0, 'stores. Filter:', activeFilter);
-    
+
     const normalizedFilter = activeFilter || 'all';
     let storesForRender = report.stores || [];
 
     if (normalizedFilter !== 'all') {
       storesForRender = storesForRender.filter((store) => store.chainLabel === normalizedFilter);
     }
-    
+
     console.log('🏪 [UI] After filter:', storesForRender.length, 'stores to render');
-    
+
     // Sort: recommended store first, then by offer coverage % desc, then by distance
     storesForRender = storesForRender.sort((a, b) => {
-      if (a.id === report.recommendedStoreId) return -1;
-      if (b.id === report.recommendedStoreId) return 1;
+      if (a.id === report.recommendedStoreId) {
+        return -1;
+      }
+      if (b.id === report.recommendedStoreId) {
+        return 1;
+      }
       if (b.coverage.percent !== a.coverage.percent) {
         return b.coverage.percent - a.coverage.percent;
       }
@@ -1756,6 +1774,149 @@ export class MenuPlannerApp {
       console.error('PDF export error:', error);
       showToast(t('failedExportPDF'));
     }
+  }
+
+  renderBarcodeScanner() {
+    const container = document.getElementById('barcode-container');
+    if (!container) {
+      return;
+    }
+
+    // Ensure hero section exists
+    const heroSection = container.querySelector('.barcode-hero');
+    if (!heroSection) {
+      const page = document.createElement('div');
+      page.innerHTML = `
+        <div class="barcode-hero">
+          <h2>🔍 ${t('barcodeTitle') || 'Barcode Scanner'}</h2>
+          <p class="barcode-hint">${t('barcodeHint') || 'Scan products to check allergens and menu compliance'}</p>
+          <button class="btn btn-primary start-scanner-btn" id="start-scanner-btn">📷 ${t('barcodeStartCamera') || 'Start Camera'}</button>
+        </div>
+        <div id="scanner-preview" class="scanner-preview" style="display: none;">
+          <video id="barcode-video" class="barcode-video"></video>
+          <button class="btn btn-secondary stop-scanner-btn" id="stop-scanner-btn">${t('barcodeStop') || 'Stop'}</button>
+        </div>
+        <div id="scan-results" class="scan-results"></div>
+      `;
+      container.innerHTML = '';
+      container.appendChild(page);
+    }
+
+    this.attachBarcodeScannerListeners();
+  }
+
+  attachBarcodeScannerListeners() {
+    const startBtn = document.getElementById('start-scanner-btn');
+    const stopBtn = document.getElementById('stop-scanner-btn');
+    const videoElement = document.getElementById('barcode-video');
+    const previewContainer = document.getElementById('scanner-preview');
+    const resultsContainer = document.getElementById('scan-results');
+
+    if (!startBtn || !stopBtn || !videoElement) {
+      return;
+    }
+
+    if (this.barcodeListenersBound) {
+      return;
+    }
+
+    this.barcodeListenersBound = true;
+
+    startBtn.addEventListener('click', async () => {
+      try {
+        previewContainer.style.display = 'flex';
+        resultsContainer.innerHTML = `<p>${t('barcodeScanning') || 'Initializing camera...'}</p>`;
+        const started = await initBarcodeScanner(videoElement);
+        if (!started) {
+          throw new Error('Scanner initialization failed');
+        }
+        startBtn.style.display = 'none';
+
+        // Register callback for when barcode is detected
+        onBarcodeDetected((product, detectedCode) => {
+          this.handleBarcodeDetected(product, detectedCode, resultsContainer);
+        });
+      } catch (error) {
+        console.error('Barcode scanner error:', error);
+        showToast(t('barcodeCameraError') || 'Failed to access camera');
+        previewContainer.style.display = 'none';
+        startBtn.style.display = 'block';
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      stopBarcodeScanner();
+      previewContainer.style.display = 'none';
+      startBtn.style.display = 'block';
+      resultsContainer.innerHTML = '';
+    });
+  }
+
+  handleBarcodeDetected(product, detectedCode, resultsContainer) {
+    console.log('🔍 Barcode detected:', product, detectedCode);
+
+    if (!product || !product.code) {
+      return;
+    }
+
+    logScannedProduct(product, detectedCode);
+
+    // Check if product is in current menu/basket
+    const inMenuResult = this.currentBasket ? isProductInMenu(product, this.currentBasket) : { found: false, matches: [] };
+
+    // Check allergens against user preferences
+    const userAllergies = this.state.preferences.allergies || [];
+    const allergenCheck = checkAllergens(product, userAllergies);
+
+    // Get dietary restrictions
+    const dietary = this.state.preferences.dietary || [];
+    const dietaryCheck = checkDietaryRestrictions(product, dietary);
+
+    // Get alternatives
+    const alternatives = this.currentBasket ? getProductAlternatives(product, this.currentBasket) : [];
+
+    // Build result card
+    const resultHtml = `
+      <div class="scan-result-card">
+        <div class="result-header">
+          <h3>${product.name || product.code}</h3>
+          <p class="result-barcode">${t('barcodeCode') || 'Code'}: ${product.code}</p>
+        </div>
+
+        <div class="result-section">
+          <h4>${t('allergenStatus') || 'Allergen Status'}</h4>
+          <div class="allergen-status ${allergenCheck.safe ? 'safe' : 'warning'}">
+            ${allergenCheck.safe ? '✅' : '⚠️'} ${allergenCheck.message || (allergenCheck.safe ? t('allergenSafe') : t('allergenWarning'))}
+            ${allergenCheck.conflicts?.length ? `<p class="allergen-conflicts">${t('allergenConflicts') || 'Contains'}: ${allergenCheck.conflicts.join(', ')}</p>` : ''}
+          </div>
+        </div>
+
+        <div class="result-section">
+          <h4>${t('menuStatus') || 'Menu Status'}</h4>
+          <div class="menu-status ${inMenuResult.found ? 'in-menu' : 'not-in-menu'}">
+            ${inMenuResult.found ? '✅' : '❌'} ${inMenuResult.found ? t('inMenu') : t('notInMenu') || 'Not in your menu'}
+          </div>
+        </div>
+
+        ${alternatives.length > 0 ? `
+        <div class="result-section">
+          <h4>${t('alternatives') || 'Better Alternatives'}</h4>
+          <ul class="alternatives-list">
+            ${alternatives.map((alt) => `<li>${alt.name || alt}</li>`).join('')}
+          </ul>
+        </div>
+        ` : ''}
+
+        ${dietaryCheck && !dietaryCheck.compliant ? `
+        <div class="result-section dietary-warning">
+          <h4>⚠️ ${t('dietaryWarning') || 'Dietary Restriction'}</h4>
+          <p>${dietaryCheck.message || t('dietaryViolation')}</p>
+        </div>
+        ` : ''}
+      </div>
+    `;
+
+    resultsContainer.innerHTML = resultHtml;
   }
 
   updateUI() {

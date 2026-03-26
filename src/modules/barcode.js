@@ -3,9 +3,6 @@
  * Scans product barcodes and provides allergen/menu validation
  */
 
-import { getBasketIngredients } from './basket.js';
-import { loadRecipe } from './recipe.js';
-
 // UPC/EAN database mapping (basic set)
 // In production, use Spoonacular API or OpenFoodFacts API
 const BARCODE_DATABASE = {
@@ -31,69 +28,79 @@ const BARCODE_DATABASE = {
 
 let isScanning = false;
 let scannerInstance = null;
+let detectHandler = null;
 
 /**
  * Initialize barcode scanner
  * Uses Quagg JS library
  */
 export async function initBarcodeScanner(videoElement) {
+  if (isScanning && scannerInstance) {
+    return true;
+  }
+
   if (!videoElement || !window.Quagga) {
     console.error('🔍 [Barcode] Quagga not loaded or video element missing');
     return false;
   }
 
   try {
-    Quagga.init(
-      {
-        inputStream: {
-          type: 'LiveStream',
-          constraints: {
-            width: { min: 640 },
-            height: { min: 480 },
-            facingMode: 'environment', // Use rear camera
+    const targetContainer = videoElement.parentElement || videoElement;
+    return await new Promise((resolve) => {
+      Quagga.init(
+        {
+          inputStream: {
+            type: 'LiveStream',
+            constraints: {
+              width: { min: 640 },
+              height: { min: 480 },
+              facingMode: 'environment',
+            },
+            target: targetContainer,
           },
-          target: videoElement,
-        },
-        decoder: {
-          readers: [
-            'ean_reader',
-            'ean_8_reader',
-            'code_128_reader',
-            'code_39_reader',
-            'code_39_vin_reader',
-            'codabar_reader',
-            'upc_reader',
-            'upc_e_reader',
-            'i2of5_reader',
-          ],
-          debug: {
-            showCanvas: true,
-            showPatches: false,
-            showFoundPatches: false,
-            showSkeleton: false,
-            showLabels: false,
-            showPatchLabels: false,
-            showRemainingPatchLabels: false,
-            boxFromPatches: {
-              showTransformed: false,
-              showTransformedBox: false,
-              showBB: false,
+          decoder: {
+            readers: [
+              'ean_reader',
+              'ean_8_reader',
+              'code_128_reader',
+              'code_39_reader',
+              'code_39_vin_reader',
+              'codabar_reader',
+              'upc_reader',
+              'upc_e_reader',
+              'i2of5_reader',
+            ],
+            debug: {
+              showCanvas: true,
+              showPatches: false,
+              showFoundPatches: false,
+              showSkeleton: false,
+              showLabels: false,
+              showPatchLabels: false,
+              showRemainingPatchLabels: false,
+              boxFromPatches: {
+                showTransformed: false,
+                showTransformedBox: false,
+                showBB: false,
+              },
             },
           },
         },
-      },
-      (err) => {
-        if (err) {
-          console.error('🔍 [Barcode] Initialization error:', err);
-          return false;
+        (err) => {
+          if (err) {
+            console.error('🔍 [Barcode] Initialization error:', err);
+            resolve(false);
+            return;
+          }
+
+          Quagga.start();
+          isScanning = true;
+          scannerInstance = Quagga;
+          console.log('🔍 [Barcode] Scanner started');
+          resolve(true);
         }
-        Quagga.start();
-        isScanning = true;
-        scannerInstance = Quagga;
-        console.log('🔍 [Barcode] Scanner started');
-        return true;
-      }
-    );
+      );
+    });
   } catch (err) {
     console.error('🔍 [Barcode] Error initializing scanner:', err);
     return false;
@@ -106,8 +113,13 @@ export async function initBarcodeScanner(videoElement) {
 export function stopBarcodeScanner() {
   if (scannerInstance) {
     try {
+      if (detectHandler) {
+        Quagga.offDetected(detectHandler);
+        detectHandler = null;
+      }
       Quagga.stop();
       isScanning = false;
+      scannerInstance = null;
       console.log('🔍 [Barcode] Scanner stopped');
       return true;
     } catch (err) {
@@ -126,14 +138,20 @@ export function onBarcodeDetected(callback) {
     return;
   }
 
-  Quagga.onDetected((result) => {
+  if (detectHandler) {
+    Quagga.offDetected(detectHandler);
+  }
+
+  detectHandler = (result) => {
     const barcode = result.codeResult?.code;
     if (barcode) {
       console.log('🔍 [Barcode] Detected:', barcode);
       const product = resolveBarcode(barcode);
       callback(product, barcode);
     }
-  });
+  };
+
+  Quagga.onDetected(detectHandler);
 }
 
 /**
@@ -143,12 +161,19 @@ export function onBarcodeDetected(callback) {
 function resolveBarcode(barcode) {
   // Check local database first
   if (BARCODE_DATABASE[barcode]) {
-    return { ...BARCODE_DATABASE[barcode], barcode, source: 'local' };
+    return { ...BARCODE_DATABASE[barcode], code: barcode, barcode, source: 'local' };
   }
 
   // In production, query Spoonacular API or OpenFoodFacts API
   console.log(`🔍 [Barcode] ${barcode} not in local database - would query API`);
-  return null;
+  return {
+    name: 'Unknown product',
+    category: 'Unknown',
+    allergens: [],
+    code: barcode,
+    barcode,
+    source: 'unknown',
+  };
 }
 
 /**
@@ -209,22 +234,40 @@ export function checkDietaryRestrictions(product, dietary = []) {
   }
 
   const violations = [];
+  const productName = String(product.name || '').toLowerCase();
+  const productAllergens = Array.isArray(product.allergens) ? product.allergens : [];
 
   for (const requirement of dietary) {
     const normalizedReq = requirement.toLowerCase().trim();
 
-    if (normalizedReq === 'vegetarian' && product.allergens?.includes('meat')) {
-      violations.push('Not vegetarian');
+    if (normalizedReq === 'no_beef' && productName.includes('beef')) {
+      violations.push('Contains beef');
     }
-    if (normalizedReq === 'vegan' && (product.allergens?.includes('dairy') || product.allergens?.includes('eggs'))) {
-      violations.push('Not vegan');
+    if (normalizedReq === 'no_pork' && productName.includes('pork')) {
+      violations.push('Contains pork');
     }
-    if (normalizedReq === 'gluten_free' && product.allergens?.includes('gluten')) {
+    if (normalizedReq === 'no_chicken' && productName.includes('chicken')) {
+      violations.push('Contains chicken');
+    }
+    if (normalizedReq === 'no_seafood' && (productName.includes('fish') || productName.includes('seafood'))) {
+      violations.push('Contains seafood');
+    }
+    if (normalizedReq === 'no_nuts' && productAllergens.includes('nuts')) {
+      violations.push('Contains nuts');
+    }
+    if (normalizedReq === 'lactose_free' && (productAllergens.includes('milk') || productAllergens.includes('dairy'))) {
+      violations.push('Contains lactose');
+    }
+    if (normalizedReq === 'gluten_free' && productAllergens.includes('gluten')) {
       violations.push('Contains gluten');
     }
   }
 
-  return { compliant: violations.length === 0, violations };
+  return {
+    compliant: violations.length === 0,
+    violations,
+    message: violations.join(', '),
+  };
 }
 
 /**

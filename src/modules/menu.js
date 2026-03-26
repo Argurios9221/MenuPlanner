@@ -2,7 +2,7 @@
 import { extractIngredients, fetchMealDetails, fetchMealsByCategory, getRandomMeal } from './api.js';
 import { saveCurrentMenu } from './storage.js';
 import { estimateCalories, estimatePrepTime } from './metadata.js';
-import { getWeatherHint, getWeatherMealCategory, getWeatherMealKeywords } from './weather.js';
+import { getWeatherHint, getWeatherMealCategory } from './weather.js';
 
 const DAYS_OF_WEEK = 7;
 const MEALS_PER_DAY = 3; // breakfast, lunch, dinner
@@ -213,35 +213,6 @@ function getMealPrimaryProtein(meal) {
   }
 
   return '';
-}
-
-function matchesWeatherPreference(meal, slotType) {
-  if (slotType === 'Breakfast') {
-    return true;
-  }
-
-  const weatherHint = _generationContext.weatherHint;
-  if (!weatherHint) {
-    return true;
-  }
-
-  const text = [meal?.strMeal, meal?.strCategory, meal?.strTags]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  const warmKeywords = /soup|stew|roast|curry|bake|risotto|broth|яхни|суп/;
-  const lightKeywords = /salad|grill|grilled|fresh|wrap|sandwich|tabbouleh|салат/;
-
-  if (weatherHint.isCold || weatherHint.isRainy) {
-    return warmKeywords.test(text) || !lightKeywords.test(text);
-  }
-
-  if (weatherHint.isHot) {
-    return lightKeywords.test(text) || !warmKeywords.test(text);
-  }
-
-  return true;
 }
 
 function matchesProteinRotation(meal, slotType, allowProteinRepeat = false) {

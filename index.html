@@ -237,7 +237,9 @@
           <div class="tabs">
             <button class="tab active" data-tab="menu" data-i18n="tabMenu">Weekly Menu</button>
             <button class="tab" data-tab="basket" data-i18n="tabBasket">Shopping Basket</button>
-            <button class="tab" data-tab="markets" data-i18n="tabMarkets">Markets</button>            <button class="tab" data-tab="barcode" data-i18n="tabBarcode">Barcode</button>            <button class="tab" data-tab="favorites" data-i18n="tabFavorites">Favorites</button>
+            <button class="tab" data-tab="markets" data-i18n="tabMarkets">Markets</button>
+            <button class="tab" data-tab="barcode" data-i18n="tabBarcode">Barcode Scanner</button>
+            <button class="tab" data-tab="favorites" data-i18n="tabFavorites">Favorites</button>
           </div>
 
           <!-- Menu Tab -->
@@ -259,13 +261,13 @@
           <section class="pane" data-pane="barcode">
             <div id="barcode-container" class="barcode-container">
               <div class="barcode-hero">
-                <h2>🔍 Barcode Scanner</h2>
-                <p class="barcode-hint">Scan products to check allergens and menu compliance</p>
-                <button class="btn btn-primary start-scanner-btn" id="start-scanner-btn">📷 Start Camera</button>
+                <h2 data-i18n="barcodeTitle">Barcode Scanner</h2>
+                <p class="barcode-hint" data-i18n="barcodeHint">Scan products to check allergens and menu compliance</p>
+                <button class="btn btn-primary start-scanner-btn" id="start-scanner-btn">📷 <span data-i18n="barcodeStartCamera">Start Camera</span></button>
               </div>
               <div id="scanner-preview" class="scanner-preview" style="display: none;">
                 <video id="barcode-video" class="barcode-video"></video>
-                <button class="btn btn-secondary stop-scanner-btn" id="stop-scanner-btn">Stop</button>
+                <button class="btn btn-secondary stop-scanner-btn" id="stop-scanner-btn" data-i18n="barcodeStop">Stop</button>
               </div>
               <div id="scan-results" class="scan-results"></div>
             </div>

@@ -1198,6 +1198,112 @@ body.authenticated #auth-gate {
   color: var(--dark-text);
 }
 
+.barcode-container {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.barcode-hero {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 18%, #ffffff), color-mix(in srgb, var(--secondary-color) 12%, #ffffff));
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+}
+
+.barcode-hero h2 {
+  margin-bottom: 0.35rem;
+  color: var(--primary-color);
+  font-family: 'Sora', sans-serif;
+}
+
+.barcode-hint {
+  color: var(--muted-text);
+  margin-bottom: 0.9rem;
+}
+
+.scanner-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  align-items: flex-start;
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background: var(--card-bg);
+}
+
+.barcode-video,
+.scanner-preview video,
+.scanner-preview canvas {
+  width: 100%;
+  max-width: 560px;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border-color);
+  background: #0f172a;
+}
+
+.scan-results {
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.scan-result-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-md);
+}
+
+.result-header h3 {
+  margin: 0;
+  color: var(--dark-text);
+}
+
+.result-barcode {
+  color: var(--muted-text);
+  font-size: 0.85rem;
+}
+
+.result-section {
+  margin-top: 0.7rem;
+}
+
+.result-section h4 {
+  font-size: 0.92rem;
+  margin-bottom: 0.35rem;
+}
+
+.allergen-status,
+.menu-status {
+  border-radius: var(--border-radius-sm);
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border-color);
+}
+
+.allergen-status.safe,
+.menu-status.in-menu {
+  background: color-mix(in srgb, var(--success-color) 12%, #ffffff);
+  border-color: color-mix(in srgb, var(--success-color) 35%, #ffffff);
+}
+
+.allergen-status.warning,
+.menu-status.not-in-menu,
+.dietary-warning {
+  background: color-mix(in srgb, var(--error-color) 10%, #ffffff);
+  border-color: color-mix(in srgb, var(--error-color) 35%, #ffffff);
+}
+
+.allergen-conflicts {
+  margin-top: 0.25rem;
+  color: var(--dark-text);
+}
+
+.alternatives-list {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
 .offer-price {
   font-weight: 700;
   color: var(--success-color);
