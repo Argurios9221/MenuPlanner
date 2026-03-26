@@ -1781,6 +1781,8 @@ export class MenuPlannerApp {
       })
       .join('');
 
+    const cardsMarkup = cards || `<p class="market-loading">${t('marketNoStores')}</p>`;
+
     const topStore = storesForRender[0] || null;
     const summaryText = topStore && topStore.coverage.percent > 0
       ? `${topStore.chainLabel}: ${t('marketCoverage')(topStore.coverage.matchedCount, topStore.coverage.total, topStore.coverage.percent)}${topStore.coverage.estimatedTotal > 0 ? ` · ${formatTotal(topStore.coverage.estimatedTotal)}` : ''}`
@@ -1803,7 +1805,7 @@ export class MenuPlannerApp {
       ${summaryText ? `<p class="market-summary">${summaryText}</p>` : ''}
       ${budgetIndicator || ''}
       <div class="market-results-layout">
-        <div class="market-cards all-chains">${cards}</div>
+        <div class="market-cards all-chains">${cardsMarkup}</div>
         <aside class="market-chain-sidebar">
           <h4>${t('marketFilterAll')}</h4>
           <div class="market-chain-check-list">${chainChecks}</div>

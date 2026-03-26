@@ -7,6 +7,7 @@ const OVERPASS_APIS = [
   'https://overpass.kumi.systems/api/interpreter',
 ];
 const MAX_PHYSICAL_STORES_FOR_COMPARISON = 12;
+const OVERPASS_REQUEST_TIMEOUT_MS = 8000;
 const ALLOWED_CHAIN_RULES = [
   { id: 'lidl', label: 'Lidl', regex: /(^|\W)lidl(\W|$)|лидл/iu },
   { id: 'kaufland', label: 'Kaufland', regex: /(^|\W)kaufland(\W|$)|кауфланд/iu },
@@ -289,17 +290,13 @@ function parseOverpassElement(el) {
     lon,
     address: [el.tags?.['addr:street'], el.tags?.['addr:housenumber']].filter(Boolean).join(' '),
   };
-  
+
   console.log('🏪 [Parse] Element ID:', el.id, '→', result);
-  
+
   return result;
 }
 
 function dedupeStoreKey(store) {
-  // For fallback stores, keep all of them (not real stores, just placeholders)
-  if (store.isFallback) {
-    return `fallback_${Math.random()}`; // Unique key for each fallback store
-  }
   // For real stores from Overpass, deduplicate based on coordinates + name
   // (Overpass can return same physical store as node/way/relation)
   const roundedLat = Number(store.lat).toFixed(4);
@@ -336,6 +333,10 @@ async function getUserCoords() {
 async function fetchNearbyChains(coords, options = {}) {
   const { useFallbackOnly = false } = options;
 
+  if (useFallbackOnly) {
+    return [];
+  }
+
   console.log('🏪 [Supermarkets] Fetching nearby stores. Coords:', coords);
 
   // Only allowed supermarket/hypermarket/grocery chains.
@@ -346,13 +347,13 @@ async function fetchNearbyChains(coords, options = {}) {
       way["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:7000,${coords.lat},${coords.lon});
       relation["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:7000,${coords.lat},${coords.lon});
     );
-    out center tags 60;
+    out center tags;
   `;
 
   try {
     const parsed = await fetchFromOverpassMirrors(query);
     console.log('🏪 [Supermarkets] Parsed stores from Overpass:', parsed.length, parsed.map(s => ({ id: s.id, name: s.name, chainLabel: s.chainLabel, lat: s.lat, lon: s.lon })));
-    
+
     const candidates = parsed;
 
     const deduped = new Map();
@@ -365,10 +366,10 @@ async function fetchNearbyChains(coords, options = {}) {
 
     const result = Array.from(deduped.values());
     console.log('🏪 [Supermarkets] Deduped stores:', result.length, result.map(s => ({ name: s.name, chainLabel: s.chainLabel, key: dedupeStoreKey(s) })));
-    
+
     // Strict mode: return only allowed real chains.
     const finalResult = result;
-    
+
     console.log('🏪 [Supermarkets] Final result:', finalResult.length, 'stores');
     return finalResult;
   } catch (err) {
@@ -380,11 +381,15 @@ async function fetchNearbyChains(coords, options = {}) {
 async function fetchFromOverpassMirrors(query) {
   for (const endpoint of OVERPASS_APIS) {
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), OVERPASS_REQUEST_TIMEOUT_MS);
       const response = await fetch(endpoint, {
         method: 'POST',
         body: query,
         headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        signal: controller.signal,
       });
+      clearTimeout(timer);
 
       if (!response.ok) {
         console.warn('🏪 [Supermarkets] Overpass mirror failed:', endpoint, response.status);
@@ -392,8 +397,11 @@ async function fetchFromOverpassMirrors(query) {
       }
 
       const data = await response.json();
-      console.log('🏪 [Supermarkets] Overpass mirror raw elements:', endpoint, data.elements?.length || 0);
-      return (data.elements || []).map(parseOverpassElement).filter(Boolean);
+      const parsed = (data.elements || []).map(parseOverpassElement).filter(Boolean);
+      console.log('🏪 [Supermarkets] Overpass mirror raw elements:', endpoint, data.elements?.length || 0, 'parsed allowed:', parsed.length);
+      if (parsed.length > 0) {
+        return parsed;
+      }
     } catch (error) {
       console.warn('🏪 [Supermarkets] Overpass mirror error:', endpoint, error?.message || error);
     }
@@ -427,6 +435,10 @@ async function getFxRates() {
 
 async function getChainOffers(storeId, chainLabel, ingredientNames, options = {}) {
   const { useFallbackOnly = false } = options;
+
+  if (useFallbackOnly) {
+    return FALLBACK_OFFERS.generic || [];
+  }
 
   // Try to get real prices from scraper database
   let offers = getPricesForStore(storeId, chainLabel, ingredientNames);
@@ -582,7 +594,7 @@ export async function buildSupermarketRecommendations(basket) {
     ? { ...DEFAULT_COORDS, isFallback: true }
     : await getUserCoords();
   console.log('🏪 [Supermarkets] User coords:', coords.isFallback ? '(fallback) ' + JSON.stringify(coords) : JSON.stringify(coords));
-  
+
   const shouldUseFallbackOnly = useFallbackOnly || forceFallbackCoords;
   const nearbyStores = await fetchNearbyChains(coords, { useFallbackOnly: shouldUseFallbackOnly });
   const limitedNearbyStores = [...nearbyStores]
@@ -596,11 +608,11 @@ export async function buildSupermarketRecommendations(basket) {
   }));
   const allStores = [...limitedNearbyStores, ...onlineStores];
   console.log('🏪 [Supermarkets] Nearby stores from fetchNearbyChains:', nearbyStores.length, 'limited to:', limitedNearbyStores.length, 'online stores:', onlineStores.length);
-  
+
   const fx = await getFxRates();
 
   // Fetch offers for all nearby stores
-  console.log('🏪 [Supermarkets] Fetching offers for', nearbyStores.length, 'stores...');
+  console.log('🏪 [Supermarkets] Fetching offers for', allStores.length, 'stores...');
   const offerEntries = await Promise.all(
     allStores.map(async (store) => {
       const offers = await getChainOffers(store.id, store.chainLabel, ingredientNames, {
@@ -614,8 +626,10 @@ export async function buildSupermarketRecommendations(basket) {
   const enriched = allStores.map((store) => {
     const offers = offersByStore[store.id] || [];
     const coverage = getCoverage(offers, ingredientItems);
-    const distanceKm = store.isFallback ? null : haversineKm(coords, { lat: store.lat, lon: store.lon });
-    const score = coverage.percent * 1.2 + coverage.matchedCount * 2 - (distanceKm ?? 5) * 1.5;
+    const distanceKm = store.isOnline ? null : haversineKm(coords, { lat: store.lat, lon: store.lon });
+    const distancePenalty = distanceKm !== null ? distanceKm * 1.5 : 4.5;
+    const onlinePenalty = store.isOnline ? 2 : 0;
+    const score = coverage.percent * 1.2 + coverage.matchedCount * 2 - distancePenalty - onlinePenalty;
 
     return {
       ...store,
@@ -630,8 +644,10 @@ export async function buildSupermarketRecommendations(basket) {
   });
 
   const byScore = [...enriched].sort((a, b) => b.score - a.score);
+  const physicalSorted = byScore.filter((store) => !store.isOnline);
   const recommended =
-    byScore.find((store) => store.coverage.percent >= minRecommendedCoverage) ||
+    physicalSorted.find((store) => store.coverage.percent >= minRecommendedCoverage) ||
+    physicalSorted[0] ||
     byScore[0] ||
     null;
   const bestCoveragePercent = byScore[0]?.coverage?.percent || 0;
