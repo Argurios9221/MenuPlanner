@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('Responsive and viewport behavior', () => {
-  test('desktop layout keeps two-column shell and visible header controls', async ({ page }, testInfo) => {
+  test('desktop layout keeps two-column shell and has core header controls', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('desktop'), 'Desktop-only assertion');
 
     const mainContainer = page.locator('.main-container');
@@ -18,9 +18,9 @@ test.describe('Responsive and viewport behavior', () => {
     const columnCount = templateColumns.split(' ').filter(Boolean).length;
 
     expect(columnCount).toBeGreaterThanOrEqual(2);
-    await expect(page.locator('#zoom-in-btn')).toBeVisible();
-    await expect(page.locator('#zoom-out-btn')).toBeVisible();
-    await expect(page.locator('#zoom-reset-btn')).toHaveText('100%');
+    await expect(page.locator('#lang-btn')).toBeVisible();
+    await expect(page.locator('#theme-btn')).toBeVisible();
+    await expect(page.locator('#auth-btn')).toBeVisible();
   });
 
   test('mobile header hides on scroll down and returns on scroll up', async ({ page }, testInfo) => {
@@ -36,25 +36,9 @@ test.describe('Responsive and viewport behavior', () => {
     await expect(header).not.toHaveClass(/header-hidden/);
   });
 
-  test('zoom controls update zoom level and persist state', async ({ page }) => {
-    const html = page.locator('html');
-
-    await expect(page.locator('#zoom-reset-btn')).toHaveText('100%');
-
-    await page.click('#zoom-in-btn');
-    await expect(page.locator('#zoom-reset-btn')).toHaveText('105%');
-    await expect(html).toHaveCSS('--ui-zoom', '1.05');
-
-    await page.click('#zoom-out-btn');
-    await expect(page.locator('#zoom-reset-btn')).toHaveText('100%');
-
-    await page.click('#zoom-out-btn');
-    await expect(page.locator('#zoom-reset-btn')).toHaveText('95%');
-
-    const savedZoom = await page.evaluate(() => localStorage.getItem('menuPlanner_uiZoom'));
-    expect(savedZoom).toBe('0.95');
-
-    await page.click('#zoom-reset-btn');
-    await expect(page.locator('#zoom-reset-btn')).toHaveText('100%');
+  test('no zoom controls are shown in header', async ({ page }) => {
+    await expect(page.locator('#zoom-in-btn')).toHaveCount(0);
+    await expect(page.locator('#zoom-out-btn')).toHaveCount(0);
+    await expect(page.locator('#zoom-reset-btn')).toHaveCount(0);
   });
 });
