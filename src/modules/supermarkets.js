@@ -12,8 +12,35 @@ const ALLOWED_CHAIN_RULES = [
   { id: 'billa', label: 'BILLA', regex: /(^|\W)billa(\W|$)|била/iu },
   { id: 'metro', label: 'Metro', regex: /(^|\W)metro(\W|$)|метро/iu },
   { id: 'fantastico', label: 'Fantastico', regex: /(^|\W)fantastico(\W|$)|фантастико/iu },
+  { id: 'cba', label: 'CBA', regex: /(^|\W)cba(\W|$)|(^|\W)сба(\W|$)/iu },
   { id: '345', label: '345', regex: /(^|\W)345(\W|$)/iu },
   { id: 'dar', label: 'Dar', regex: /(^|\W)dar(\W|$)|(^|\W)дар(\W|$)/iu },
+];
+const ONLINE_GROCERY_STORES = [
+  {
+    id: 'online_ebag',
+    chainId: 'ebag',
+    chainLabel: 'eBag',
+    name: 'eBag.bg',
+    isOnline: true,
+    offerUrl: 'https://www.ebag.bg',
+  },
+  {
+    id: 'online_supermag',
+    chainId: 'supermag',
+    chainLabel: 'Supermag',
+    name: 'Supermag',
+    isOnline: true,
+    offerUrl: 'https://shop.supermag.bg',
+  },
+  {
+    id: 'online_glovo_market',
+    chainId: 'glovo-market',
+    chainLabel: 'Glovo Market',
+    name: 'Glovo Market',
+    isOnline: true,
+    offerUrl: 'https://glovoapp.com/bg/bg/sofia/shops_1/',
+  },
 ];
 const FX_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 let fxCache = null;
@@ -314,9 +341,9 @@ async function fetchNearbyChains(coords, options = {}) {
   const query = `
     [out:json][timeout:12];
     (
-      node["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
-      way["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
-      relation["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
+      node["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
+      way["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
+      relation["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
     );
     out center tags;
   `;
@@ -557,14 +584,21 @@ export async function buildSupermarketRecommendations(basket) {
   
   const shouldUseFallbackOnly = useFallbackOnly || forceFallbackCoords;
   const nearbyStores = await fetchNearbyChains(coords, { useFallbackOnly: shouldUseFallbackOnly });
-  console.log('🏪 [Supermarkets] Nearby stores from fetchNearbyChains:', nearbyStores.length);
+  const onlineStores = ONLINE_GROCERY_STORES.map((store) => ({
+    ...store,
+    lat: coords.lat,
+    lon: coords.lon,
+    address: 'Online',
+  }));
+  const allStores = [...nearbyStores, ...onlineStores];
+  console.log('🏪 [Supermarkets] Nearby stores from fetchNearbyChains:', nearbyStores.length, 'online stores:', onlineStores.length);
   
   const fx = await getFxRates();
 
   // Fetch offers for all nearby stores
   console.log('🏪 [Supermarkets] Fetching offers for', nearbyStores.length, 'stores...');
   const offerEntries = await Promise.all(
-    nearbyStores.map(async (store) => {
+    allStores.map(async (store) => {
       const offers = await getChainOffers(store.id, store.chainLabel, ingredientNames, {
         useFallbackOnly: shouldUseFallbackOnly,
       });
@@ -573,7 +607,7 @@ export async function buildSupermarketRecommendations(basket) {
   );
   const offersByStore = Object.fromEntries(offerEntries);
 
-  const enriched = nearbyStores.map((store) => {
+  const enriched = allStores.map((store) => {
     const offers = offersByStore[store.id] || [];
     const coverage = getCoverage(offers, ingredientItems);
     const distanceKm = store.isFallback ? null : haversineKm(coords, { lat: store.lat, lon: store.lon });
@@ -587,7 +621,7 @@ export async function buildSupermarketRecommendations(basket) {
       distanceKm: distanceKm !== null ? Number(distanceKm.toFixed(2)) : null,
       score,
       directionsUrl: makeDirectionsUrl(store, coords),
-      offerUrl: '',
+      offerUrl: store.offerUrl || '',
     };
   });
 
