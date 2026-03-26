@@ -2855,6 +2855,80 @@ details.spoonacular-section[open] .spoonacular-summary::after {
   min-width: 0;
 }
 
+.api-health-section {
+  margin-top: 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--card-bg);
+  padding: 0.7rem 0.75rem;
+}
+
+.api-health-section h3 {
+  margin-bottom: 0.45rem;
+  color: var(--primary-color);
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.api-health-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.api-health-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--light-bg);
+  border: 1px solid color-mix(in srgb, var(--border-color) 75%, transparent);
+  border-radius: var(--border-radius-sm);
+  padding: 0.28rem 0.45rem;
+}
+
+.api-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--dark-text);
+}
+
+.api-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted-text);
+}
+
+.api-dot.api-on {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+}
+
+.api-dot.api-off {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.api-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.api-label.api-on {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.api-label.api-off {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
 .spoon-save-btn {
   white-space: nowrap;
   flex-shrink: 0;

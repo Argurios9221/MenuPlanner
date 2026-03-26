@@ -59,6 +59,7 @@ import {
 } from './ui.js';
 import { exportMenuToPDF, exportBasketToPDF, exportRecipeToPDF, downloadFile, generatePDFFilename } from './pdf.js';
 import { isSpoonacularEnabled } from './spoonacular.js';
+import { getApiConnectionStatuses } from './api-status.js';
 import { getWeatherDescription, getWeatherMealSuggestion } from './weather.js';
 import { estimateCalories } from './metadata.js';
 import {
@@ -1066,6 +1067,31 @@ export class MenuPlannerApp {
     if (!active) {
       showToast(t('spoonacularMissingKey'));
     }
+
+    this.renderApiStatusBanners();
+  }
+
+  async renderApiStatusBanners() {
+    const statuses = await getApiConnectionStatuses();
+    const connectedLabel = t('apiStatusConnected') || 'Connected';
+    const disconnectedLabel = t('apiStatusDisconnected') || 'Disconnected';
+
+    Object.entries(statuses).forEach(([key, isConnected]) => {
+      const dot = document.querySelector(`[data-api-dot="${key}"]`);
+      const label = document.querySelector(`[data-api-label="${key}"]`);
+
+      if (dot) {
+        dot.classList.toggle('api-on', Boolean(isConnected));
+        dot.classList.toggle('api-off', !isConnected);
+        dot.title = isConnected ? connectedLabel : disconnectedLabel;
+      }
+
+      if (label) {
+        label.textContent = isConnected ? connectedLabel : disconnectedLabel;
+        label.classList.toggle('api-on', Boolean(isConnected));
+        label.classList.toggle('api-off', !isConnected);
+      }
+    });
   }
 
   attachTabListeners() {
@@ -2638,6 +2664,7 @@ export class MenuPlannerApp {
     const theme = getTheme();
     this.applyTheme(theme);
     this.syncAuthUI();
+    this.renderApiStatusBanners();
 
     if (this.currentMenu) {
       this.renderMenu();
