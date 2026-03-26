@@ -304,10 +304,27 @@ const COMMON_ASSORTMENT_PATTERN =
   /tomato|potato|onion|garlic|carrot|pepper|cucumber|mushroom|broccoli|zucchini|spinach|apple|banana|orange|lemon|strawberry|grapes|bread|bun|egg|milk|yogurt|cheese|butter|pasta|rice|flour|oil|sugar|bean|chickpea|lentil|chicken|beef|pork|lamb|fish|salmon|tuna|cod|seafood/;
 
 function canonicalToken(value) {
-  const raw = normalizeText(value).replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const raw = normalizeText(value)
+    .replace(/[^a-zа-яё\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!raw) {
     return '';
   }
+
+  if (/\bflour\b|брашн/.test(raw)) {
+    return 'flour';
+  }
+  if (/\brice\b|basmati|jasmine rice|arborio|risotto rice|long grain rice|short grain rice|brown rice|ориз/.test(raw)) {
+    return 'rice';
+  }
+  if (/\bpasta\b|spaghetti|penne|fusilli|macaroni|linguine|tagliatelle|farfalle|rigatoni|макарон|спагет|паста/.test(raw)) {
+    return 'pasta';
+  }
+  if ((/\bmilk\b|мляко/.test(raw)) && !(/\bcoconut milk\b|\balmond milk\b|\bsoy milk\b|\boat milk\b|кокос|бадем|соево|овесено/.test(raw))) {
+    return 'milk';
+  }
+
   return INGREDIENT_ALIASES[raw] || raw;
 }
 
@@ -376,6 +393,15 @@ function parseOverpassElement(el) {
   };
 }
 
+function dedupeStoreKey(store) {
+  // Overpass can return the same physical store as node/way/relation.
+  // Use chain + coarse coordinates + normalized name to collapse duplicates.
+  const roundedLat = Number(store.lat).toFixed(4);
+  const roundedLon = Number(store.lon).toFixed(4);
+  const name = normalizeText(store.name || store.chainLabel || '');
+  return `${store.chainId}:${roundedLat}:${roundedLon}:${name}`;
+}
+
 async function getUserCoords() {
   if (!navigator.geolocation) {
     return { ...DEFAULT_COORDS, isFallback: true };
@@ -442,8 +468,9 @@ async function fetchNearbyChains(coords, options = {}) {
 
     const deduped = new Map();
     for (const store of parsed) {
-      if (!deduped.has(store.id)) {
-        deduped.set(store.id, store);
+      const key = dedupeStoreKey(store);
+      if (!deduped.has(key)) {
+        deduped.set(key, store);
       }
     }
 
@@ -648,15 +675,25 @@ export async function buildSupermarketRecommendations(basket) {
   } = options;
 
   const allBasketIngredients = getBasketIngredients(basket);
-  const seenIngredientNames = new Set();
-  const ingredientItems = [];
+  const ingredientByCanonical = new Map();
   for (const item of allBasketIngredients) {
-    const norm = normalizeText(item.name);
-    if (norm && !seenIngredientNames.has(norm)) {
-      seenIngredientNames.add(norm);
-      ingredientItems.push({ name: item.name, totalGrams: item.totalGrams || 0, count: item.count || 1 });
+    const canonical = canonicalToken(item.name);
+    if (!canonical) {
+      continue;
     }
+    const current = ingredientByCanonical.get(canonical);
+    if (!current) {
+      ingredientByCanonical.set(canonical, {
+        name: canonical === 'flour' ? 'Flour' : item.name,
+        totalGrams: item.totalGrams || 0,
+        count: item.count || 1,
+      });
+      continue;
+    }
+    current.totalGrams += item.totalGrams || 0;
+    current.count += item.count || 1;
   }
+  const ingredientItems = Array.from(ingredientByCanonical.values());
   const ingredientNames = ingredientItems.map((i) => i.name);
 
   const coords = forceFallbackCoords

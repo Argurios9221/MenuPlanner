@@ -160,9 +160,22 @@ export async function buildBasket(menu) {
 function normalizeIngredientKey(name) {
   const normalized = String(name || '')
     .toLowerCase()
-    .replace(/[^a-z\s]/g, ' ')
+    .replace(/[^a-zа-яё\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
+  if (/\bflour\b|брашн/.test(normalized)) {
+    return 'flour';
+  }
+  if (/\brice\b|basmati|jasmine rice|arborio|risotto rice|long grain rice|short grain rice|brown rice|ориз/.test(normalized)) {
+    return 'rice';
+  }
+  if (/\bpasta\b|spaghetti|penne|fusilli|macaroni|linguine|tagliatelle|farfalle|rigatoni|макарон|спагет|паста/.test(normalized)) {
+    return 'pasta';
+  }
+  if ((/\bmilk\b|мляко/.test(normalized)) && !(/\bcoconut milk\b|\balmond milk\b|\bsoy milk\b|\boat milk\b|кокос|бадем|соево|овесено/.test(normalized))) {
+    return 'milk';
+  }
 
   const canonical = INGREDIENT_ALIASES[normalized] || normalized;
   return canonical.replace(/\s+/g, '_');
