@@ -6,6 +6,7 @@ const OVERPASS_APIS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
 ];
+const MAX_PHYSICAL_STORES_FOR_COMPARISON = 12;
 const ALLOWED_CHAIN_RULES = [
   { id: 'lidl', label: 'Lidl', regex: /(^|\W)lidl(\W|$)|лидл/iu },
   { id: 'kaufland', label: 'Kaufland', regex: /(^|\W)kaufland(\W|$)|кауфланд/iu },
@@ -339,13 +340,13 @@ async function fetchNearbyChains(coords, options = {}) {
 
   // Only allowed supermarket/hypermarket/grocery chains.
   const query = `
-    [out:json][timeout:12];
+    [out:json][timeout:8];
     (
-      node["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
-      way["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
-      relation["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
+      node["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:7000,${coords.lat},${coords.lon});
+      way["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:7000,${coords.lat},${coords.lon});
+      relation["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:7000,${coords.lat},${coords.lon});
     );
-    out center tags;
+    out center tags 60;
   `;
 
   try {
@@ -584,14 +585,17 @@ export async function buildSupermarketRecommendations(basket) {
   
   const shouldUseFallbackOnly = useFallbackOnly || forceFallbackCoords;
   const nearbyStores = await fetchNearbyChains(coords, { useFallbackOnly: shouldUseFallbackOnly });
+  const limitedNearbyStores = [...nearbyStores]
+    .sort((a, b) => haversineKm(coords, { lat: a.lat, lon: a.lon }) - haversineKm(coords, { lat: b.lat, lon: b.lon }))
+    .slice(0, MAX_PHYSICAL_STORES_FOR_COMPARISON);
   const onlineStores = ONLINE_GROCERY_STORES.map((store) => ({
     ...store,
     lat: coords.lat,
     lon: coords.lon,
     address: 'Online',
   }));
-  const allStores = [...nearbyStores, ...onlineStores];
-  console.log('🏪 [Supermarkets] Nearby stores from fetchNearbyChains:', nearbyStores.length, 'online stores:', onlineStores.length);
+  const allStores = [...limitedNearbyStores, ...onlineStores];
+  console.log('🏪 [Supermarkets] Nearby stores from fetchNearbyChains:', nearbyStores.length, 'limited to:', limitedNearbyStores.length, 'online stores:', onlineStores.length);
   
   const fx = await getFxRates();
 

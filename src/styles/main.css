@@ -893,6 +893,45 @@ body.authenticated #auth-gate {
   margin-bottom: var(--spacing-md);
 }
 
+.market-results-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: var(--spacing-md);
+  align-items: start;
+}
+
+.market-chain-sidebar {
+  position: sticky;
+  top: 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 0.75rem;
+}
+
+.market-chain-sidebar h4 {
+  margin: 0 0 0.5rem;
+  color: var(--primary-color);
+  font-size: 0.95rem;
+}
+
+.market-chain-check-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.market-chain-check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  color: var(--dark-text);
+}
+
+.market-chain-check-item input {
+  accent-color: var(--primary-color);
+}
+
 .market-filter-btn {
   background: var(--light-bg);
   border: 1px solid var(--border-color);
@@ -2031,6 +2070,14 @@ recipe-modal-content .modal-close {
 @media (max-width: 1200px) {
   .main-container {
     grid-template-columns: 1fr;
+  }
+
+  .market-results-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .market-chain-sidebar {
+    position: static;
   }
 
   .preferences-panel {

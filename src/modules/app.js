@@ -133,6 +133,7 @@ export class MenuPlannerApp {
     this.marketState = {
       report: null,
       filter: 'all',
+      selectedChains: [],
       basketKey: '',
       loading: false,
       error: '',
@@ -603,6 +604,7 @@ export class MenuPlannerApp {
       this.marketState = {
         report: null,
         filter: 'all',
+        selectedChains: [],
         basketKey: this.getBasketStateKey(basket),
         loading: false,
         error: '',
@@ -1430,7 +1432,6 @@ export class MenuPlannerApp {
     page.innerHTML = `
       <div class="markets-hero">
         <h2>&#127970; ${t('marketPanelTitle')}</h2>
-        <p class="markets-hint">${t('marketPanelHint')}</p>
         ${basketSummaryHtml}
         <button class="btn btn-primary find-markets-btn" ${!this.currentBasket || this.marketState.loading ? 'disabled' : ''}>&#128205; ${t('findNearbyMarkets')}</button>
       </div>
@@ -1442,7 +1443,7 @@ export class MenuPlannerApp {
     if (results && this.marketState.loading && this.marketState.basketKey === basketKey) {
       results.innerHTML = this.getMarketsLoadingMarkup();
     } else if (results && this.marketState.report && this.marketState.basketKey === basketKey) {
-      this.renderMarketResults(results, this.marketState.report, this.marketState.filter);
+      this.renderMarketResults(results, this.marketState.report, this.marketState.selectedChains || []);
     } else if (results && this.marketState.error && this.marketState.basketKey === basketKey) {
       results.innerHTML = `<p class="market-loading">${this.marketState.error}</p>`;
     }
@@ -1462,6 +1463,7 @@ export class MenuPlannerApp {
         ...this.marketState,
         report: null,
         filter: 'all',
+        selectedChains: [],
         loading: true,
         error: '',
         basketKey,
@@ -1491,6 +1493,7 @@ export class MenuPlannerApp {
         this.marketState = {
           report,
           filter: 'all',
+          selectedChains: [],
           basketKey,
           loading: false,
           error: '',
@@ -1599,6 +1602,7 @@ export class MenuPlannerApp {
           this.marketState = {
             report: null,
             filter: 'all',
+            selectedChains: [],
             basketKey: '',
             loading: false,
             error: '',
@@ -1636,14 +1640,15 @@ export class MenuPlannerApp {
       .join('|');
   }
 
-  renderMarketResults(results, report, activeFilter = 'all') {
-    console.log('🏪 [UI] renderMarketResults called. Report has', report.stores?.length || 0, 'stores. Filter:', activeFilter);
+  renderMarketResults(results, report, selectedChains = []) {
+    console.log('🏪 [UI] renderMarketResults called. Report has', report.stores?.length || 0, 'stores. Selected chains:', selectedChains);
 
-    const normalizedFilter = activeFilter || 'all';
+    const selected = Array.isArray(selectedChains) ? selectedChains : [];
     let storesForRender = report.stores || [];
 
-    if (normalizedFilter !== 'all') {
-      storesForRender = storesForRender.filter((store) => (store.chainId || store.chainLabel) === normalizedFilter);
+    if (selected.length > 0) {
+      const selectedSet = new Set(selected);
+      storesForRender = storesForRender.filter((store) => selectedSet.has(store.chainId || store.chainLabel));
     }
 
     console.log('🏪 [UI] After filter:', storesForRender.length, 'stores to render');
@@ -1786,27 +1791,33 @@ export class MenuPlannerApp {
         report.stores.map((store) => [store.chainId || store.chainLabel, store.chainLabel || store.name || 'Supermarket']),
       ).entries(),
     );
-    const filterBtns = [
-      `<button class="market-filter-btn ${normalizedFilter === 'all' ? 'active' : ''}" data-filter="all">${t('marketFilterAll')}</button>`,
-      ...chains.map(([chainKey, chainLabel]) => {
-        const activeClass = normalizedFilter === chainKey ? 'active' : '';
-        return `<button class="market-filter-btn ${activeClass}" data-filter="${chainKey}">${chainLabel}</button>`;
-      }),
-    ].join('');
+    const chainChecks = chains
+      .map(([chainKey, chainLabel]) => {
+        const checked = selected.includes(chainKey) ? 'checked' : '';
+        return `<label class="market-chain-check-item"><input type="checkbox" class="market-chain-check" data-chain="${chainKey}" ${checked}/> <span>${chainLabel}</span></label>`;
+      })
+      .join('');
 
     results.innerHTML = `
       ${locationWarning}
       ${summaryText ? `<p class="market-summary">${summaryText}</p>` : ''}
       ${budgetIndicator || ''}
-      <div class="market-filter-bar">${filterBtns}</div>
-      <div class="market-cards ${normalizedFilter === 'all' ? 'all-chains' : ''}">${cards}</div>
+      <div class="market-results-layout">
+        <div class="market-cards all-chains">${cards}</div>
+        <aside class="market-chain-sidebar">
+          <h4>${t('marketFilterAll')}</h4>
+          <div class="market-chain-check-list">${chainChecks}</div>
+        </aside>
+      </div>
     `;
 
-    results.querySelectorAll('.market-filter-btn').forEach((button) => {
-      button.addEventListener('click', () => {
-        const filter = button.dataset.filter || 'all';
-        this.marketState.filter = filter;
-        this.renderMarketResults(results, report, filter);
+    results.querySelectorAll('.market-chain-check').forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        const selectedNow = Array.from(results.querySelectorAll('.market-chain-check:checked'))
+          .map((el) => el.getAttribute('data-chain'))
+          .filter(Boolean);
+        this.marketState.selectedChains = selectedNow;
+        this.renderMarketResults(results, report, selectedNow);
       });
     });
   }
