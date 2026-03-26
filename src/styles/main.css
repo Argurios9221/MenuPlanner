@@ -1556,6 +1556,31 @@ body.authenticated #auth-gate {
   gap: 0.6rem;
 }
 
+.account-settings-row {
+  margin: 0.8rem 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 0.6rem;
+}
+
+.account-favorites-wrapper {
+  margin: 0.9rem 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 0.75rem;
+  background: var(--light-bg);
+}
+
+.account-favorites-wrapper h3 {
+  margin: 0 0 0.6rem;
+  color: var(--primary-color);
+}
+
+#account-favorites-container {
+  max-height: 340px;
+  overflow-y: auto;
+}
+
 .auth-consent-box {
   background: var(--light-bg);
   border: 1px solid var(--border-color);

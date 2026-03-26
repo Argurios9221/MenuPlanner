@@ -307,6 +307,16 @@ export class MenuPlannerApp {
       googleBtn.addEventListener('click', () => this.handleProviderLogin('google'));
     }
 
+    const accountThemeBtn = document.getElementById('account-theme-btn');
+    if (accountThemeBtn) {
+      accountThemeBtn.addEventListener('click', () => this.handleThemeToggle());
+    }
+
+    const accountLangBtn = document.getElementById('account-lang-btn');
+    if (accountLangBtn) {
+      accountLangBtn.addEventListener('click', () => this.handleLanguageToggle());
+    }
+
     const fbBtn = document.getElementById('auth-facebook');
     if (fbBtn) {
       fbBtn.addEventListener('click', () => this.handleProviderLogin('facebook'));
@@ -538,6 +548,12 @@ export class MenuPlannerApp {
         gateStatus.textContent = user ? '' : t('authGateSubtitle');
       }
     }
+
+    if (user) {
+      this.renderFavorites('account-favorites-container');
+    }
+
+    this.applyTheme(getTheme());
   }
 
   async handleGenerateMenu() {
@@ -690,10 +706,21 @@ export class MenuPlannerApp {
 
   applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
+    const labels = {
+      text: theme === 'dark' ? 'Light' : 'Dark',
+      title: theme === 'dark' ? t('themeToLight') : t('themeToDark'),
+    };
+
     const themeBtn = document.getElementById('theme-btn');
     if (themeBtn) {
-      themeBtn.textContent = theme === 'dark' ? 'Light' : 'Dark';
-      themeBtn.title = theme === 'dark' ? t('themeToLight') : t('themeToDark');
+      themeBtn.textContent = labels.text;
+      themeBtn.title = labels.title;
+    }
+
+    const accountThemeBtn = document.getElementById('account-theme-btn');
+    if (accountThemeBtn) {
+      accountThemeBtn.textContent = labels.text;
+      accountThemeBtn.title = labels.title;
     }
   }
 
@@ -1517,8 +1544,8 @@ export class MenuPlannerApp {
     `;
   }
 
-  renderFavorites() {
-    const container = document.getElementById('favorites-container');
+  renderFavorites(containerId = 'favorites-container') {
+    const container = document.getElementById(containerId);
     if (!container) {
       return;
     }
@@ -1594,7 +1621,8 @@ export class MenuPlannerApp {
         if (type === 'menus') {
           removeFavoriteMenu(btn.getAttribute('data-menu-id'));
         }
-        this.renderFavorites();
+        this.renderFavorites('favorites-container');
+        this.renderFavorites('account-favorites-container');
         showToast(t('removedFromFav'));
       });
     });
@@ -2004,6 +2032,12 @@ export class MenuPlannerApp {
     if (langBtn) {
       langBtn.textContent = t('langBtn');
       langBtn.title = t('langTitle');
+    }
+
+    const accountLangBtn = document.getElementById('account-lang-btn');
+    if (accountLangBtn) {
+      accountLangBtn.textContent = t('langBtn');
+      accountLangBtn.title = t('langTitle');
     }
 
     const theme = getTheme();

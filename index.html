@@ -91,8 +91,6 @@
           <div class="header-controls">
             <button id="auth-btn" type="button" class="control-btn" data-i18n="authLogin">Login</button>
             <span id="auth-user-label" class="auth-user-label" aria-live="polite"></span>
-            <button id="theme-btn" class="control-btn" title="Toggle dark mode">Dark</button>
-            <button id="lang-btn" class="control-btn" title="Switch language">BG</button>
           </div>
         </div>
       </header>
@@ -239,7 +237,6 @@
             <button class="tab" data-tab="basket" data-i18n="tabBasket">Shopping Basket</button>
             <button class="tab" data-tab="markets" data-i18n="tabMarkets">Markets</button>
             <button class="tab" data-tab="barcode" data-i18n="tabBarcode">Barcode Scanner</button>
-            <button class="tab" data-tab="favorites" data-i18n="tabFavorites">Favorites</button>
           </div>
 
           <!-- Menu Tab -->
@@ -273,10 +270,6 @@
             </div>
           </section>
 
-          <!-- Favorites Tab -->
-          <section class="pane" data-pane="favorites">
-            <div id="favorites-container" class="favorites-container"></div>
-          </section>
         </div>
       </main>
     </div>
@@ -329,6 +322,14 @@
 
         <div class="auth-logged-in" id="auth-logged-in" hidden>
           <p id="auth-user-email" class="market-summary"></p>
+          <div class="account-settings-row">
+            <button id="account-theme-btn" class="btn btn-secondary" type="button">Theme</button>
+            <button id="account-lang-btn" class="btn btn-secondary" type="button">Language</button>
+          </div>
+          <div class="account-favorites-wrapper">
+            <h3 data-i18n="tabFavorites">Favorites</h3>
+            <div id="account-favorites-container" class="favorites-container"></div>
+          </div>
           <div class="auth-grid-btns">
             <button id="auth-export-data" class="btn btn-secondary" data-i18n="authExportData">Export my data</button>
             <button id="auth-delete-account" class="btn btn-secondary" data-i18n="authDeleteAccount">Delete my account</button>
