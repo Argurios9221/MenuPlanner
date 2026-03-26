@@ -552,6 +552,9 @@ function normalizeCloudeCoverage(rawCoverage, fallbackCoverage, ingredientItems)
         return null;
       }
       const price = Number(entry?.price ?? entry?.offer?.price);
+      const sourceType = String(entry?.sourceType || entry?.offer?.sourceType || 'cloude_estimate');
+      const confidenceLevel = String(entry?.confidenceLevel || entry?.offer?.confidenceLevel || 'low');
+      const confidenceReason = String(entry?.confidenceReason || entry?.offer?.confidenceReason || 'Estimated market price');
       return {
         ingredient,
         offer: {
@@ -559,9 +562,9 @@ function normalizeCloudeCoverage(rawCoverage, fallbackCoverage, ingredientItems)
           keyword: canonicalToken(ingredient),
           price: Number.isFinite(price) ? price : null,
           discountPercent: Number((entry?.discountPercent ?? entry?.offer?.discountPercent) || 0),
-          sourceType: 'cloude_brochure',
-          confidenceLevel: 'high',
-          confidenceReason: 'Cloude brochure analysis',
+          sourceType,
+          confidenceLevel,
+          confidenceReason,
         },
       };
     })

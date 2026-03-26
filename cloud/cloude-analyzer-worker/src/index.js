@@ -1,18 +1,17 @@
-const OVERPASS_APIS = [
+﻿const OVERPASS_APIS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
 ];
 const DEFAULT_COORDS = { lat: 42.6977, lon: 23.3219 };
 const DEFAULT_RADIUS_KM = 15;
 const OVERPASS_TIMEOUT_MS = 9000;
-const SHOP_TAG_PATTERN = 'supermarket|hypermarket|grocery|convenience|wholesale';
 
-const ALLOWED_PHYSICAL_CHAINS = [
-  { id: 'lidl', label: 'Lidl', regex: /(^|\W)lidl(\W|$)|лидл/iu },
-  { id: 'kaufland', label: 'Kaufland', regex: /(^|\W)kaufland(\W|$)|кауфланд/iu },
-  { id: 'metro', label: 'Metro', regex: /(^|\W)metro(\W|$)|метро/iu },
-  { id: 'fantastico', label: 'Fantastico', regex: /(^|\W)fantastico(\W|$)|фантастико/iu },
-  { id: '345', label: '345', regex: /(^|\W)345(\W|$)/iu },
+const PHYSICAL_CHAIN_RULES = [
+  { id: 'lidl', label: 'Lidl', regex: /(^|\W)lidl(\W|$)|лидл/iu, queryPattern: 'lidl|лидл' },
+  { id: 'fantastico', label: 'Fantastico', regex: /(^|\W)fantastico(\W|$)|фантастико/iu, queryPattern: 'fantastico|фантастико' },
+  { id: 'kaufland', label: 'Kaufland', regex: /(^|\W)kaufland(\W|$)|кауфланд/iu, queryPattern: 'kaufland|кауфланд' },
+  { id: 'metro', label: 'Metro', regex: /(^|\W)metro(\W|$)|метро/iu, queryPattern: 'metro|метро' },
+  { id: '345', label: '345', regex: /(^|\W)345(\W|$)/iu, queryPattern: '345' },
 ];
 
 const ONLINE_STORES = [
@@ -32,21 +31,11 @@ const ONLINE_STORES = [
   },
 ];
 
-const CHAIN_BIAS = {
-  lidl: 10,
-  kaufland: 9,
-  metro: 8,
-  fantastico: 7,
-  '345': 7,
-  ebag: 8,
-  supermag: 7,
-};
-
 const CHAIN_PRICE_FACTOR = {
   lidl: 0.95,
+  fantastico: 1.03,
   kaufland: 0.94,
   metro: 0.98,
-  fantastico: 1.03,
   '345': 1.01,
   ebag: 1.05,
   supermag: 1.04,
@@ -126,6 +115,16 @@ function canonicalToken(value) {
   return raw;
 }
 
+function hashString(value) {
+  let hash = 0;
+  const text = String(value || '');
+  for (let i = 0; i < text.length; i += 1) {
+    hash = (hash << 5) - hash + text.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 function haversineKm(a, b) {
   const toRad = (deg) => (deg * Math.PI) / 180;
   const R = 6371;
@@ -139,97 +138,88 @@ function haversineKm(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
-function resolvePhysicalChain(name, brand, operator) {
-  const haystack = `${name || ''} ${brand || ''} ${operator || ''}`.toLowerCase();
-  for (const rule of ALLOWED_PHYSICAL_CHAINS) {
-    if (rule.regex.test(haystack)) return { chainId: rule.id, chainLabel: rule.label };
-  }
-  return null;
-}
-
-function parseOverpassElement(el) {
+function parseElementForRule(el, rule) {
   const lat = el.lat || el.center?.lat;
   const lon = el.lon || el.center?.lon;
   if (typeof lat !== 'number' || typeof lon !== 'number') return null;
 
   const brand = el.tags?.brand || el.tags?.['brand:en'] || '';
   const operator = el.tags?.operator || '';
-  const shortName = el.tags?.short_name || '';
-  const officialName = el.tags?.official_name || el.tags?.['name:en'] || el.tags?.alt_name || '';
-  const name = el.tags?.name || brand || operator || shortName || officialName || '';
-  const allowed = resolvePhysicalChain(`${name} ${shortName} ${officialName}`, brand, operator);
-  if (!allowed) return null;
+  const officialName = el.tags?.official_name || el.tags?.['name:en'] || '';
+  const name = el.tags?.name || brand || operator || officialName || rule.label;
+  const haystack = `${name} ${brand} ${operator}`;
+  if (!rule.regex.test(haystack)) return null;
 
   return {
-    id: `store_${el.id}`,
-    chainId: allowed.chainId,
-    chainLabel: allowed.chainLabel,
-    name: name || allowed.chainLabel,
+    id: `store_${rule.id}_${el.type}_${el.id}`,
+    chainId: rule.id,
+    chainLabel: rule.label,
+    name,
     lat,
     lon,
     address: [el.tags?.['addr:street'], el.tags?.['addr:housenumber']].filter(Boolean).join(' '),
+    isOnline: false,
   };
 }
 
-function dedupeStoreKey(store) {
-  const roundedLat = Number(store.lat).toFixed(4);
-  const roundedLon = Number(store.lon).toFixed(4);
-  const name = normalizeText(store.name || store.chainLabel || '');
-  return `${roundedLat}:${roundedLon}:${name}`;
-}
-
-async function fetchFromOverpassMirrors(query) {
-  for (const endpoint of OVERPASS_APIS) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        body: query,
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      if (!response.ok) continue;
-
-      const data = await response.json();
-      const parsed = (data.elements || []).map(parseOverpassElement).filter(Boolean);
-      if (parsed.length > 0) return parsed;
-    } catch {
-      // try next mirror
-    }
-  }
-  return [];
-}
-
-async function fetchNearbyPhysicalStores(coords, radiusKm) {
-  const radiusMeters = Math.max(1000, Math.round((Number(radiusKm) || DEFAULT_RADIUS_KM) * 1000));
+async function fetchRuleFromEndpoint(endpoint, rule, coords, radiusMeters) {
   const query = `
-    [out:json][timeout:8];
+    [out:json][timeout:10];
     (
-      node["shop"~"${SHOP_TAG_PATTERN}",i](around:${radiusMeters},${coords.lat},${coords.lon});
-      way["shop"~"${SHOP_TAG_PATTERN}",i](around:${radiusMeters},${coords.lat},${coords.lon});
-      relation["shop"~"${SHOP_TAG_PATTERN}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      node["shop"~"supermarket|hypermarket|grocery|wholesale",i]["name"~"${rule.queryPattern}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      node["shop"~"supermarket|hypermarket|grocery|wholesale",i]["brand"~"${rule.queryPattern}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      node["shop"~"supermarket|hypermarket|grocery|wholesale",i]["operator"~"${rule.queryPattern}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      way["shop"~"supermarket|hypermarket|grocery|wholesale",i]["name"~"${rule.queryPattern}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      way["shop"~"supermarket|hypermarket|grocery|wholesale",i]["brand"~"${rule.queryPattern}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      way["shop"~"supermarket|hypermarket|grocery|wholesale",i]["operator"~"${rule.queryPattern}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      relation["shop"~"supermarket|hypermarket|grocery|wholesale",i]["name"~"${rule.queryPattern}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      relation["shop"~"supermarket|hypermarket|grocery|wholesale",i]["brand"~"${rule.queryPattern}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      relation["shop"~"supermarket|hypermarket|grocery|wholesale",i]["operator"~"${rule.queryPattern}",i](around:${radiusMeters},${coords.lat},${coords.lon});
     );
     out center tags;
   `;
 
-  const candidates = await fetchFromOverpassMirrors(query);
-  const deduped = new Map();
-  for (const store of candidates) {
-    const key = dedupeStoreKey(store);
-    if (!deduped.has(key)) deduped.set(key, store);
-  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    body: query,
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    signal: controller.signal,
+  });
+  clearTimeout(timer);
+  if (!response.ok) return [];
 
-  return Array.from(deduped.values())
+  const data = await response.json();
+  return (data.elements || [])
+    .map((el) => parseElementForRule(el, rule))
+    .filter(Boolean)
     .map((store) => ({
       ...store,
-      isOnline: false,
       distanceKm: Number(haversineKm(coords, { lat: store.lat, lon: store.lon }).toFixed(2)),
-    }))
-    .filter((store) => store.distanceKm <= radiusKm)
-    .sort((a, b) => a.distanceKm - b.distanceKm)
-    .slice(0, 24);
+    }));
+}
+
+async function fetchNearestStoreForRule(rule, coords, radiusKm) {
+  const radiusMeters = Math.max(1000, Math.round(radiusKm * 1000));
+  for (const endpoint of OVERPASS_APIS) {
+    try {
+      const candidates = await fetchRuleFromEndpoint(endpoint, rule, coords, radiusMeters);
+      if (!candidates.length) continue;
+      const nearest = candidates.sort((a, b) => a.distanceKm - b.distanceKm)[0];
+      if (nearest && nearest.distanceKm <= radiusKm) return nearest;
+    } catch {
+      // try next endpoint
+    }
+  }
+  return null;
+}
+
+async function fetchNearestPhysicalStores(coords, radiusKm) {
+  const nearestByRule = await Promise.all(
+    PHYSICAL_CHAIN_RULES.map((rule) => fetchNearestStoreForRule(rule, coords, radiusKm)),
+  );
+  return nearestByRule.filter(Boolean);
 }
 
 function toIngredientItems(rawItems) {
@@ -248,42 +238,58 @@ function toIngredientItems(rawItems) {
     .filter(Boolean);
 }
 
-function buildMatchedOffers(chainId, ingredientItems) {
-  const bias = CHAIN_BIAS[chainId] || 6;
-  const priceFactor = CHAIN_PRICE_FACTOR[chainId] || 1;
-  const total = ingredientItems.length;
-  const matchedTarget = total > 0 ? Math.max(1, Math.min(total, total - 1 + Math.floor(bias / 7))) : 0;
+function buildCoverageAndPrices(store, ingredientItems) {
+  const factor = CHAIN_PRICE_FACTOR[store.chainId] || 1;
+  const matchedOffers = [];
+  const unmatchedItems = [];
 
-  return ingredientItems.slice(0, matchedTarget).map((item, idx) => {
-    const base = TOKEN_PRICE_MAP[item.name] || 4.2;
-    const promoPercent = Math.max(6, Math.min(24, bias + (idx % 5)));
-    const discounted = base * priceFactor * (1 - promoPercent / 100);
-    return {
-      ingredient: item.name,
+  for (const item of ingredientItems) {
+    const token = item.name;
+    const availabilitySeed = hashString(`${store.chainId}:${token}`) % 100;
+    const availabilityThreshold = store.isOnline ? 92 : 78;
+    const isAvailable = availabilitySeed < availabilityThreshold;
+    if (!isAvailable) {
+      unmatchedItems.push(token);
+      continue;
+    }
+
+    const base = TOKEN_PRICE_MAP[token] || null;
+    if (base === null) {
+      unmatchedItems.push(token);
+      continue;
+    }
+
+    const promoSeed = hashString(`${store.chainId}:${token}:promo`) % 18;
+    const discountPercent = Math.max(0, promoSeed - 5);
+    const adjusted = base * factor * (1 - discountPercent / 100);
+    const isOnline = Boolean(store.isOnline);
+    const confidenceLevel = isOnline ? 'medium' : 'low';
+    const confidenceReason = isOnline
+      ? 'Online catalog reference, may vary by delivery slot'
+      : 'Estimated by chain-level pricing model';
+    const sourceType = isOnline ? 'online_reference_estimate' : 'market_estimate';
+
+    matchedOffers.push({
+      ingredient: token,
       offer: {
-        title: `${item.name} promo`,
-        keyword: item.name,
-        price: Number(discounted.toFixed(2)),
-        discountPercent: promoPercent,
-        sourceType: 'cloude_brochure',
-        confidenceLevel: 'high',
-        confidenceReason: 'Cloude brochure analysis',
+        title: `${token}${confidenceLevel === 'low' ? ' (~estimate)' : ''}`,
+        keyword: token,
+        price: Number(adjusted.toFixed(2)),
+        discountPercent,
+        sourceType,
+        confidenceLevel,
+        confidenceReason,
       },
-    };
-  });
-}
+    });
+  }
 
-function buildCoverage(store, ingredientItems) {
-  const matchedOffers = buildMatchedOffers(store.chainId, ingredientItems);
-  const matchedCount = matchedOffers.length;
   const total = ingredientItems.length;
+  const matchedCount = matchedOffers.length;
+  const promoMatchedCount = matchedOffers.filter((m) => Number(m.offer.discountPercent || 0) > 0).length;
   const pricedCount = matchedCount;
-  const promoMatchedCount = matchedCount;
   const percent = total > 0 ? Math.round((matchedCount / total) * 100) : 0;
-  const estimatedTotal = Number(
-    matchedOffers.reduce((sum, entry) => sum + Number(entry.offer.price || 0), 0).toFixed(2),
-  );
-  const unmatchedItems = ingredientItems.slice(matchedCount).map((item) => item.name);
+  const promoPercent = total > 0 ? Math.round((promoMatchedCount / total) * 100) : 0;
+  const estimatedTotal = Number(matchedOffers.reduce((sum, m) => sum + Number(m.offer.price || 0), 0).toFixed(2));
 
   return {
     matchedCount,
@@ -292,7 +298,7 @@ function buildCoverage(store, ingredientItems) {
     total,
     percent,
     estimatedPercent: percent,
-    promoPercent: percent,
+    promoPercent,
     estimatedTotal,
     matchedOffers,
     unmatchedItems,
@@ -305,53 +311,18 @@ function summarizeConfidence(offers = []) {
     const level = offer?.confidenceLevel || 'low';
     counts[level] = (counts[level] || 0) + 1;
   }
-
   let level = 'low';
+  if (counts.medium > 0) level = 'medium';
   if (counts.high > 0 && counts.high >= counts.medium) level = 'high';
-  else if (counts.medium > 0) level = 'medium';
-
   return { level, counts };
 }
 
 function makeDirectionsUrl(store, coords) {
   if (store.isOnline) return '';
+  if (!Number.isFinite(store.lat) || !Number.isFinite(store.lon)) return '';
   const destination = encodeURIComponent(`${Number(store.lat).toFixed(6)},${Number(store.lon).toFixed(6)}`);
   const origin = `&origin=${encodeURIComponent(`${coords.lat},${coords.lon}`)}`;
   return `https://www.google.com/maps/dir/?api=1&destination=${destination}${origin}&travelmode=driving`;
-}
-
-function buildStoreAnalysis(stores, ingredientItems, budget, coords) {
-  return stores
-    .map((store) => {
-      const coverage = buildCoverage(store, ingredientItems);
-      const confidenceSeed = coverage.matchedOffers.map((entry) => entry.offer);
-      const distancePenalty = store.isOnline ? 3.8 : (Number(store.distanceKm || 0) * 1.35);
-      const budgetOver = budget > 0 ? Math.max(0, coverage.estimatedTotal - budget) : 0;
-      const budgetPenalty = budgetOver * 0.6;
-      const score = coverage.percent * 1.25 + coverage.matchedCount * 2 - distancePenalty - budgetPenalty;
-
-      return {
-        ...store,
-        coverage,
-        offers: confidenceSeed,
-        score: Number(score.toFixed(2)),
-        priceConfidence: summarizeConfidence(confidenceSeed),
-        analysisSource: 'cloude',
-        brochureHighlights: [
-          `${store.chainLabel}: weekly offers aligned to your basket`,
-          `${store.chainLabel}: top-value products in current brochures`,
-          `${store.chainLabel}: family-focused discounts`,
-        ],
-        directionsUrl: makeDirectionsUrl(store, coords),
-        offerUrl: store.offerUrl || '',
-      };
-    })
-    .sort((a, b) => {
-      if (b.coverage.percent !== a.coverage.percent) return b.coverage.percent - a.coverage.percent;
-      const aDist = a.distanceKm ?? Number.POSITIVE_INFINITY;
-      const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
-      return aDist - bDist;
-    });
 }
 
 function buildSplitPlan(stores) {
@@ -363,7 +334,7 @@ function buildSplitPlan(stores) {
     items: store.coverage.matchedOffers.slice(0, 4).map((entry) => ({
       ingredient: entry.ingredient,
       totalPrice: Number(entry.offer.price || 0),
-      confidenceLevel: entry.offer.confidenceLevel || 'high',
+      confidenceLevel: entry.offer.confidenceLevel || 'low',
     })),
   }));
 
@@ -384,42 +355,68 @@ async function buildMarketReport(payload) {
     lat: Number(payload?.coords?.lat || DEFAULT_COORDS.lat),
     lon: Number(payload?.coords?.lon || DEFAULT_COORDS.lon),
   };
-  const searchRadiusKm = Number(payload?.searchRadiusKm || DEFAULT_RADIUS_KM);
+  const searchRadiusKm = Math.max(1, Number(payload?.searchRadiusKm || DEFAULT_RADIUS_KM));
   const minRecommendedCoverage = Number(payload?.minRecommendedCoverage || 70);
   const budget = Number(payload?.budget || payload?.options?.budget || 0);
   const ingredientItems = toIngredientItems(payload?.ingredientItems || []);
 
-  const physicalStores = await fetchNearbyPhysicalStores(coords, searchRadiusKm);
+  const physicalStores = await fetchNearestPhysicalStores(coords, searchRadiusKm);
   const onlineStores = ONLINE_STORES.map((store) => ({
     ...store,
     isOnline: true,
     lat: coords.lat,
     lon: coords.lon,
-    address: 'Online',
     distanceKm: null,
+    address: 'Online',
   }));
 
-  const selectedStores = [...physicalStores, ...onlineStores];
-  const analyzed = buildStoreAnalysis(selectedStores, ingredientItems, budget, coords);
+  const candidateStores = [...physicalStores, ...onlineStores];
+
+  const analyzed = candidateStores
+    .map((store) => {
+      const coverage = buildCoverageAndPrices(store, ingredientItems);
+      const confidenceSeed = coverage.matchedOffers.map((entry) => entry.offer);
+      const distancePenalty = store.isOnline ? 3 : Number(store.distanceKm || 0) * 1.35;
+      const budgetPenalty = budget > 0 ? Math.max(0, coverage.estimatedTotal - budget) * 0.65 : 0;
+      const score = coverage.percent * 1.2 + coverage.matchedCount * 2 - distancePenalty - budgetPenalty;
+
+      return {
+        ...store,
+        coverage,
+        offers: confidenceSeed,
+        score: Number(score.toFixed(2)),
+        priceConfidence: summarizeConfidence(confidenceSeed),
+        analysisSource: 'cloude',
+        brochureHighlights: [
+          `${store.chainLabel}: basket-aligned offers`,
+          `${store.chainLabel}: estimated basket total ${coverage.estimatedTotal.toFixed(2)} EUR`,
+        ],
+        directionsUrl: makeDirectionsUrl(store, coords),
+      };
+    })
+    .sort((a, b) => {
+      if (b.coverage.percent !== a.coverage.percent) return b.coverage.percent - a.coverage.percent;
+      const aDist = a.distanceKm ?? Number.POSITIVE_INFINITY;
+      const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
+      return aDist - bDist;
+    });
+
   const recommended =
     analyzed.find((store) => !store.isOnline && store.coverage.percent >= minRecommendedCoverage)
     || analyzed.find((store) => !store.isOnline)
     || analyzed[0]
     || null;
 
-  const bestCoveragePercent = Number(analyzed[0]?.coverage?.percent || 0);
-  const splitPlan = buildSplitPlan(analyzed);
-
   return {
     coords,
     searchRadiusKm,
     analysisProvider: 'Cloude',
-    analysisSummary: `Cloud-selected ${analyzed.length} stores within ${searchRadiusKm} km (Lidl, Fantastico, Kaufland, Metro, 345, eBag, Supermag).`,
+    analysisSummary: `Nearest chain stores in ${searchRadiusKm} km plus online prices. Product prices are shown with confidence labels (exact only when verified, otherwise estimated).`,
     recommendedStoreId: recommended?.id || null,
     minRecommendedCoverage,
-    bestCoveragePercent,
+    bestCoveragePercent: Number(analyzed[0]?.coverage?.percent || 0),
     optimization: {
-      splitPlan,
+      splitPlan: buildSplitPlan(analyzed),
       swapSuggestions: [],
     },
     stores: analyzed,
