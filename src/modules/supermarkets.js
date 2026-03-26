@@ -239,8 +239,12 @@ function parseOverpassElement(el) {
 }
 
 function dedupeStoreKey(store) {
-  // Overpass can return the same physical store as node/way/relation.
-  // Use coarse coordinates + normalized name to collapse duplicates.
+  // For fallback stores, keep all of them (not real stores, just placeholders)
+  if (store.isFallback) {
+    return `fallback_${Math.random()}`; // Unique key for each fallback store
+  }
+  // For real stores from Overpass, deduplicate based on coordinates + name
+  // (Overpass can return same physical store as node/way/relation)
   const roundedLat = Number(store.lat).toFixed(4);
   const roundedLon = Number(store.lon).toFixed(4);
   const name = normalizeText(store.name || store.chainLabel || '');
@@ -280,18 +284,7 @@ async function fetchNearbyChains(coords, options = {}) {
     return cacheHit.value;
   }
 
-  if (useFallbackOnly) {
-    return [{
-      id: 'fallback_generic',
-      chainLabel: 'Supermarket (Estimated)',
-      name: 'Supermarket (Estimated)',
-      lat: coords.lat,
-      lon: coords.lon,
-      address: '',
-      isFallback: true,
-    }];
-  }
-
+  // Always try Overpass API, even without GPS (uses fallback coords)
   const query = `
     [out:json][timeout:12];
     (
@@ -325,8 +318,19 @@ async function fetchNearbyChains(coords, options = {}) {
     }
 
     const result = Array.from(deduped.values());
-    storesCache.set(cacheKey, { ts: Date.now(), value: result });
-    return result;
+    // If we got real stores, use them; otherwise fall back to generic
+    const finalResult = result.length > 0 ? result : [{
+      id: 'fallback_generic',
+      chainLabel: 'Supermarket (Estimated)',
+      name: 'Supermarket (Estimated)',
+      lat: coords.lat,
+      lon: coords.lon,
+      address: '',
+      isFallback: true,
+    }];
+    
+    storesCache.set(cacheKey, { ts: Date.now(), value: finalResult });
+    return finalResult;
   } catch {
     const fallback = [{
       id: 'fallback_generic_error',
