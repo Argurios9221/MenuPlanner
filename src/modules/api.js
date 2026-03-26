@@ -1,5 +1,6 @@
 // TheMealDB API operations
 import { getLocalRecipes } from '../data/local-recipes.js';
+import { kaggleRecipeSnapshot } from '../data/kaggle-recipes.js';
 import { themealdbSnapshot } from '../data/themealdb-cache.js';
 import {
   fetchSpoonacularByCategory,
@@ -11,6 +12,7 @@ const DUMMYJSON_API = 'https://dummyjson.com/recipes';
 const SAMPLE_RECIPES_API = 'https://api.sampleapis.com/recipes/recipes';
 const ENABLE_DUMMYJSON_SOURCE = false;
 const ENABLE_LOCAL_SOURCE = true;
+const ENABLE_KAGGLE_SOURCE = true;
 const localRecipeCollections = getLocalRecipes();
 let extraRandomPool = [];
 let extraRandomIndex = 0;
@@ -141,6 +143,27 @@ function normalizeLocalRecipe(recipe, sourceKey, fallbackId) {
   };
 }
 
+function normalizeKaggleRecipe(recipe, fallbackId) {
+  const ingredients = Array.isArray(recipe.ingredients)
+    ? recipe.ingredients.map(normalizeIngredient).filter(Boolean)
+    : [];
+
+  return {
+    idMeal: `kaggle_${recipe.id || fallbackId}`,
+    strMeal: recipe.name || `Kaggle Recipe ${fallbackId}`,
+    strCategory: toTitleCase(recipe.category || 'Main'),
+    strArea: toTitleCase(recipe.cuisine || 'International'),
+    strInstructions: Array.isArray(recipe.instructions)
+      ? recipe.instructions.join('\n')
+      : recipe.instructions || '',
+    strMealThumb: recipe.image || '',
+    strTags: Array.isArray(recipe.tags) ? recipe.tags.join(',') : recipe.tags || '',
+    ingredients,
+    _source: 'kaggle',
+    _rawId: recipe.id || fallbackId,
+  };
+}
+
 function categoryKeywords(category) {
   const map = {
     Breakfast: ['breakfast', 'pancake', 'omelette', 'oat', 'toast', 'waffle', 'cereal', 'brunch'],
@@ -157,6 +180,7 @@ function categoryKeywords(category) {
     Starter: ['starter', 'appetizer'],
     Dessert: ['dessert', 'cake', 'cookie', 'pie', 'pudding'],
     AirFryer: ['air fryer', 'airfryer', 'air-fryer', 'air fried'],
+    Kaggle: ['kaggle'],
   };
   return map[category] || [];
 }
@@ -277,6 +301,22 @@ async function fetchLocalRecipes() {
   return recipes;
 }
 
+async function fetchKaggleRecipes() {
+  if (!ENABLE_KAGGLE_SOURCE) {
+    return [];
+  }
+
+  const cacheKey = 'source_kaggle_all';
+  if (isValidCache(cacheKey)) {
+    return apiCache.get(cacheKey).data;
+  }
+
+  const rows = Array.isArray(kaggleRecipeSnapshot) ? kaggleRecipeSnapshot : [];
+  const recipes = rows.map((item, index) => normalizeKaggleRecipe(item, index + 1));
+  apiCache.set(cacheKey, { data: recipes, timestamp: Date.now() });
+  return recipes;
+}
+
 function dedupeByMealId(meals) {
   const map = new Map();
   for (const meal of meals) {
@@ -326,11 +366,12 @@ export async function fetchMealsByCategory(category) {
       ? withTimeout(fetchSpoonacularByCategory(category).catch(() => []), 2200, [])
       : Promise.resolve([]);
 
-    const [mealDbMeals, dummyRecipes, sampleRecipes, localRecipes, spoonRecipes] = await Promise.all([
+    const [mealDbMeals, dummyRecipes, sampleRecipes, localRecipes, kaggleRecipes, spoonRecipes] = await Promise.all([
       mealDbPromise,
       fetchDummyRecipes(),
       fetchSampleRecipes(),
       fetchLocalRecipes(),
+      fetchKaggleRecipes(),
       spoonPromise,
     ]);
 
@@ -339,6 +380,7 @@ export async function fetchMealsByCategory(category) {
       ...dummyRecipes.filter((recipe) => matchesCategory(recipe, category)),
       ...sampleRecipes.filter((recipe) => matchesCategory(recipe, category)),
       ...localRecipes.filter((recipe) => matchesCategory(recipe, category)),
+      ...kaggleRecipes.filter((recipe) => matchesCategory(recipe, category)),
       ...spoonRecipes,
     ]);
 
@@ -392,6 +434,15 @@ export async function fetchMealDetails(mealId) {
     return found;
   }
 
+  if (String(mealId).startsWith('kaggle_')) {
+    const list = await fetchKaggleRecipes();
+    const found = list.find((item) => item.idMeal === mealId);
+    if (!found) {
+      throw new Error('Meal not found');
+    }
+    return found;
+  }
+
   const cachedMeal = getCachedMealDbMealDetails(mealId);
   if (cachedMeal) {
     return cachedMeal;
@@ -414,12 +465,13 @@ export async function getRandomMeal() {
 
     if (useExtraSource) {
       if (extraRandomIndex >= extraRandomPool.length) {
-        const [dummyRecipes, sampleRecipes, localRecipes] = await Promise.all([
+        const [dummyRecipes, sampleRecipes, localRecipes, kaggleRecipes] = await Promise.all([
           fetchDummyRecipes(),
           fetchSampleRecipes(),
           fetchLocalRecipes(),
+          fetchKaggleRecipes(),
         ]);
-        const combined = dedupeByMealId([...dummyRecipes, ...sampleRecipes, ...localRecipes]);
+        const combined = dedupeByMealId([...dummyRecipes, ...sampleRecipes, ...localRecipes, ...kaggleRecipes]);
         extraRandomPool = shuffle(combined);
         extraRandomIndex = 0;
       }

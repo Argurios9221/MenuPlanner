@@ -3,6 +3,8 @@
  * Scans product barcodes and provides allergen/menu validation
  */
 
+import { fetchUsdaProductByName } from './usda.js';
+
 // UPC/EAN database mapping (basic set)
 // In production, use Spoonacular API or OpenFoodFacts API
 const BARCODE_DATABASE = {
@@ -177,7 +179,28 @@ async function resolveBarcode(barcode) {
 
   const remoteProduct = await fetchOpenFoodFactsProduct(barcode);
   if (remoteProduct) {
+    if (!remoteProduct.nutrition) {
+      const usda = await fetchUsdaProductByName(remoteProduct.name || barcode);
+      if (usda?.nutrition) {
+        remoteProduct.nutrition = usda.nutrition;
+        remoteProduct.nutritionSource = 'usda';
+      }
+    }
     return remoteProduct;
+  }
+
+  const usdaFallback = await fetchUsdaProductByName(barcode);
+  if (usdaFallback) {
+    return {
+      name: usdaFallback.description || 'Unknown product',
+      category: 'Unknown',
+      allergens: [],
+      code: barcode,
+      barcode,
+      source: 'usda',
+      nutrition: usdaFallback.nutrition || null,
+      nutritionSource: 'usda',
+    };
   }
 
   console.log(`🔍 [Barcode] ${barcode} not found in local DB or OpenFoodFacts`);
@@ -213,6 +236,15 @@ async function fetchOpenFoodFactsProduct(barcode) {
     const name = product.product_name || product.product_name_en || product.brands || 'Unknown product';
     const category = (product.categories_tags && product.categories_tags[0]) || 'Unknown';
     const allergens = parseOpenFoodFactsAllergens(product);
+    const nutriments = product.nutriments || {};
+    const nutrition = {
+      calories: Number(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0) || 0,
+      protein: Number(nutriments.proteins_100g || nutriments.proteins || 0) || 0,
+      carbs: Number(nutriments.carbohydrates_100g || nutriments.carbohydrates || 0) || 0,
+      fat: Number(nutriments.fat_100g || nutriments.fat || 0) || 0,
+      fiber: Number(nutriments.fiber_100g || nutriments.fiber || 0) || 0,
+    };
+    const hasNutrition = Object.values(nutrition).some((value) => Number(value) > 0);
 
     return {
       name,
@@ -221,6 +253,8 @@ async function fetchOpenFoodFactsProduct(barcode) {
       code: barcode,
       barcode,
       source: 'openfoodfacts',
+      nutrition: hasNutrition ? nutrition : null,
+      nutritionSource: hasNutrition ? 'openfoodfacts' : '',
     };
   } catch (error) {
     console.warn('🔍 [Barcode] OpenFoodFacts lookup failed:', error?.message || error);

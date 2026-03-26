@@ -2540,6 +2540,16 @@ export class MenuPlannerApp {
           </div>
         </div>
 
+        ${product.nutrition ? `
+        <div class="result-section">
+          <h4>${t('nutritionDashboardTitle') || 'Nutrition'}</h4>
+          <div class="menu-status in-menu">
+            🔥 ${Number(product.nutrition.calories || 0)} kcal · 🥩 ${Number(product.nutrition.protein || 0)}g protein · 🍞 ${Number(product.nutrition.carbs || 0)}g carbs · 🧈 ${Number(product.nutrition.fat || 0)}g fat
+            ${product.nutritionSource ? `<p class="result-barcode">source: ${product.nutritionSource}</p>` : ''}
+          </div>
+        </div>
+        ` : ''}
+
         ${alternatives.length > 0 ? `
         <div class="result-section">
           <h4>${t('alternatives') || 'Better Alternatives'}</h4>

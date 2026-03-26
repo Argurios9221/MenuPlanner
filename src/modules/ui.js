@@ -40,6 +40,10 @@ const DOM = {
 function isReliableImageSrc(meal) {
   const src = String(meal?.strMealThumb || '').trim().toLowerCase();
   const id = String(meal?.idMeal || '').toLowerCase();
+  const imageSource = String(meal?._imageSource || '').toLowerCase();
+  if (imageSource === 'openverse') {
+    return Boolean(src);
+  }
   if (!src) {
     return false;
   }

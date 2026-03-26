@@ -1,5 +1,6 @@
 // Menu generation logic
 import { extractIngredients, fetchMealDetails, fetchMealsByCategory, getRandomMeal } from './api.js';
+import { fetchOpenverseImage } from './openverse.js';
 import { getRecipeRating, saveCurrentMenu } from './storage.js';
 import { estimateCalories, estimatePrepTime } from './metadata.js';
 import { getWeatherHint, getWeatherMealCategory } from './weather.js';
@@ -162,12 +163,16 @@ function matchesMealSlot(meal, slotType) {
   const breakfastKeywords = /breakfast|pancake|omelette|omelet|toast|porridge|oat|muesli|granola|cereal|crepe|waffle|smoothie|muffin/;
   const savoryMealKeywords = /soup|stew|roast|curry|burger|steak|pasta|risotto|grill|bake|fried rice/;
   const dessertKeywords = /dessert|cake|pie|cookie|brownie|ice cream|pudding|tart/;
+  const heavyMainKeywords = /beef|pork|lamb|goat|steak|burger|curry|pasta|fried rice|roast/;
 
   if (slotType === 'Breakfast') {
     if (category === 'breakfast') {
-      return true;
+      return !heavyMainKeywords.test(text);
     }
     if (dessertKeywords.test(text) || savoryMealKeywords.test(text) || category === 'starter' || category === 'side') {
+      return false;
+    }
+    if (heavyMainKeywords.test(text)) {
       return false;
     }
     return breakfastKeywords.test(text);
@@ -184,6 +189,32 @@ function matchesMealSlot(meal, slotType) {
   }
 
   return true;
+}
+
+async function enrichSelectedMealImage(meal) {
+  if (!meal) {
+    return meal;
+  }
+
+  const source = String(meal._source || '').toLowerCase();
+  const image = String(meal.strMealThumb || '').trim();
+  const needsOpenverseImage = !image || source.startsWith('local_') || source === 'kaggle';
+
+  if (!needsOpenverseImage) {
+    return meal;
+  }
+
+  const query = [meal.strMeal, meal.strCategory].filter(Boolean).join(' ');
+  const openverse = await fetchOpenverseImage(query);
+  if (!openverse?.url) {
+    return meal;
+  }
+
+  return {
+    ...meal,
+    strMealThumb: openverse.url,
+    _imageSource: 'openverse',
+  };
 }
 
 function getMealPrimaryProtein(meal) {
@@ -694,9 +725,10 @@ export async function generateMenu(options = {}) {
         usedMealSignatures
       );
       if (breakfast) {
-        dayMeals.meals.push(annotateMealForProfiles({ ...breakfast, type: 'Breakfast' }, familyProfiles, people));
-        usedMealIds.add(breakfast.idMeal);
-        usedMealSignatures.add(mealSignature(breakfast));
+        const breakfastWithImage = await enrichSelectedMealImage(breakfast);
+        dayMeals.meals.push(annotateMealForProfiles({ ...breakfastWithImage, type: 'Breakfast' }, familyProfiles, people));
+        usedMealIds.add(breakfastWithImage.idMeal);
+        usedMealSignatures.add(mealSignature(breakfastWithImage));
       }
 
       const lunchBatchId = mealPrepMode ? Math.floor(day / 3) : day;
@@ -723,10 +755,11 @@ export async function generateMenu(options = {}) {
         batchAnchors.Lunch.set(lunchBatchId, lunch);
       }
       if (lunch) {
-        dayMeals.meals.push(annotateMealForProfiles({ ...lunch, type: 'Lunch' }, familyProfiles, people, mealPrepMode ? `Batch ${lunchBatchId + 1}` : ''));
-        usedMealIds.add(lunch.idMeal);
-        usedMealSignatures.add(mealSignature(lunch));
-        updateProteinRotation(lunch, 'Lunch');
+        const lunchWithImage = await enrichSelectedMealImage(lunch);
+        dayMeals.meals.push(annotateMealForProfiles({ ...lunchWithImage, type: 'Lunch' }, familyProfiles, people, mealPrepMode ? `Batch ${lunchBatchId + 1}` : ''));
+        usedMealIds.add(lunchWithImage.idMeal);
+        usedMealSignatures.add(mealSignature(lunchWithImage));
+        updateProteinRotation(lunchWithImage, 'Lunch');
       }
 
       const dinnerBatchId = mealPrepMode ? Math.floor(day / 3) : day;
@@ -753,10 +786,11 @@ export async function generateMenu(options = {}) {
         batchAnchors.Dinner.set(dinnerBatchId, dinner);
       }
       if (dinner) {
-        dayMeals.meals.push(annotateMealForProfiles({ ...dinner, type: 'Dinner' }, familyProfiles, people, mealPrepMode ? `Batch ${dinnerBatchId + 1}` : ''));
-        usedMealIds.add(dinner.idMeal);
-        usedMealSignatures.add(mealSignature(dinner));
-        updateProteinRotation(dinner, 'Dinner');
+        const dinnerWithImage = await enrichSelectedMealImage(dinner);
+        dayMeals.meals.push(annotateMealForProfiles({ ...dinnerWithImage, type: 'Dinner' }, familyProfiles, people, mealPrepMode ? `Batch ${dinnerBatchId + 1}` : ''));
+        usedMealIds.add(dinnerWithImage.idMeal);
+        usedMealSignatures.add(mealSignature(dinnerWithImage));
+        updateProteinRotation(dinnerWithImage, 'Dinner');
       }
 
       // Fallback: fill specifically the missing slots so we always have Breakfast/Lunch/Dinner once each.
@@ -808,7 +842,7 @@ export async function generateMenu(options = {}) {
             usedMealSignatures,
             {
               ignoreEasyToShop: true,
-              allowReuse: true,
+              allowReuse: false,
               allowProteinRepeat: true,
               ignoreGoal: true,
               ignoreCuisine: true,
@@ -830,10 +864,11 @@ export async function generateMenu(options = {}) {
         }
 
         if (randomMeal) {
-          dayMeals.meals.push(annotateMealForProfiles({ ...randomMeal, type: mealType }, familyProfiles, people));
-          usedMealIds.add(randomMeal.idMeal);
-          usedMealSignatures.add(mealSignature(randomMeal));
-          updateProteinRotation(randomMeal, mealType);
+          const randomWithImage = await enrichSelectedMealImage(randomMeal);
+          dayMeals.meals.push(annotateMealForProfiles({ ...randomWithImage, type: mealType }, familyProfiles, people));
+          usedMealIds.add(randomWithImage.idMeal);
+          usedMealSignatures.add(mealSignature(randomWithImage));
+          updateProteinRotation(randomWithImage, mealType);
         } else {
           break;
         }
@@ -1075,8 +1110,8 @@ async function getFallbackMealFromPools(
   const strictnessLevels = [
     { allowReuse: false, allowProteinRepeat: false, ignoreEasyToShop: false, ignoreCuisine: false },
     { allowReuse: false, allowProteinRepeat: false, ignoreEasyToShop: true, ignoreCuisine: false },
-    { allowReuse: true, allowProteinRepeat: false, ignoreEasyToShop: true, ignoreCuisine: false },
-    { allowReuse: true, allowProteinRepeat: true, ignoreEasyToShop: true, ignoreCuisine: true },
+    { allowReuse: false, allowProteinRepeat: true, ignoreEasyToShop: true, ignoreCuisine: false },
+    { allowReuse: false, allowProteinRepeat: true, ignoreEasyToShop: true, ignoreCuisine: true },
   ];
 
   for (const rules of strictnessLevels) {
@@ -1297,7 +1332,7 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
       usedMealSignatures,
       {
         ignoreEasyToShop: true,
-        allowReuse: true,
+        allowReuse: false,
         allowProteinRepeat: true,
         ignoreGoal: true,
         ignoreCuisine: true,
@@ -1325,5 +1360,6 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
   if (!newMeal || newMeal.idMeal === oldMeal.idMeal) {
     return null;
   }
-  return annotateMealForProfiles({ ...newMeal, type: mealType }, familyProfiles, people, oldMeal.mealPrepLabel || '');
+  const newMealWithImage = await enrichSelectedMealImage(newMeal);
+  return annotateMealForProfiles({ ...newMealWithImage, type: mealType }, familyProfiles, people, oldMeal.mealPrepLabel || '');
 }
