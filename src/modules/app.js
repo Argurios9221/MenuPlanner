@@ -12,6 +12,7 @@ import {
   isProductInMenu,
   getProductAlternatives,
   logScannedProduct,
+  getScannedProductHistory,
 } from './barcode.js';
 import { loadRecipe, getTranslatedRecipe, toggleRecipeFavorite } from './recipe.js';
 import { translateText } from './translation.js';
@@ -1803,6 +1804,7 @@ export class MenuPlannerApp {
     }
 
     this.attachBarcodeScannerListeners();
+    this.renderBarcodeHistory();
   }
 
   attachBarcodeScannerListeners() {
@@ -1917,6 +1919,53 @@ export class MenuPlannerApp {
     `;
 
     resultsContainer.innerHTML = resultHtml;
+    this.renderBarcodeHistory();
+  }
+
+  renderBarcodeHistory() {
+    const container = document.getElementById('barcode-container');
+    if (!container) {
+      return;
+    }
+
+    let historySection = container.querySelector('.barcode-history');
+    if (!historySection) {
+      historySection = document.createElement('section');
+      historySection.className = 'barcode-history';
+      container.appendChild(historySection);
+    }
+
+    const history = getScannedProductHistory().slice(0, 8);
+    if (history.length === 0) {
+      historySection.innerHTML = `<h3>${t('barcodeHistoryTitle')}</h3><p class="history-empty">${t('barcodeHistoryEmpty')}</p>`;
+      return;
+    }
+
+    const rows = history
+      .map((entry) => {
+        const name = entry?.product?.name || t('barcodeNotFound');
+        const code = entry?.barcode || entry?.product?.code || '-';
+        const source = entry?.product?.source || 'unknown';
+        const time = new Date(entry?.timestamp || Date.now()).toLocaleString();
+        return `
+          <li>
+            <div class="history-item-main">
+              <strong>${name}</strong>
+              <span>${t('barcodeCode')}: ${code}</span>
+            </div>
+            <div class="history-item-meta">
+              <span>${t('barcodeSource')}: ${source}</span>
+              <span>${time}</span>
+            </div>
+          </li>
+        `;
+      })
+      .join('');
+
+    historySection.innerHTML = `
+      <h3>${t('barcodeHistoryTitle')}</h3>
+      <ul class="barcode-history-list">${rows}</ul>
+    `;
   }
 
   updateUI() {

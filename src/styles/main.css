@@ -1304,6 +1304,50 @@ body.authenticated #auth-gate {
   padding-left: 1.15rem;
 }
 
+.barcode-history {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background: var(--card-bg);
+  padding: var(--spacing-md);
+}
+
+.barcode-history h3 {
+  margin-bottom: 0.5rem;
+  color: var(--primary-color);
+}
+
+.barcode-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.barcode-history-list li {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.5rem 0.6rem;
+  background: var(--light-bg);
+}
+
+.history-item-main,
+.history-item-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+}
+
+.history-item-meta {
+  color: var(--muted-text);
+  margin-top: 0.2rem;
+}
+
+.history-empty {
+  color: var(--muted-text);
+}
+
 .offer-price {
   font-weight: 700;
   color: var(--success-color);

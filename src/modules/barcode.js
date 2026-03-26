@@ -29,6 +29,8 @@ const BARCODE_DATABASE = {
 let isScanning = false;
 let scannerInstance = null;
 let detectHandler = null;
+let lastDetectedCode = '';
+let lastDetectedAt = 0;
 
 /**
  * Initialize barcode scanner
@@ -120,6 +122,8 @@ export function stopBarcodeScanner() {
       Quagga.stop();
       isScanning = false;
       scannerInstance = null;
+      lastDetectedCode = '';
+      lastDetectedAt = 0;
       console.log('🔍 [Barcode] Scanner stopped');
       return true;
     } catch (err) {
@@ -142,11 +146,18 @@ export function onBarcodeDetected(callback) {
     Quagga.offDetected(detectHandler);
   }
 
-  detectHandler = (result) => {
+  detectHandler = async (result) => {
     const barcode = result.codeResult?.code;
     if (barcode) {
+      const now = Date.now();
+      if (barcode === lastDetectedCode && now - lastDetectedAt < 1500) {
+        return;
+      }
+
+      lastDetectedCode = barcode;
+      lastDetectedAt = now;
       console.log('🔍 [Barcode] Detected:', barcode);
-      const product = resolveBarcode(barcode);
+      const product = await resolveBarcode(barcode);
       callback(product, barcode);
     }
   };
@@ -158,14 +169,18 @@ export function onBarcodeDetected(callback) {
  * Look up product by barcode
  * Returns product data or null if not found
  */
-function resolveBarcode(barcode) {
+async function resolveBarcode(barcode) {
   // Check local database first
   if (BARCODE_DATABASE[barcode]) {
     return { ...BARCODE_DATABASE[barcode], code: barcode, barcode, source: 'local' };
   }
 
-  // In production, query Spoonacular API or OpenFoodFacts API
-  console.log(`🔍 [Barcode] ${barcode} not in local database - would query API`);
+  const remoteProduct = await fetchOpenFoodFactsProduct(barcode);
+  if (remoteProduct) {
+    return remoteProduct;
+  }
+
+  console.log(`🔍 [Barcode] ${barcode} not found in local DB or OpenFoodFacts`);
   return {
     name: 'Unknown product',
     category: 'Unknown',
@@ -174,6 +189,73 @@ function resolveBarcode(barcode) {
     barcode,
     source: 'unknown',
   };
+}
+
+async function fetchOpenFoodFactsProduct(barcode) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const product = data?.product;
+    if (!product) {
+      return null;
+    }
+
+    const name = product.product_name || product.product_name_en || product.brands || 'Unknown product';
+    const category = (product.categories_tags && product.categories_tags[0]) || 'Unknown';
+    const allergens = parseOpenFoodFactsAllergens(product);
+
+    return {
+      name,
+      category,
+      allergens,
+      code: barcode,
+      barcode,
+      source: 'openfoodfacts',
+    };
+  } catch (error) {
+    console.warn('🔍 [Barcode] OpenFoodFacts lookup failed:', error?.message || error);
+    return null;
+  }
+}
+
+function parseOpenFoodFactsAllergens(product) {
+  const rawAllergens = Array.isArray(product.allergens_tags) ? product.allergens_tags : [];
+  const extracted = rawAllergens
+    .map((tag) => String(tag).split(':').pop())
+    .filter(Boolean)
+    .map((item) => String(item).toLowerCase());
+
+  // Fallback: infer common allergens from ingredients text when tags are missing
+  if (extracted.length > 0) {
+    return extracted;
+  }
+
+  const ingredientsText = String(product.ingredients_text || '').toLowerCase();
+  const inferred = [];
+  if (ingredientsText.includes('milk')) {
+    inferred.push('milk');
+  }
+  if (ingredientsText.includes('egg')) {
+    inferred.push('eggs');
+  }
+  if (ingredientsText.includes('gluten') || ingredientsText.includes('wheat')) {
+    inferred.push('gluten');
+  }
+  if (ingredientsText.includes('nut') || ingredientsText.includes('almond') || ingredientsText.includes('hazelnut')) {
+    inferred.push('nuts');
+  }
+
+  return inferred;
 }
 
 /**

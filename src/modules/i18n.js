@@ -269,6 +269,9 @@ const translations = {
     noAlternatives: 'No alternatives available',
     dietaryWarning: 'Dietary Restriction',
     dietaryViolation: 'This product violates your dietary restrictions',
+    barcodeHistoryTitle: 'Recent scans',
+    barcodeHistoryEmpty: 'No products scanned yet.',
+    barcodeSource: 'Source',
   },
   bg: {
     appName: 'Fresh Kitchen',
@@ -539,6 +542,9 @@ const translations = {
     noAlternatives: 'Няма налични алтернативи',
     dietaryWarning: 'Диетично ограничение',
     dietaryViolation: 'Този продукт нарушава твоите диетични ограничения',
+    barcodeHistoryTitle: 'Последни сканирания',
+    barcodeHistoryEmpty: 'Все още няма сканирани продукти.',
+    barcodeSource: 'Източник',
   },
 };
 
