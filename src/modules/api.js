@@ -10,7 +10,7 @@ import {
 const DUMMYJSON_API = 'https://dummyjson.com/recipes';
 const SAMPLE_RECIPES_API = 'https://api.sampleapis.com/recipes/recipes';
 const ENABLE_DUMMYJSON_SOURCE = false;
-const ENABLE_LOCAL_SOURCE = false;
+const ENABLE_LOCAL_SOURCE = true;
 const localRecipeCollections = getLocalRecipes();
 let extraRandomPool = [];
 let extraRandomIndex = 0;
@@ -156,6 +156,7 @@ function categoryKeywords(category) {
     Side: ['side'],
     Starter: ['starter', 'appetizer'],
     Dessert: ['dessert', 'cake', 'cookie', 'pie', 'pudding'],
+    AirFryer: ['air fryer', 'airfryer', 'air-fryer', 'air fried'],
   };
   return map[category] || [];
 }

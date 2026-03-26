@@ -8,7 +8,7 @@ const DAYS_OF_WEEK = 7;
 const MEALS_PER_DAY = 3; // breakfast, lunch, dinner
 const MEAL_SLOTS = ['Breakfast', 'Lunch', 'Dinner'];
 
-const MAIN_MEAL_CATEGORIES = ['Beef', 'Chicken', 'Goat', 'Lamb', 'Pasta', 'Pork', 'Seafood', 'Vegan', 'Vegetarian'];
+const MAIN_MEAL_CATEGORIES = ['Beef', 'Chicken', 'Goat', 'Lamb', 'Pasta', 'Pork', 'Seafood', 'Vegan', 'Vegetarian', 'AirFryer'];
 const MIN_EASY_INGREDIENT_RATIO = 0.7;
 const MIX_ALLOWED_CUISINES = ['bulgarian', 'italian', 'german', 'british', 'french', 'mediterranean'];
 
@@ -419,12 +419,14 @@ function buildMealPrepSummary(menu, enabled) {
       return acc;
     }, {});
   const repeatedEntries = Object.entries(repeatedMeals).filter(([, count]) => count > 1);
+  const totalTimeSavedMin = repeatedEntries.reduce((sum, [, count]) => sum + (count - 1) * 20, 0);
   return {
     cookSessions: repeatedEntries.length || 1,
     repeatedMeals: repeatedEntries.reduce((sum, [, count]) => sum + count, 0),
+    totalTimeSavedMin,
     lines: repeatedEntries.slice(0, 4).map(([name, count]) => ({
       title: name,
-      detail: `${count} planned servings across the week`,
+      detail: `${count} servings · cook once, saves ~${(count - 1) * 20} min`,
     })),
   };
 }

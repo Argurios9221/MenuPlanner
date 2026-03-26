@@ -41,6 +41,9 @@ body {
   background-color: var(--light-bg);
   color: var(--dark-text);
   line-height: 1.6;
+}
+
+html {
   height: 100%;
 }
 

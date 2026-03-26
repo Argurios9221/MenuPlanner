@@ -332,15 +332,19 @@ function buildBatchCookingCalendar(menu) {
     return null;
   }
 
-  const lines = Array.from(groups.entries()).map(([label, items]) => {
+    const lines = Array.from(groups.entries()).map(([label, items]) => {
     const sorted = items.sort((a, b) => a.dayIndex - b.dayIndex);
     const cook = sorted[0];
     const reheatDays = sorted.slice(1).map((item) => item.dayName).join(', ');
+    const portions = sorted.length;
+    const timeSavedMin = (portions - 1) * 15;
     return {
       label,
       cookDay: cook.dayName,
       mealName: cook.mealName,
       reheatDays,
+      portions,
+      timeSavedMin,
     };
   });
 
@@ -1248,7 +1252,7 @@ export class MenuPlannerApp {
       : `<p class="planning-empty">${t('familyProfilesEmpty')}</p>`;
     const batchCalendarHtml = batchCalendar?.lines?.length
       ? batchCalendar.lines
-        .map((entry) => `<li class="planning-list-item"><div><strong>${entry.label} · ${entry.mealName}</strong><small>${t('batchCalendarCook') || 'Cook'}: ${entry.cookDay}${entry.reheatDays ? ` · ${t('batchCalendarReheat') || 'Reheat'}: ${entry.reheatDays}` : ''}</small></div></li>`)
+        .map((entry) => `<li class="planning-list-item"><div><strong>${entry.label} · ${entry.mealName}</strong><small>${t('batchCalendarCook') || 'Cook'}: ${entry.cookDay}${entry.reheatDays ? ` · ${t('batchCalendarReheat') || 'Reheat'}: ${entry.reheatDays}` : ''}</small><small>${entry.portions} ${t('batchCalendarPortions') || 'portions'}${entry.timeSavedMin ? ` · ⏱ ${t('batchCalendarSaves') || 'saves'} ~${entry.timeSavedMin} min` : ''}</small></div></li>`)
         .join('')
       : `<p class="planning-empty">${t('batchCalendarEmpty') || 'Enable meal prep to generate calendar'}</p>`;
     const nutritionHtml = nutritionDashboard?.lines?.length
@@ -1267,6 +1271,7 @@ export class MenuPlannerApp {
       <article class="planning-card" data-insight="meal-prep">
         <h3>${t('mealPrepModeTitle')}</h3>
         ${mealPrepSummary ? `<p class="planning-highlight">${typeof t('mealPrepSummary') === 'function' ? t('mealPrepSummary')(mealPrepSummary.cookSessions, mealPrepSummary.repeatedMeals) : ''}</p>` : ''}
+        ${mealPrepSummary?.totalTimeSavedMin ? `<p class="planning-empty">⏱ ${t('mealPrepTimeSaved') || 'Saves'} ~${mealPrepSummary.totalTimeSavedMin} min ${t('mealPrepPerWeek') || 'of cooking this week'}</p>` : ''}
         <ul class="planning-list">${mealPrepSummary?.lines?.map((line) => `<li class="planning-list-item"><div><strong>${line.title}</strong><small>${line.detail}</small></div></li>`).join('') || `<p class="planning-empty">${t('mealPrepEmpty')}</p>`}</ul>
       </article>
       <article class="planning-card" data-insight="batch-calendar">

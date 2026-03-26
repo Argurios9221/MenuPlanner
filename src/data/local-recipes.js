@@ -424,9 +424,129 @@ const PANTRY_RECIPES = [
   },
 ];
 
+const AIR_FRYER_RECIPES = [
+  {
+    id: 'af_1',
+    name: 'Air Fryer Crispy Chicken Wings',
+    category: 'AirFryer',
+    cuisine: 'American',
+    tags: ['air fryer', 'chicken', 'crispy'],
+    image: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=800&q=80',
+    instructions: [
+      'Pat chicken wings dry and season with salt, pepper and garlic powder.',
+      'Arrange in single layer in air fryer basket.',
+      'Cook at 200°C for 22–25 minutes, flipping halfway through.',
+      'Serve with dipping sauce.',
+    ],
+    ingredients: ['Chicken Wings', 'Garlic Powder', 'Salt', 'Pepper', 'Olive Oil'],
+  },
+  {
+    id: 'af_2',
+    name: 'Air Fryer Salmon with Lemon',
+    category: 'AirFryer',
+    cuisine: 'International',
+    tags: ['air fryer', 'salmon', 'seafood'],
+    image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=800&q=80',
+    instructions: [
+      'Brush salmon fillets with olive oil and lemon juice.',
+      'Season with garlic, salt and pepper.',
+      'Air fry at 200°C for 10–12 minutes.',
+      'Serve with steamed vegetables.',
+    ],
+    ingredients: ['Salmon', 'Lemon', 'Garlic', 'Olive Oil', 'Salt', 'Pepper'],
+  },
+  {
+    id: 'af_3',
+    name: 'Air Fryer Crispy Potatoes',
+    category: 'AirFryer',
+    cuisine: 'International',
+    tags: ['air fryer', 'potato', 'vegetarian', 'crispy'],
+    image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=800&q=80',
+    instructions: [
+      'Cut potatoes into wedges and toss with oil and seasoning.',
+      'Air fry at 200°C for 20 minutes, shaking halfway.',
+      'Serve hot with sour cream or ketchup.',
+    ],
+    ingredients: ['Potato', 'Olive Oil', 'Garlic Powder', 'Paprika', 'Salt'],
+  },
+  {
+    id: 'af_4',
+    name: 'Air Fryer Pork Tenderloin',
+    category: 'AirFryer',
+    cuisine: 'International',
+    tags: ['air fryer', 'pork'],
+    image: 'https://images.unsplash.com/photo-1432139555190-58524dae6a55?auto=format&fit=crop&w=800&q=80',
+    instructions: [
+      'Rub pork tenderloin with garlic, rosemary, salt and pepper.',
+      'Air fry at 200°C for 20–22 minutes, turning once.',
+      'Rest 5 minutes before slicing. Serve with roasted vegetables.',
+    ],
+    ingredients: ['Pork Tenderloin', 'Garlic', 'Rosemary', 'Olive Oil', 'Salt', 'Pepper'],
+  },
+  {
+    id: 'af_5',
+    name: 'Air Fryer Falafel',
+    category: 'AirFryer',
+    cuisine: 'Mediterranean',
+    tags: ['air fryer', 'vegan', 'chickpea'],
+    image: 'https://images.unsplash.com/photo-1541519227354-08fa5d50c820?auto=format&fit=crop&w=800&q=80',
+    instructions: [
+      'Blend chickpeas with garlic, onion, parsley, cumin and flour.',
+      'Form into small patties and spray with oil.',
+      'Air fry at 190°C for 15 minutes, flipping halfway.',
+      'Serve in pita with salad and tahini.',
+    ],
+    ingredients: ['Chickpea', 'Garlic', 'Onion', 'Parsley', 'Cumin', 'Flour'],
+  },
+  {
+    id: 'af_6',
+    name: 'Air Fryer Stuffed Bell Peppers',
+    category: 'AirFryer',
+    cuisine: 'Bulgarian',
+    tags: ['air fryer', 'pepper', 'beef', 'rice'],
+    image: 'https://images.unsplash.com/photo-1604909052743-94e838986d24?auto=format&fit=crop&w=800&q=80',
+    instructions: [
+      'Mix cooked rice with beef mince, onion and tomato.',
+      'Fill bell peppers with the mixture.',
+      'Air fry at 180°C for 18–20 minutes.',
+      'Serve with yogurt on the side.',
+    ],
+    ingredients: ['Bell Pepper', 'Beef', 'Rice', 'Onion', 'Tomato', 'Yogurt'],
+  },
+  {
+    id: 'af_7',
+    name: 'Air Fryer Breaded Chicken Breast',
+    category: 'AirFryer',
+    cuisine: 'International',
+    tags: ['air fryer', 'chicken', 'crispy'],
+    image: 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=800&q=80',
+    instructions: [
+      'Coat chicken breast in breadcrumbs, egg and seasoning.',
+      'Air fry at 200°C for 18 minutes, flipping once.',
+      'Serve with salad or roasted vegetables.',
+    ],
+    ingredients: ['Chicken Breast', 'Breadcrumbs', 'Egg', 'Garlic Powder', 'Paprika'],
+  },
+  {
+    id: 'af_8',
+    name: 'Air Fryer Vegetable Medley',
+    category: 'AirFryer',
+    cuisine: 'Mediterranean',
+    tags: ['air fryer', 'vegetarian', 'vegan'],
+    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80',
+    instructions: [
+      'Toss zucchini, pepper, carrot and onion in olive oil and herbs.',
+      'Air fry at 200°C for 15 minutes, shaking once.',
+      'Season and serve as a side or over rice.',
+    ],
+    ingredients: ['Zucchini', 'Bell Pepper', 'Carrot', 'Onion', 'Olive Oil', 'Herbs'],
+  },
+];
+
 export function getLocalRecipes() {
   return {
     bulgarian: BULGARIAN_RECIPES,
     pantry: PANTRY_RECIPES,
+    airfryer: AIR_FRYER_RECIPES,
   };
 }
