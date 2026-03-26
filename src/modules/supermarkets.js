@@ -8,33 +8,32 @@ const storesCache = new Map();
 const offersCache = new Map();
 let fxCache = null;
 
-// Generic fallback offers - minimal set for common items globally
-// Budget-friendly alternatives without expensive items
+// Generic fallback offers - realistic European supermarket prices
 const FALLBACK_OFFERS = {
   generic: [
-    { keyword: 'bread', title: 'Bread/Baguette', price: 1.20 },
-    { keyword: 'milk', title: 'Milk 1L', price: 0.80 },
-    { keyword: 'egg', title: 'Eggs 12-pack', price: 1.80 },
-    { keyword: 'chicken', title: 'Chicken Breast', price: 3.50 },  // Reduced from 5.00
-    { keyword: 'pork', title: 'Pork Chop', price: 3.50 },  // Reduced from 5.50 (cheaper than beef)
-    { keyword: 'rice', title: 'Rice 1kg', price: 1.20 },
-    { keyword: 'pasta', title: 'Pasta 500g', price: 0.80 },
-    { keyword: 'cheese', title: 'Cheese 200g', price: 2.00 },  // Reduced from 3.00
-    { keyword: 'yogurt', title: 'Yogurt 500g', price: 0.80 },
-    { keyword: 'butter', title: 'Butter 200g', price: 2.00 },  // Reduced from 3.00
-    { keyword: 'tomato', title: 'Tomatoes 1kg', price: 0.80 },
-    { keyword: 'potato', title: 'Potatoes 1kg', price: 0.60 },
-    { keyword: 'onion', title: 'Onions 500g', price: 0.50 },
-    { keyword: 'carrot', title: 'Carrots 500g', price: 0.60 },
-    { keyword: 'pepper', title: 'Bell Peppers', price: 1.00 },
-    { keyword: 'apple', title: 'Apples 1kg', price: 1.20 },
-    { keyword: 'banana', title: 'Bananas 500g', price: 0.80 },
-    { keyword: 'orange', title: 'Oranges 1kg', price: 1.00 },
-    { keyword: 'lemon', title: 'Lemons', price: 0.80 },
-    { keyword: 'fish', title: 'White Fish Fillet', price: 4.50 },  // Reduced from 6.00
-    { keyword: 'oil', title: 'Cooking Oil 500ml', price: 1.80 },  // Reduced from 3.00
-    { keyword: 'sugar', title: 'Sugar 1kg', price: 0.80 },
-    { keyword: 'flour', title: 'Flour 1kg', price: 0.90 },
+    { keyword: 'bread', title: 'Bread/Baguette', price: 1.40 },
+    { keyword: 'milk', title: 'Milk 1L', price: 1.40 },
+    { keyword: 'egg', title: 'Eggs 12-pack', price: 2.20 },
+    { keyword: 'chicken', title: 'Chicken Breast', price: 4.50 },
+    { keyword: 'pork', title: 'Pork Chop', price: 4.50 },
+    { keyword: 'rice', title: 'Rice 1kg', price: 1.30 },
+    { keyword: 'pasta', title: 'Pasta 500g', price: 1.00 },
+    { keyword: 'cheese', title: 'Cheese 200g', price: 3.20 },
+    { keyword: 'yogurt', title: 'Yogurt 500g', price: 1.20 },
+    { keyword: 'butter', title: 'Butter 200g', price: 2.80 },
+    { keyword: 'tomato', title: 'Tomatoes 1kg', price: 1.30 },
+    { keyword: 'potato', title: 'Potatoes 1kg', price: 0.70 },
+    { keyword: 'onion', title: 'Onions 500g', price: 0.60 },
+    { keyword: 'carrot', title: 'Carrots 500g', price: 0.70 },
+    { keyword: 'pepper', title: 'Bell Peppers', price: 1.30 },
+    { keyword: 'apple', title: 'Apples 1kg', price: 1.50 },
+    { keyword: 'banana', title: 'Bananas 500g', price: 1.10 },
+    { keyword: 'orange', title: 'Oranges 1kg', price: 1.40 },
+    { keyword: 'lemon', title: 'Lemons', price: 1.20 },
+    { keyword: 'fish', title: 'White Fish Fillet', price: 6.00 },
+    { keyword: 'oil', title: 'Cooking Oil 500ml', price: 2.80 },
+    { keyword: 'sugar', title: 'Sugar 1kg', price: 1.20 },
+    { keyword: 'flour', title: 'Flour 1kg', price: 1.10 },
   ],
 };
 
