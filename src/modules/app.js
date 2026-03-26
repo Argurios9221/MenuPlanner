@@ -1434,6 +1434,7 @@ export class MenuPlannerApp {
       this.marketState = {
         ...this.marketState,
         report: null,
+        filter: 'all',
         loading: true,
         error: '',
         basketKey,
@@ -1462,7 +1463,7 @@ export class MenuPlannerApp {
         }
         this.marketState = {
           report,
-          filter: this.marketState.filter || 'all',
+          filter: 'all',
           basketKey,
           loading: false,
           error: '',
@@ -1614,7 +1615,7 @@ export class MenuPlannerApp {
     let storesForRender = report.stores || [];
 
     if (normalizedFilter !== 'all') {
-      storesForRender = storesForRender.filter((store) => store.chainLabel === normalizedFilter);
+      storesForRender = storesForRender.filter((store) => (store.chainId || store.chainLabel) === normalizedFilter);
     }
 
     console.log('🏪 [UI] After filter:', storesForRender.length, 'stores to render');
@@ -1752,12 +1753,16 @@ export class MenuPlannerApp {
       ? `${topStore.chainLabel}: ${t('marketCoverage')(topStore.coverage.matchedCount, topStore.coverage.total, topStore.coverage.percent)}${topStore.coverage.estimatedTotal > 0 ? ` · ${formatTotal(topStore.coverage.estimatedTotal)}` : ''}`
       : '';
 
-    const chainLabels = [...new Set(report.stores.map((store) => store.chainLabel))];
+    const chains = Array.from(
+      new Map(
+        report.stores.map((store) => [store.chainId || store.chainLabel, store.chainLabel || store.name || 'Supermarket']),
+      ).entries(),
+    );
     const filterBtns = [
       `<button class="market-filter-btn ${normalizedFilter === 'all' ? 'active' : ''}" data-filter="all">${t('marketFilterAll')}</button>`,
-      ...chainLabels.map((label) => {
-        const activeClass = normalizedFilter === label ? 'active' : '';
-        return `<button class="market-filter-btn ${activeClass}" data-filter="${label}">${label}</button>`;
+      ...chains.map(([chainKey, chainLabel]) => {
+        const activeClass = normalizedFilter === chainKey ? 'active' : '';
+        return `<button class="market-filter-btn ${activeClass}" data-filter="${chainKey}">${chainLabel}</button>`;
       }),
     ].join('');
 

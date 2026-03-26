@@ -225,11 +225,17 @@ function parseOverpassElement(el) {
     return null;
   }
 
-  const name = el.tags?.name || el.tags?.brand || el.tags?.operator || '';
+  const brand = el.tags?.brand || el.tags?.operator || '';
+  const name = el.tags?.name || brand || '';
+  const chainKeyRaw = normalizeText(brand || name || 'supermarket')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9а-я-]/g, '');
+  const chainId = chainKeyRaw || 'supermarket';
 
   const result = {
     id: `store_${el.id}`,
-    chainLabel: name || 'Supermarket',
+    chainId,
+    chainLabel: brand || name || 'Supermarket',
     name: name || 'Supermarket',
     lat,
     lon,
