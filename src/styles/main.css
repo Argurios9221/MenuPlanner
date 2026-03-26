@@ -484,6 +484,33 @@ body.authenticated #auth-gate {
   gap: var(--spacing-lg);
 }
 
+.weather-aware-banner {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background:
+    radial-gradient(circle at 8% 10%, color-mix(in srgb, var(--secondary-color) 18%, #ffffff), transparent 35%),
+    linear-gradient(120deg, color-mix(in srgb, var(--primary-color) 10%, #ffffff), color-mix(in srgb, var(--accent-color) 8%, #ffffff));
+  padding: 0.85rem 1rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.weather-aware-title {
+  font-weight: 800;
+  color: var(--primary-color);
+  font-family: 'Sora', sans-serif;
+}
+
+.weather-aware-desc {
+  color: var(--dark-text);
+  margin-top: 0.2rem;
+  font-weight: 600;
+}
+
+.weather-aware-suggest {
+  color: var(--muted-text);
+  margin-top: 0.2rem;
+}
+
 .day-card {
   background: var(--card-bg);
   border: 1px solid var(--border-color);

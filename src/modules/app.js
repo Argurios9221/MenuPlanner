@@ -54,6 +54,7 @@ import {
 } from './ui.js';
 import { exportMenuToPDF, exportBasketToPDF, exportRecipeToPDF, downloadFile, generatePDFFilename } from './pdf.js';
 import { isSpoonacularEnabled } from './spoonacular.js';
+import { getWeatherDescription, getWeatherMealSuggestion } from './weather.js';
 import {
   deleteCurrentAccount,
   exportUserLocalData,
@@ -415,7 +416,10 @@ export class MenuPlannerApp {
     if (!this.ensureGdprConsent(consent, email)) {
       return;
     }
-    await this.runAuthAction(() => registerWithEmail(email, password), t('authRegisterDone'));
+    await this.runAuthAction(async () => {
+      await registerWithEmail(email, password);
+      this.closeAuthModal();
+    }, t('authRegisterDone'));
   }
 
   async handleEmailLogin(source = 'modal') {
@@ -427,7 +431,10 @@ export class MenuPlannerApp {
     if (!this.ensureGdprConsent(consent, email)) {
       return;
     }
-    await this.runAuthAction(() => loginWithEmail(email, password), t('authLoginDone'));
+    await this.runAuthAction(async () => {
+      await loginWithEmail(email, password);
+      this.closeAuthModal();
+    }, t('authLoginDone'));
   }
 
   async handlePasswordReset(source = 'modal') {
@@ -452,7 +459,10 @@ export class MenuPlannerApp {
     if (!action) {
       return;
     }
-    await this.runAuthAction(() => action(), t('authLoginDone'));
+    await this.runAuthAction(async () => {
+      await action();
+      this.closeAuthModal();
+    }, t('authLoginDone'));
   }
 
   openAuthModal() {
@@ -489,11 +499,6 @@ export class MenuPlannerApp {
     const userEmail = document.getElementById('auth-user-email');
 
     document.body.classList.toggle('authenticated', Boolean(user));
-
-    // Close auth modal when user logs in
-    if (user) {
-      this.closeAuthModal();
-    }
 
     if (authBtn) {
       authBtn.textContent = user ? t('authManage') : t('authLogin');
@@ -814,6 +819,17 @@ export class MenuPlannerApp {
     }
 
     container.innerHTML = '';
+
+    if (this.currentMenu?.weatherHint) {
+      const weatherInfo = document.createElement('div');
+      weatherInfo.className = 'weather-aware-banner';
+      weatherInfo.innerHTML = `
+        <div class="weather-aware-title">${t('weatherAwareTitle')}</div>
+        <div class="weather-aware-desc">${getWeatherDescription(this.currentMenu.weatherHint)}</div>
+        <div class="weather-aware-suggest">${getWeatherMealSuggestion(this.currentMenu.weatherCategory || 'balanced')}</div>
+      `;
+      container.appendChild(weatherInfo);
+    }
 
     const actionBar = document.createElement('div');
     actionBar.className = 'menu-actions-bar';

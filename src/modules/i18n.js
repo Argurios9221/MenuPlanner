@@ -272,6 +272,7 @@ const translations = {
     barcodeHistoryTitle: 'Recent scans',
     barcodeHistoryEmpty: 'No products scanned yet.',
     barcodeSource: 'Source',
+    weatherAwareTitle: 'Weather-aware menu',
   },
   bg: {
     appName: 'Fresh Kitchen',
@@ -545,6 +546,7 @@ const translations = {
     barcodeHistoryTitle: 'Последни сканирания',
     barcodeHistoryEmpty: 'Все още няма сканирани продукти.',
     barcodeSource: 'Източник',
+    weatherAwareTitle: 'Меню според времето',
   },
 };
 

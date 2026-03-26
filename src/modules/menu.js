@@ -235,9 +235,9 @@ function updateProteinRotation(meal, slotType) {
   _generationContext.lastProteinBySlot[slotType] = getMealPrimaryProtein(meal);
 }
 
-function matchesGenerationContext(meal, slotType, allowProteinRepeat = false) {
+function matchesGenerationContext(meal, slotType, weatherCategory = 'balanced', allowProteinRepeat = false) {
   return (
-    matchesWeatherPreference(meal, slotType) &&
+    matchesWeatherPreference(meal, weatherCategory) &&
     matchesProteinRotation(meal, slotType, allowProteinRepeat) &&
     matchesGoalPreference(meal, _generationContext.goal)
   );
@@ -441,11 +441,14 @@ export async function generateMenu(options = {}) {
     const dietPreference = getDietPreference(cuisine, dietary);
     const allowedAreas = getAllowedAreasForCuisine(cuisine);
     const weatherHint = await getWeatherHint().catch(() => null);
+    const weatherCategory = getWeatherMealCategory(weatherHint);
     _generationContext = {
       weatherHint,
       goal,
       lastProteinBySlot: { Lunch: '', Dinner: '' },
     };
+    menu.weatherHint = weatherHint;
+    menu.weatherCategory = weatherCategory;
     _extraDietaryFilter = (dietary || []).filter((d) =>
       ['no_pork', 'no_beef', 'lactose_free', 'no_chicken', 'no_seafood', 'no_nuts', 'gluten_free'].includes(d.trim())
     );
@@ -678,7 +681,7 @@ async function getMealForSlot(
           !usedMealIds.has(details.idMeal) &&
           !usedMealSignatures.has(mealSignature(details)) &&
           matchesMealSlot(details, slotType) &&
-          matchesGenerationContext(details, slotType, allowProteinRepeat) &&
+          matchesGenerationContext(details, slotType, weatherCategory, allowProteinRepeat) &&
           matchesDietPreference(details, dietPreference) &&
           matchesCuisinePreference(details, cuisinePreference, allowedAreas) &&
           matchesPrepTime(details, prepTimePreference) &&
