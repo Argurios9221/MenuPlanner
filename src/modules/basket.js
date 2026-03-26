@@ -167,7 +167,7 @@ function normalizeIngredientKey(name) {
   if (/\bflour\b|брашн/.test(normalized)) {
     return 'flour';
   }
-  if (/\brice\b|basmati|jasmine rice|arborio|risotto rice|long grain rice|short grain rice|brown rice|ориз/.test(normalized)) {
+  if (/\brice\b|basmati|jasmine|arborio|risotto\s+rice|long\s+grain\s+rice|short\s+grain\s+rice|brown\s+rice|ориз/.test(normalized)) {
     return 'rice';
   }
   if (/\bpasta\b|spaghetti|penne|fusilli|macaroni|linguine|tagliatelle|farfalle|rigatoni|макарон|спагет|паста/.test(normalized)) {
@@ -175,6 +175,75 @@ function normalizeIngredientKey(name) {
   }
   if ((/\bmilk\b|мляко/.test(normalized)) && !(/\bcoconut milk\b|\balmond milk\b|\bsoy milk\b|\boat milk\b|кокос|бадем|соево|овесено/.test(normalized))) {
     return 'milk';
+  }
+  if (/\bgreen beans?\b|\bstring beans?\b|зелен\s+фасул/.test(normalized)) {
+    return 'green_bean';
+  }
+  if (/\bharicot\b|\bcannellini\b|\bnavy bean\b|\bwhite bean\b|зрял\s+боб|бял\s+боб/.test(normalized)) {
+    return 'bean';
+  }
+  if (/\bchickpeas?\b|\bgarbanzo\b|нахут/.test(normalized)) {
+    return 'chickpea';
+  }
+  if (/\blentils?\b|леща/.test(normalized)) {
+    return 'lentil';
+  }
+  if (/\btomatoes?\b|\bcherry tomato\b|домат/.test(normalized)) {
+    return 'tomato';
+  }
+  if (/\bonions?\b|\bred onion\b|\bwhite onion\b|\byellow onion\b|лук/.test(normalized)) {
+    return 'onion';
+  }
+  if (/\bpotatoes?\b|картоф/.test(normalized)) {
+    return 'potato';
+  }
+  if (/\bcarrots?\b|морков/.test(normalized)) {
+    return 'carrot';
+  }
+  if (/\bcucumbers?\b|крастав/.test(normalized)) {
+    return 'cucumber';
+  }
+  if (/\bpeppers?\b|\bbell pepper\b|чуш/.test(normalized)) {
+    return 'pepper';
+  }
+  if (/\bmushrooms?\b|\bchampignon\b|гъб/.test(normalized)) {
+    return 'mushroom';
+  }
+  if (/\beggs?\b|яйц/.test(normalized)) {
+    return 'egg';
+  }
+  if (/\bchicken\b|пилешк|пиле/.test(normalized)) {
+    return 'chicken';
+  }
+  if (/\bbeef\b|телешк/.test(normalized)) {
+    return 'beef';
+  }
+  if (/\bpork\b|свинск/.test(normalized)) {
+    return 'pork';
+  }
+  if (/\blamb\b|агнешк/.test(normalized)) {
+    return 'lamb';
+  }
+  if (/\bsalmon\b|сьомг/.test(normalized)) {
+    return 'salmon';
+  }
+  if (/\bcod\b|треск/.test(normalized)) {
+    return 'cod';
+  }
+  if (/\btuna\b|тон/.test(normalized)) {
+    return 'tuna';
+  }
+  if (/\bapples?\b|ябълк/.test(normalized)) {
+    return 'apple';
+  }
+  if (/\bbananas?\b|банан/.test(normalized)) {
+    return 'banana';
+  }
+  if (/\boranges?\b|портокал/.test(normalized)) {
+    return 'orange';
+  }
+  if (/\blemons?\b|лимон/.test(normalized)) {
+    return 'lemon';
   }
 
   const canonical = INGREDIENT_ALIASES[normalized] || normalized;

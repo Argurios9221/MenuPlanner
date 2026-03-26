@@ -2,6 +2,10 @@ import { getBasketIngredients } from './basket.js';
 
 const DEFAULT_COORDS = { lat: 42.6977, lon: 23.3219 }; // Sofia fallback
 const OVERPASS_API = 'https://overpass-api.de/api/interpreter';
+const LIVE_OFFERS_TIMEOUT_MS = 2500;
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const storesCache = new Map();
+const offersCache = new Map();
 
 const CHAIN_DEFS = [
   {
@@ -315,7 +319,7 @@ function canonicalToken(value) {
   if (/\bflour\b|брашн/.test(raw)) {
     return 'flour';
   }
-  if (/\brice\b|basmati|jasmine rice|arborio|risotto rice|long grain rice|short grain rice|brown rice|ориз/.test(raw)) {
+  if (/\brice\b|basmati|jasmine|arborio|risotto\s+rice|long\s+grain\s+rice|short\s+grain\s+rice|brown\s+rice|ориз/.test(raw)) {
     return 'rice';
   }
   if (/\bpasta\b|spaghetti|penne|fusilli|macaroni|linguine|tagliatelle|farfalle|rigatoni|макарон|спагет|паста/.test(raw)) {
@@ -323,6 +327,75 @@ function canonicalToken(value) {
   }
   if ((/\bmilk\b|мляко/.test(raw)) && !(/\bcoconut milk\b|\balmond milk\b|\bsoy milk\b|\boat milk\b|кокос|бадем|соево|овесено/.test(raw))) {
     return 'milk';
+  }
+  if (/\bgreen beans?\b|\bstring beans?\b|зелен\s+фасул/.test(raw)) {
+    return 'green bean';
+  }
+  if (/\bharicot\b|\bcannellini\b|\bnavy bean\b|\bwhite bean\b|зрял\s+боб|бял\s+боб/.test(raw)) {
+    return 'bean';
+  }
+  if (/\bchickpeas?\b|\bgarbanzo\b|нахут/.test(raw)) {
+    return 'chickpea';
+  }
+  if (/\blentils?\b|леща/.test(raw)) {
+    return 'lentil';
+  }
+  if (/\btomatoes?\b|\bcherry tomato\b|домат/.test(raw)) {
+    return 'tomato';
+  }
+  if (/\bonions?\b|\bred onion\b|\bwhite onion\b|\byellow onion\b|лук/.test(raw)) {
+    return 'onion';
+  }
+  if (/\bpotatoes?\b|картоф/.test(raw)) {
+    return 'potato';
+  }
+  if (/\bcarrots?\b|морков/.test(raw)) {
+    return 'carrot';
+  }
+  if (/\bcucumbers?\b|крастав/.test(raw)) {
+    return 'cucumber';
+  }
+  if (/\bpeppers?\b|\bbell pepper\b|чуш/.test(raw)) {
+    return 'pepper';
+  }
+  if (/\bmushrooms?\b|\bchampignon\b|гъб/.test(raw)) {
+    return 'mushroom';
+  }
+  if (/\beggs?\b|яйц/.test(raw)) {
+    return 'egg';
+  }
+  if (/\bchicken\b|пилешк|пиле/.test(raw)) {
+    return 'chicken';
+  }
+  if (/\bbeef\b|телешк/.test(raw)) {
+    return 'beef';
+  }
+  if (/\bpork\b|свинск/.test(raw)) {
+    return 'pork';
+  }
+  if (/\blamb\b|агнешк/.test(raw)) {
+    return 'lamb';
+  }
+  if (/\bsalmon\b|сьомг/.test(raw)) {
+    return 'salmon';
+  }
+  if (/\bcod\b|треск/.test(raw)) {
+    return 'cod';
+  }
+  if (/\btuna\b|тон/.test(raw)) {
+    return 'tuna';
+  }
+  if (/\bapples?\b|ябълк/.test(raw)) {
+    return 'apple';
+  }
+  if (/\bbananas?\b|банан/.test(raw)) {
+    return 'banana';
+  }
+  if (/\boranges?\b|портокал/.test(raw)) {
+    return 'orange';
+  }
+  if (/\blemons?\b|лимон/.test(raw)) {
+    return 'lemon';
   }
 
   return INGREDIENT_ALIASES[raw] || raw;
@@ -338,7 +411,16 @@ function ingredientMatchesOffer(ingredient, offerKeyword) {
   if (!ingredientToken || !keywordToken) {
     return false;
   }
-  return ingredientToken.includes(keywordToken) || keywordToken.includes(ingredientToken);
+
+  // Do not map green beans to generic dry-bean offers.
+  if (
+    (ingredientToken === 'green bean' && keywordToken === 'bean') ||
+    (ingredientToken === 'bean' && keywordToken === 'green bean')
+  ) {
+    return false;
+  }
+
+  return ingredientToken === keywordToken;
 }
 
 function isLikelyAvailableInStore(ingredient) {
@@ -428,6 +510,11 @@ async function getUserCoords() {
 
 async function fetchNearbyChains(coords, options = {}) {
   const { useFallbackOnly = false } = options;
+  const cacheKey = `${Number(coords.lat).toFixed(3)}:${Number(coords.lon).toFixed(3)}:${useFallbackOnly ? 1 : 0}`;
+  const cacheHit = storesCache.get(cacheKey);
+  if (cacheHit && Date.now() - cacheHit.ts < CACHE_TTL_MS) {
+    return cacheHit.value;
+  }
 
   if (useFallbackOnly) {
     return CHAIN_DEFS.filter((chain) => !chain.onlineOnly).map((chain) => ({
@@ -443,7 +530,7 @@ async function fetchNearbyChains(coords, options = {}) {
   }
 
   const query = `
-    [out:json][timeout:25];
+    [out:json][timeout:12];
     (
       node["shop"="supermarket"](around:8000,${coords.lat},${coords.lon});
       way["shop"="supermarket"](around:8000,${coords.lat},${coords.lon});
@@ -474,9 +561,11 @@ async function fetchNearbyChains(coords, options = {}) {
       }
     }
 
-    return Array.from(deduped.values());
+    const result = Array.from(deduped.values());
+    storesCache.set(cacheKey, { ts: Date.now(), value: result });
+    return result;
   } catch {
-    return CHAIN_DEFS.filter((chain) => !chain.onlineOnly).map((chain) => ({
+    const fallback = CHAIN_DEFS.filter((chain) => !chain.onlineOnly).map((chain) => ({
       id: `${chain.id}_fallback`,
       chainId: chain.id,
       chainLabel: chain.label,
@@ -486,6 +575,8 @@ async function fetchNearbyChains(coords, options = {}) {
       address: '',
       isFallback: true,
     }));
+    storesCache.set(cacheKey, { ts: Date.now(), value: fallback });
+    return fallback;
   }
 }
 
@@ -499,7 +590,10 @@ async function fetchOfferText(url) {
   const proxyUrl = `https://r.jina.ai/http://${stripped}`;
 
   try {
-    const response = await fetch(proxyUrl);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), LIVE_OFFERS_TIMEOUT_MS);
+    const response = await fetch(proxyUrl, { signal: controller.signal });
+    clearTimeout(timer);
     if (!response.ok) {
       return '';
     }
@@ -554,20 +648,37 @@ async function getChainOffers(chainId, ingredientNames, options = {}) {
     return [];
   }
 
+  const signature = ingredientNames
+    .map((name) => canonicalToken(name))
+    .filter(Boolean)
+    .sort()
+    .join('|');
+  const cacheKey = `${chainId}:${useFallbackOnly ? 'fallback' : 'live'}:${signature}`;
+  const cacheHit = offersCache.get(cacheKey);
+  if (cacheHit && Date.now() - cacheHit.ts < CACHE_TTL_MS) {
+    return cacheHit.value;
+  }
+
   if (useFallbackOnly) {
-    return FALLBACK_OFFERS[chainId] || [];
+    const fallbackOnly = FALLBACK_OFFERS[chainId] || [];
+    offersCache.set(cacheKey, { ts: Date.now(), value: fallbackOnly });
+    return fallbackOnly;
   }
 
   const text = await fetchOfferText(chain.offerPage);
   const live = extractLiveOffers(text, ingredientNames);
   if (live.length > 0) {
-    return live.slice(0, 30);
+    const liveTop = live.slice(0, 30);
+    offersCache.set(cacheKey, { ts: Date.now(), value: liveTop });
+    return liveTop;
   }
 
-  return (FALLBACK_OFFERS[chainId] || []).map((offer) => ({
+  const fallback = (FALLBACK_OFFERS[chainId] || []).map((offer) => ({
     ...offer,
     source: 'fallback',
   }));
+  offersCache.set(cacheKey, { ts: Date.now(), value: fallback });
+  return fallback;
 }
 
 // Parse package size from offer title (e.g. "Butter 125g" → 125, "Rice 1kg" → 1000)
@@ -702,12 +813,22 @@ export async function buildSupermarketRecommendations(basket) {
   const shouldUseFallbackOnly = useFallbackOnly || forceFallbackCoords;
   const nearbyStores = await fetchNearbyChains(coords, { useFallbackOnly: shouldUseFallbackOnly });
 
-  const offersByChain = {};
+  const neededChainIds = new Set(nearbyStores.map((store) => store.chainId));
   for (const chain of CHAIN_DEFS) {
-    offersByChain[chain.id] = await getChainOffers(chain.id, ingredientNames, {
-      useFallbackOnly: shouldUseFallbackOnly,
-    });
+    if (chain.onlineOnly) {
+      neededChainIds.add(chain.id);
+    }
   }
+
+  const offerEntries = await Promise.all(
+    Array.from(neededChainIds).map(async (chainId) => {
+      const offers = await getChainOffers(chainId, ingredientNames, {
+        useFallbackOnly: shouldUseFallbackOnly,
+      });
+      return [chainId, offers];
+    }),
+  );
+  const offersByChain = Object.fromEntries(offerEntries);
 
   const enriched = nearbyStores.map((store) => {
     const offers = offersByChain[store.chainId] || [];
