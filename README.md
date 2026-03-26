@@ -150,6 +150,8 @@ VITE_FIREBASE_API_KEY=your_firebase_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your_project_id
 VITE_FIREBASE_APP_ID=your_firebase_app_id
+VITE_CLOUDE_ANALYZER_URL=https://your-worker.workers.dev
+VITE_CLOUDE_ANALYZER_KEY=optional_bearer_key
 ```
 
 Get a free key (150 requests/day) at [spoonacular.com/food-api](https://spoonacular.com/food-api).  
@@ -166,6 +168,23 @@ If deploying on GitHub Pages via Actions, add these repository secrets so the pr
 - VITE_FIREBASE_AUTH_DOMAIN
 - VITE_FIREBASE_PROJECT_ID
 - VITE_FIREBASE_APP_ID
+- VITE_CLOUDE_ANALYZER_URL
+- VITE_CLOUDE_ANALYZER_KEY
+
+### Cloude Analyzer Endpoint (Optional)
+
+This repository now includes a ready-to-deploy Cloudflare Worker in `cloud/cloude-analyzer-worker/`.
+
+Quick start:
+
+```bash
+cd cloud/cloude-analyzer-worker
+npm install
+npx wrangler login
+npm run deploy
+```
+
+After deploy, copy the generated `https://...workers.dev` URL into `VITE_CLOUDE_ANALYZER_URL`.
 
 ### Development
 

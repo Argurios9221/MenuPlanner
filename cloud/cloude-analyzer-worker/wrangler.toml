@@ -1,0 +1,7 @@
+name = "menuplanner-cloude-analyzer"
+main = "src/index.js"
+compatibility_date = "2026-03-26"
+
+[vars]
+# Optional bearer token checked by the worker.
+ANALYZER_KEY = ""
