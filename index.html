@@ -49,6 +49,8 @@
             </div>
           </div>
           <div class="header-controls">
+            <button id="auth-btn" type="button" class="control-btn" data-i18n="authLogin">Login</button>
+            <span id="auth-user-label" class="auth-user-label" aria-live="polite"></span>
             <button id="theme-btn" class="control-btn" title="Toggle dark mode">Dark</button>
             <button id="lang-btn" class="control-btn" title="Switch language">BG</button>
           </div>
@@ -225,6 +227,60 @@
     <!-- Recipe Modal -->
     <div id="recipe-modal" class="modal">
       <div class="modal-content recipe-modal-content"></div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+      <div class="modal-content auth-modal-content">
+        <div class="recipe-header">
+          <h2 id="auth-modal-title" data-i18n="authTitle">Account</h2>
+          <button type="button" class="modal-close auth-close" aria-label="Close">✕</button>
+        </div>
+
+        <div class="auth-logged-out" id="auth-logged-out">
+          <div class="form-group">
+            <label for="auth-email" data-i18n="authEmail">Email</label>
+            <input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" />
+          </div>
+          <div class="form-group">
+            <label for="auth-password" data-i18n="authPassword">Password</label>
+            <input id="auth-password" type="password" autocomplete="current-password" />
+          </div>
+
+          <div class="form-group auth-consent-box">
+            <label class="diet-check-label">
+              <input type="checkbox" id="auth-gdpr-consent" />
+              <span data-i18n="authConsent">I agree to Privacy Policy and Terms and consent to data processing for account access.</span>
+            </label>
+            <small>
+              <a href="./privacy.html" target="_blank" rel="noopener" data-i18n="privacyPolicy">Privacy Policy</a>
+              ·
+              <a href="./terms.html" target="_blank" rel="noopener" data-i18n="termsOfUse">Terms of Use</a>
+            </small>
+          </div>
+
+          <div class="auth-grid-btns">
+            <button id="auth-email-login" class="btn btn-primary" data-i18n="authLogin">Login</button>
+            <button id="auth-email-register" class="btn btn-secondary" data-i18n="authRegister">Register</button>
+            <button id="auth-email-reset" class="btn btn-secondary" data-i18n="authResetPassword">Reset password</button>
+          </div>
+
+          <div class="auth-provider-buttons">
+            <button id="auth-google" class="btn btn-secondary" data-i18n="authGoogle">Continue with Google</button>
+            <button id="auth-facebook" class="btn btn-secondary" data-i18n="authFacebook">Continue with Facebook</button>
+            <button id="auth-x" class="btn btn-secondary" data-i18n="authX">Continue with X</button>
+          </div>
+        </div>
+
+        <div class="auth-logged-in" id="auth-logged-in" hidden>
+          <p id="auth-user-email" class="market-summary"></p>
+          <div class="auth-grid-btns">
+            <button id="auth-export-data" class="btn btn-secondary" data-i18n="authExportData">Export my data</button>
+            <button id="auth-delete-account" class="btn btn-secondary" data-i18n="authDeleteAccount">Delete my account</button>
+            <button id="auth-logout" class="btn btn-primary" data-i18n="authLogout">Logout</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Toast Notifications -->

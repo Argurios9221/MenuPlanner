@@ -158,7 +158,22 @@ body {
 
 .header-controls {
   display: flex;
+  align-items: center;
   gap: 0.7rem;
+}
+
+.auth-user-label {
+  max-width: 220px;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--border-radius-pill);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .control-btn,
@@ -1289,6 +1304,41 @@ body {
   box-shadow: var(--shadow-lg);
   position: relative;
   border: 1px solid var(--border-color);
+}
+
+.auth-modal-content {
+  max-width: 640px;
+}
+
+.auth-grid-btns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.auth-provider-buttons {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.auth-consent-box {
+  background: var(--light-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 0.7rem;
+}
+
+.auth-consent-box small {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--muted-text);
+}
+
+.auth-consent-box a {
+  color: var(--primary-color);
+  font-weight: 600;
 }
 
 .recipe-header {

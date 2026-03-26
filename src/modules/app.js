@@ -28,6 +28,7 @@ import {
   saveFavorites,
   getMenuHistory,
   addMenuToHistory,
+  clearAllData,
 } from './storage.js';
 import {
   createMenuDayCard,
@@ -42,6 +43,23 @@ import {
 } from './ui.js';
 import { exportMenuToPDF, exportBasketToPDF, exportRecipeToPDF, downloadFile, generatePDFFilename } from './pdf.js';
 import { isSpoonacularEnabled } from './spoonacular.js';
+import {
+  deleteCurrentAccount,
+  exportUserLocalData,
+  getCurrentUser,
+  hasGdprConsent,
+  initAuth,
+  isAuthConfigured,
+  loginWithEmail,
+  loginWithFacebook,
+  loginWithGoogle,
+  loginWithX,
+  logout,
+  registerWithEmail,
+  resolveAuthRedirectResult,
+  resetPassword,
+  setGdprConsent,
+} from './auth.js';
 
 function scaleIngredientMeasure(measureStr, factor) {
   if (!measureStr) {
@@ -92,6 +110,10 @@ function parseGoalFromNotes(notes) {
   return '';
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
 export class MenuPlannerApp {
   constructor() {
     this.currentMenu = null;
@@ -110,7 +132,9 @@ export class MenuPlannerApp {
     this.state = {
       preferences: getPreferences(),
       favorites: getAllFavorites(),
+      authUser: null,
     };
+    this.authUnsubscribe = null;
   }
 
   async init() {
@@ -121,8 +145,28 @@ export class MenuPlannerApp {
 
     this.applyPreferencesToForm(this.state.preferences);
     this.attachEventListeners();
+    await this.initAuthState();
     this.updateUI();
     this.renderMenu();
+  }
+
+  async initAuthState() {
+    if (!isAuthConfigured()) {
+      this.syncAuthUI();
+      return;
+    }
+
+    this.authUnsubscribe = initAuth((user) => {
+      this.state.authUser = user || null;
+      this.syncAuthUI();
+    });
+
+    const redirectResult = await resolveAuthRedirectResult();
+    if (redirectResult?.user) {
+      this.state.authUser = redirectResult.user;
+      this.syncAuthUI();
+      showToast(t('authLoginDone'));
+    }
   }
 
   applyPreferencesToForm(prefs = {}) {
@@ -182,9 +226,15 @@ export class MenuPlannerApp {
       themeBtn.addEventListener('click', () => this.handleThemeToggle());
     }
 
+    const authBtn = document.getElementById('auth-btn');
+    if (authBtn) {
+      authBtn.addEventListener('click', () => this.openAuthModal());
+    }
+
     this.attachPreferencesListeners();
     this.attachSpoonacularListeners();
     this.attachTabListeners();
+    this.attachAuthListeners();
 
     const modal = document.getElementById('recipe-modal');
     if (modal) {
@@ -196,6 +246,243 @@ export class MenuPlannerApp {
           hideModal();
         }
       });
+    }
+  }
+
+  attachAuthListeners() {
+    const authModal = document.getElementById('auth-modal');
+    if (authModal) {
+      authModal.addEventListener('click', (event) => {
+        if (event.target === authModal || event.target.closest('.auth-close')) {
+          this.closeAuthModal();
+        }
+      });
+    }
+
+    const loginBtn = document.getElementById('auth-email-login');
+    if (loginBtn) {
+      loginBtn.addEventListener('click', () => this.handleEmailLogin());
+    }
+
+    const registerBtn = document.getElementById('auth-email-register');
+    if (registerBtn) {
+      registerBtn.addEventListener('click', () => this.handleEmailRegister());
+    }
+
+    const resetBtn = document.getElementById('auth-email-reset');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => this.handlePasswordReset());
+    }
+
+    const googleBtn = document.getElementById('auth-google');
+    if (googleBtn) {
+      googleBtn.addEventListener('click', () => this.handleProviderLogin('google'));
+    }
+
+    const fbBtn = document.getElementById('auth-facebook');
+    if (fbBtn) {
+      fbBtn.addEventListener('click', () => this.handleProviderLogin('facebook'));
+    }
+
+    const xBtn = document.getElementById('auth-x');
+    if (xBtn) {
+      xBtn.addEventListener('click', () => this.handleProviderLogin('x'));
+    }
+
+    const logoutBtn = document.getElementById('auth-logout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        await this.runAuthAction(() => logout(), t('authLogoutDone'));
+      });
+    }
+
+    const exportBtn = document.getElementById('auth-export-data');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        const payload = exportUserLocalData();
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const filename = `menuplanner-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+        downloadFile(blob, filename);
+        showToast(t('authExportDone'));
+      });
+    }
+
+    const deleteBtn = document.getElementById('auth-delete-account');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async () => {
+        if (!window.confirm(t('authDeleteConfirm'))) {
+          return;
+        }
+        await this.runAuthAction(async () => {
+          await deleteCurrentAccount();
+          clearAllData();
+        }, t('authDeleteDone'));
+      });
+    }
+  }
+
+  getAuthFormValues() {
+    return {
+      email: String(document.getElementById('auth-email')?.value || '').trim(),
+      password: String(document.getElementById('auth-password')?.value || ''),
+      consent: Boolean(document.getElementById('auth-gdpr-consent')?.checked),
+    };
+  }
+
+  ensureGdprConsent(consentChecked, email) {
+    if (!consentChecked && !hasGdprConsent()) {
+      showToast(t('authConsentRequired'));
+      return false;
+    }
+
+    if (consentChecked) {
+      setGdprConsent({ email, locale: getLang(), source: 'auth_modal' });
+    }
+    return true;
+  }
+
+  async runAuthAction(action, successMessage = '') {
+    try {
+      await action();
+      if (successMessage) {
+        showToast(successMessage);
+      }
+      this.syncAuthUI();
+    } catch (error) {
+      const code = String(error?.code || '');
+      const known = {
+        'auth/popup-closed-by-user': t('authPopupClosed'),
+        'auth/popup-blocked': t('authPopupBlocked'),
+        'auth/cancelled-popup-request': t('authPopupClosed'),
+        'auth/operation-not-supported-in-this-environment': t('authRedirecting'),
+        'auth/network-request-failed': t('authNetworkError'),
+        'auth/invalid-credential': t('authInvalidCredential'),
+        'auth/email-already-in-use': t('authEmailInUse'),
+        'auth/weak-password': t('authWeakPassword'),
+        'auth/invalid-email': t('authInvalidEmail'),
+        'auth/too-many-requests': t('authTooManyRequests'),
+        'auth/requires-recent-login': t('authReloginRequired'),
+      };
+      showToast(known[code] || t('authUnexpectedError'));
+    }
+  }
+
+  async handleEmailRegister() {
+    const { email, password, consent } = this.getAuthFormValues();
+    if (!isValidEmail(email)) {
+      showToast(t('authInvalidEmail'));
+      return;
+    }
+    if (!password || password.length < 8) {
+      showToast(t('authPasswordMinLength'));
+      return;
+    }
+    if (!this.ensureGdprConsent(consent, email)) {
+      return;
+    }
+    await this.runAuthAction(() => registerWithEmail(email, password), t('authRegisterDone'));
+  }
+
+  async handleEmailLogin() {
+    const { email, password, consent } = this.getAuthFormValues();
+    if (!isValidEmail(email) || !password) {
+      showToast(t('authEmailPasswordRequired'));
+      return;
+    }
+    if (!this.ensureGdprConsent(consent, email)) {
+      return;
+    }
+    await this.runAuthAction(() => loginWithEmail(email, password), t('authLoginDone'));
+  }
+
+  async handlePasswordReset() {
+    const { email } = this.getAuthFormValues();
+    if (!email) {
+      showToast(t('authEmailRequired'));
+      return;
+    }
+    await this.runAuthAction(() => resetPassword(email), t('authResetDone'));
+  }
+
+  async handleProviderLogin(provider) {
+    const { consent } = this.getAuthFormValues();
+    if (!this.ensureGdprConsent(consent, '')) {
+      return;
+    }
+
+    const actionMap = {
+      google: loginWithGoogle,
+      facebook: loginWithFacebook,
+      x: loginWithX,
+    };
+    const action = actionMap[provider];
+    if (!action) {
+      return;
+    }
+    await this.runAuthAction(() => action(), t('authLoginDone'));
+  }
+
+  openAuthModal() {
+    const modal = document.getElementById('auth-modal');
+    if (!modal) {
+      return;
+    }
+    if (!isAuthConfigured()) {
+      showToast(t('authNotConfigured'));
+    }
+    modal.classList.add('open');
+    this.syncAuthUI();
+  }
+
+  closeAuthModal() {
+    const modal = document.getElementById('auth-modal');
+    if (!modal) {
+      return;
+    }
+    modal.classList.remove('open');
+
+    const passwordField = document.getElementById('auth-password');
+    if (passwordField) {
+      passwordField.value = '';
+    }
+  }
+
+  syncAuthUI() {
+    const user = this.state.authUser || getCurrentUser();
+    const authBtn = document.getElementById('auth-btn');
+    const userLabel = document.getElementById('auth-user-label');
+    const loggedOut = document.getElementById('auth-logged-out');
+    const loggedIn = document.getElementById('auth-logged-in');
+    const userEmail = document.getElementById('auth-user-email');
+
+    if (authBtn) {
+      authBtn.textContent = user ? t('authManage') : t('authLogin');
+    }
+    if (userLabel) {
+      userLabel.textContent = user?.email || (isAuthConfigured() ? '' : t('authNotConfiguredShort'));
+    }
+
+    if (loggedOut) {
+      loggedOut.hidden = Boolean(user);
+    }
+    if (loggedIn) {
+      loggedIn.hidden = !user;
+    }
+    if (userEmail) {
+      userEmail.textContent = user ? `${t('authSignedInAs')}: ${user.email || user.uid}` : '';
+    }
+
+    const consentBox = document.getElementById('auth-gdpr-consent');
+    if (consentBox && hasGdprConsent()) {
+      consentBox.checked = true;
+    }
+
+    const providersDisabled = !isAuthConfigured();
+    for (const id of ['auth-email-login', 'auth-email-register', 'auth-email-reset', 'auth-google', 'auth-facebook', 'auth-x']) {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.disabled = providersDisabled;
+      }
     }
   }
 
@@ -1458,6 +1745,7 @@ export class MenuPlannerApp {
 
     const theme = getTheme();
     this.applyTheme(theme);
+    this.syncAuthUI();
 
     if (this.currentMenu) {
       this.renderMenu();

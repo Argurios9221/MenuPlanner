@@ -146,10 +146,19 @@ Create a `.env` file in the project root (already in `.gitignore`):
 
 ```env
 VITE_SPOONACULAR_KEY=your_key_here
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_APP_ID=your_firebase_app_id
 ```
 
 Get a free key (150 requests/day) at [spoonacular.com/food-api](https://spoonacular.com/food-api).  
 The app is fully functional without this key.
+
+For authentication (email/password, Google, Facebook, X), create a Firebase project and enable these sign-in providers in Firebase Authentication.
+Also add your local and production domains to Firebase Authorized Domains.
+
+GDPR note: the app includes explicit consent in auth flow plus in-app actions for data export and account deletion.
 
 ### Development
 
