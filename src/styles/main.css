@@ -3,6 +3,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap');
 
 :root {
+  --ui-zoom: 1;
   --primary-color: #0f766e;
   --secondary-color: #0ea5a0;
   --accent-color: #f97316;
@@ -37,6 +38,7 @@
 
 html,
 body {
+  font-size: calc(16px * var(--ui-zoom));
   font-family: var(--font-family);
   background-color: var(--light-bg);
   color: var(--dark-text);
@@ -120,6 +122,7 @@ body.authenticated #auth-gate {
   z-index: 100;
   isolation: isolate;
   overflow: hidden;
+  transition: transform 220ms ease, opacity 220ms ease;
 }
 
 .header::before {
@@ -244,6 +247,17 @@ body.authenticated #auth-gate {
   font-size: 1.08rem;
   font-weight: 700;
   transition: all var(--transition-speed);
+}
+
+.zoom-btn {
+  width: 2.1rem;
+  text-align: center;
+  padding: 0.45rem 0;
+}
+
+.zoom-reset-btn {
+  min-width: 4rem;
+  text-align: center;
 }
 
 .control-btn:hover,
@@ -2324,6 +2338,12 @@ recipe-modal-content .modal-close {
 }
 
 @media (max-width: 900px) {
+  .header.header-hidden {
+    transform: translateY(calc(-100% - 10px));
+    opacity: 0.97;
+    pointer-events: none;
+  }
+
   .header-content {
     flex-direction: column;
     align-items: flex-start;
@@ -2426,6 +2446,15 @@ recipe-modal-content .modal-close {
   .lang-btn {
     padding: 0.5rem 0.78rem;
     font-size: 0.98rem;
+  }
+
+  .zoom-btn {
+    width: 2rem;
+  }
+
+  .zoom-reset-btn {
+    min-width: 3.7rem;
+    font-size: 0.9rem;
   }
 
   .auth-user-label {

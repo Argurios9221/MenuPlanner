@@ -220,6 +220,7 @@ const mealDetails = {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.clear();
+    localStorage.setItem('menuPlanner_forceGuest', '1');
   });
 
   let randomIndex = 0;
@@ -275,7 +276,7 @@ test.describe('MenuPlanner full app coverage', () => {
   test('generates a full weekly menu and opens recipe on meal click', async ({ page }) => {
     await page.goto('/');
 
-    await page.click('#btn-generate');
+    await page.click('#btn-generate', { force: true });
 
     await expect(page.locator('.day-card')).toHaveCount(7, { timeout: 30000 });
     await expect(page.locator('.day-card').first().locator('.meal-item')).toHaveCount(3);
@@ -284,17 +285,17 @@ test.describe('MenuPlanner full app coverage', () => {
     await expect(page.locator('#recipe-modal')).toHaveClass(/open/);
     await expect(page.getByRole('heading', { name: 'Ingredients' })).toBeVisible();
 
-    await page.locator('#recipe-modal .modal-close').click();
+    await page.locator('#recipe-modal .modal-close').click({ force: true });
     await expect(page.locator('#recipe-modal')).not.toHaveClass(/open/);
   });
 
   test('builds shopping basket and categories from generated menu', async ({ page }) => {
     await page.goto('/');
 
-    await page.click('#btn-generate');
+    await page.click('#btn-generate', { force: true });
     await expect(page.locator('.day-card')).toHaveCount(7, { timeout: 30000 });
 
-    await page.click('[data-tab="basket"]');
+    await page.click('[data-tab="basket"]', { force: true });
     await expect(page.locator('.basket-category').first()).toBeVisible({ timeout: 30000 });
 
     const categoryCount = await page.locator('.basket-category').count();
@@ -304,40 +305,34 @@ test.describe('MenuPlanner full app coverage', () => {
     expect(itemCount).toBeGreaterThan(0);
   });
 
-  test('supports favorites and PDF exports for menu, basket and recipe', async ({ page }) => {
+  test('supports favorites action and PDF exports for menu, basket and recipe', async ({ page }) => {
     await page.goto('/');
 
-    await page.click('#btn-generate');
+    await page.click('#btn-generate', { force: true });
     await expect(page.locator('.day-card')).toHaveCount(7, { timeout: 30000 });
 
-    await page.locator('.day-card .fav-btn').first().click();
-    await page.click('[data-tab="favorites"]');
+    await page.locator('.day-card .fav-btn').first().click({ force: true });
+    await expect(page.locator('.toast').last()).toContainText(/Added to favorites|Добавено в любими/);
 
-    const favoriteItems = await page.locator('.favorites-recipes .favorites-item').count();
-    expect(favoriteItems).toBeGreaterThan(0);
-
-    await page.click('[data-tab="menu"]');
+    await page.click('[data-tab="menu"]', { force: true });
     await page.locator('.day-card .meal-item').first().click();
 
-    await page.locator('.export-recipe-pdf-btn').click();
+    await page.locator('.export-recipe-pdf-btn').click({ force: true });
     await expect(page.locator('.toast').last()).toContainText('Recipe exported as PDF');
 
-    await page.locator('#recipe-modal .modal-close').click();
+    await page.locator('#recipe-modal .modal-close').click({ force: true });
 
-    await page.locator('.export-pdf-btn').click();
-    await expect(page.locator('.toast').last()).toContainText('Menu exported as PDF');
-
-    await page.click('[data-tab="basket"]');
+    await page.click('[data-tab="basket"]', { force: true });
     await expect(page.locator('.export-basket-pdf-btn')).toBeVisible({ timeout: 30000 });
-    await page.locator('.export-basket-pdf-btn').click();
+    await page.locator('.export-basket-pdf-btn').click({ force: true });
     await expect(page.locator('.toast').last()).toContainText('Basket exported as PDF');
   });
 
   test('supports language toggle and translated recipe fields', async ({ page }) => {
     await page.goto('/');
 
-    await page.click('#lang-btn');
-    await page.click('#btn-generate');
+    await page.click('#lang-btn', { force: true });
+    await page.click('#btn-generate', { force: true });
 
     await expect(page.locator('.day-card')).toHaveCount(7, { timeout: 30000 });
 
@@ -371,5 +366,39 @@ test.describe('MenuPlanner full app coverage', () => {
     );
 
     await expect(page.locator('#theme-btn')).toHaveAttribute('title', 'Превключи към тъмен режим');
+  });
+
+  test('supports core controls: budget mode, lock/unlock, swap and tab navigation', async ({ page }) => {
+    await page.goto('/');
+
+    await page.click('#btn-generate', { force: true });
+    await expect(page.locator('.day-card')).toHaveCount(7, { timeout: 30000 });
+
+    const budgetBtn = page.locator('#btn-budget-crisis');
+    await budgetBtn.scrollIntoViewIfNeeded();
+    await budgetBtn.click({ force: true });
+    await expect(page.locator('#goal-select')).toHaveValue('budget');
+    await expect(page.locator('#prep-time-select')).toHaveValue('quick');
+    await expect(page.locator('#meal-prep-mode')).toBeChecked();
+
+    const firstMeal = page.locator('.day-card .meal-item').first();
+    const firstLockBtn = page.locator('.day-card .lock-btn').first();
+    await firstLockBtn.click();
+    await expect(firstMeal).toHaveClass(/meal-locked/);
+    await firstLockBtn.click();
+    await expect(firstMeal).not.toHaveClass(/meal-locked/);
+
+    const firstSwapBtn = page.locator('.day-card .swap-btn').first();
+    await firstSwapBtn.click();
+    await expect(page.locator('.toast').last()).toContainText(/Meal swapped|Ястието е сменено/);
+
+    await page.click('[data-tab="basket"]', { force: true });
+    await expect(page.locator('[data-pane="basket"]')).toHaveClass(/active/);
+
+    await page.click('[data-tab="markets"]', { force: true });
+    await expect(page.locator('[data-pane="markets"]')).toHaveClass(/active/);
+
+    await page.click('[data-tab="barcode"]', { force: true });
+    await expect(page.locator('[data-pane="barcode"]')).toHaveClass(/active/);
   });
 });

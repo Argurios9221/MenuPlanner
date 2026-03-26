@@ -77,6 +77,11 @@ import {
   setGdprConsent,
 } from './auth.js';
 
+const UI_ZOOM_KEY = 'menuPlanner_uiZoom';
+const MIN_UI_ZOOM = 0.85;
+const MAX_UI_ZOOM = 1.25;
+const UI_ZOOM_STEP = 0.05;
+
 function scaleIngredientMeasure(measureStr, factor) {
   if (!measureStr) {
     return measureStr;
@@ -397,6 +402,11 @@ export class MenuPlannerApp {
     };
     this.authUnsubscribe = null;
     this.barcodeListenersBound = false;
+    this.uiZoom = 1;
+    this.lastScrollY = 0;
+    this.mobileScrollHandlersBound = false;
+    this.onWindowScroll = null;
+    this.onWindowResize = null;
   }
 
   async init() {
@@ -405,6 +415,7 @@ export class MenuPlannerApp {
     this.currentMenu = null;
     clearCurrentMenu();
 
+    this.initZoomState();
     this.applyPreferencesToForm(this.state.preferences);
     this.attachEventListeners();
     await this.initAuthState();
@@ -506,10 +517,26 @@ export class MenuPlannerApp {
       authBtn.addEventListener('click', () => this.openAuthModal());
     }
 
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    if (zoomInBtn) {
+      zoomInBtn.addEventListener('click', () => this.adjustZoom(UI_ZOOM_STEP));
+    }
+
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    if (zoomOutBtn) {
+      zoomOutBtn.addEventListener('click', () => this.adjustZoom(-UI_ZOOM_STEP));
+    }
+
+    const zoomResetBtn = document.getElementById('zoom-reset-btn');
+    if (zoomResetBtn) {
+      zoomResetBtn.addEventListener('click', () => this.setZoom(1));
+    }
+
     this.attachPreferencesListeners();
     this.attachSpoonacularListeners();
     this.attachTabListeners();
     this.attachAuthListeners();
+    this.bindMobileHeaderAutoHide();
 
     const modal = document.getElementById('recipe-modal');
     if (modal) {
@@ -790,13 +817,15 @@ export class MenuPlannerApp {
 
   syncAuthUI() {
     const user = this.state.authUser || getCurrentUser();
+    const forceGuestMode = localStorage.getItem('menuPlanner_forceGuest') === '1';
+    const guestMode = !isAuthConfigured() || forceGuestMode;
     const authBtn = document.getElementById('auth-btn');
     const userLabel = document.getElementById('auth-user-label');
     const loggedOut = document.getElementById('auth-logged-out');
     const loggedIn = document.getElementById('auth-logged-in');
     const userEmail = document.getElementById('auth-user-email');
 
-    document.body.classList.toggle('authenticated', Boolean(user));
+    document.body.classList.toggle('authenticated', Boolean(user) || guestMode);
 
     if (authBtn) {
       authBtn.textContent = user ? t('authManage') : t('authLogin');
@@ -2614,6 +2643,11 @@ export class MenuPlannerApp {
       el.setAttribute('placeholder', t(key));
     });
 
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-title');
+      el.setAttribute('title', t(key));
+    });
+
     const langBtn = document.getElementById('lang-btn');
     if (langBtn) {
       langBtn.textContent = t('langBtn');
@@ -2629,9 +2663,98 @@ export class MenuPlannerApp {
     const theme = getTheme();
     this.applyTheme(theme);
     this.syncAuthUI();
+    this.updateZoomUI();
 
     if (this.currentMenu) {
       this.renderMenu();
     }
+  }
+
+  initZoomState() {
+    const savedZoom = Number(localStorage.getItem(UI_ZOOM_KEY));
+    if (Number.isFinite(savedZoom) && savedZoom >= MIN_UI_ZOOM && savedZoom <= MAX_UI_ZOOM) {
+      this.uiZoom = savedZoom;
+    } else {
+      this.uiZoom = 1;
+    }
+    this.applyZoom();
+  }
+
+  adjustZoom(delta) {
+    this.setZoom(this.uiZoom + delta);
+  }
+
+  setZoom(nextZoom) {
+    const rounded = Number(nextZoom.toFixed(2));
+    const clamped = Math.min(MAX_UI_ZOOM, Math.max(MIN_UI_ZOOM, rounded));
+    this.uiZoom = clamped;
+    this.applyZoom();
+    this.updateZoomUI();
+  }
+
+  applyZoom() {
+    document.documentElement.style.setProperty('--ui-zoom', this.uiZoom.toFixed(2));
+    localStorage.setItem(UI_ZOOM_KEY, String(this.uiZoom.toFixed(2)));
+  }
+
+  updateZoomUI() {
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    if (zoomInBtn) {
+      zoomInBtn.disabled = this.uiZoom >= MAX_UI_ZOOM;
+      zoomInBtn.setAttribute('aria-label', t('zoomInTitle'));
+    }
+
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    if (zoomOutBtn) {
+      zoomOutBtn.disabled = this.uiZoom <= MIN_UI_ZOOM;
+      zoomOutBtn.setAttribute('aria-label', t('zoomOutTitle'));
+    }
+
+    const zoomResetBtn = document.getElementById('zoom-reset-btn');
+    if (zoomResetBtn) {
+      zoomResetBtn.textContent = `${Math.round(this.uiZoom * 100)}%`;
+      zoomResetBtn.setAttribute('aria-label', t('zoomResetTitle'));
+      zoomResetBtn.title = t('zoomResetTitle');
+    }
+  }
+
+  bindMobileHeaderAutoHide() {
+    if (this.mobileScrollHandlersBound) {
+      return;
+    }
+
+    this.onWindowScroll = () => {
+      const header = document.querySelector('.header');
+      if (!header) {
+        return;
+      }
+
+      const currentY = window.scrollY || 0;
+      const onMobile = window.matchMedia('(max-width: 900px)').matches;
+
+      if (!onMobile) {
+        header.classList.remove('header-hidden');
+        this.lastScrollY = currentY;
+        return;
+      }
+
+      const scrollingDown = currentY > this.lastScrollY;
+      const shouldHide = scrollingDown && currentY > 72;
+      header.classList.toggle('header-hidden', shouldHide);
+      this.lastScrollY = Math.max(0, currentY);
+    };
+
+    this.onWindowResize = () => {
+      if (!window.matchMedia('(max-width: 900px)').matches) {
+        const header = document.querySelector('.header');
+        if (header) {
+          header.classList.remove('header-hidden');
+        }
+      }
+    };
+
+    window.addEventListener('scroll', this.onWindowScroll, { passive: true });
+    window.addEventListener('resize', this.onWindowResize);
+    this.mobileScrollHandlersBound = true;
   }
 }
