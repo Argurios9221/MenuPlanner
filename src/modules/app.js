@@ -402,6 +402,7 @@ export class MenuPlannerApp {
     };
     this.authUnsubscribe = null;
     this.barcodeListenersBound = false;
+    this.apiStatusListenersBound = false;
   }
 
   async init() {
@@ -1068,17 +1069,54 @@ export class MenuPlannerApp {
       showToast(t('spoonacularMissingKey'));
     }
 
+    if (!this.apiStatusListenersBound) {
+      const refreshBtn = document.getElementById('api-refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => this.renderApiStatusBanners(true));
+      }
+
+      const toggleBtn = document.getElementById('api-toggle-btn');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+          const panel = document.getElementById('api-health-panel');
+          if (!panel) {
+            return;
+          }
+          panel.classList.toggle('collapsed');
+          toggleBtn.textContent = panel.classList.contains('collapsed') ? (t('apiStatusExpand') || 'Expand') : (t('apiStatusCollapse') || 'Collapse');
+        });
+      }
+
+      this.apiStatusListenersBound = true;
+    }
+
     this.renderApiStatusBanners();
   }
 
-  async renderApiStatusBanners() {
+  async renderApiStatusBanners(forceRefresh = false) {
+    if (forceRefresh) {
+      const refreshBtn = document.getElementById('api-refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.disabled = true;
+      }
+    }
+
     const statuses = await getApiConnectionStatuses();
     const connectedLabel = t('apiStatusConnected') || 'Connected';
     const disconnectedLabel = t('apiStatusDisconnected') || 'Disconnected';
+    let onlineCount = 0;
+    let offlineCount = 0;
 
     Object.entries(statuses).forEach(([key, isConnected]) => {
       const dot = document.querySelector(`[data-api-dot="${key}"]`);
       const label = document.querySelector(`[data-api-label="${key}"]`);
+      const card = document.querySelector(`[data-api="${key}"]`);
+
+      if (isConnected) {
+        onlineCount += 1;
+      } else {
+        offlineCount += 1;
+      }
 
       if (dot) {
         dot.classList.toggle('api-on', Boolean(isConnected));
@@ -1091,7 +1129,34 @@ export class MenuPlannerApp {
         label.classList.toggle('api-on', Boolean(isConnected));
         label.classList.toggle('api-off', !isConnected);
       }
+
+      if (card) {
+        card.classList.toggle('api-health-card-on', Boolean(isConnected));
+        card.classList.toggle('api-health-card-off', !isConnected);
+      }
     });
+
+    const online = document.getElementById('api-online-count');
+    if (online) {
+      online.textContent = String(onlineCount);
+    }
+    const offline = document.getElementById('api-offline-count');
+    if (offline) {
+      offline.textContent = String(offlineCount);
+    }
+
+    const toggleBtn = document.getElementById('api-toggle-btn');
+    const panel = document.getElementById('api-health-panel');
+    if (toggleBtn && panel) {
+      toggleBtn.textContent = panel.classList.contains('collapsed') ? (t('apiStatusExpand') || 'Expand') : (t('apiStatusCollapse') || 'Collapse');
+    }
+
+    if (forceRefresh) {
+      const refreshBtn = document.getElementById('api-refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+      }
+    }
   }
 
   attachTabListeners() {
