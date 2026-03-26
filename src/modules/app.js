@@ -2196,6 +2196,9 @@ export class MenuPlannerApp {
     const locationWarning = report.coords.isFallback
       ? `<p class="market-location-warning">&#9888;&#65039; ${t('marketLocationApprox')}</p>`
       : '';
+    const analysisNote = report.analysisProvider
+      ? `<p class="market-analysis-note">${report.analysisProvider} analysis${report.searchRadiusKm ? ` · ${report.searchRadiusKm} km radius` : ''}${report.analysisSummary ? ` · ${report.analysisSummary}` : ''}</p>`
+      : '';
     const eurToBgn = Number(report?.fx?.BGN || 1.9558);
     const formatTotal = (eurValue) => {
       const eur = Number(eurValue || 0);
@@ -2298,6 +2301,9 @@ export class MenuPlannerApp {
               <ul class="market-unmatched-list">${unmatchedRows}</ul>
             </details>`
           : '';
+        const brochureLine = Array.isArray(store.brochureHighlights) && store.brochureHighlights.length > 0
+          ? `<p class="market-brochure-line">📰 ${store.brochureHighlights.join(' · ')}</p>`
+          : '';
 
         const links = [
           store.directionsUrl
@@ -2325,6 +2331,7 @@ export class MenuPlannerApp {
               ${budgetBadgeHtml}
             </div>
             <p class="market-coverage-line">${t('marketCoverage')(store.coverage.matchedCount, store.coverage.total, store.coverage.percent)} · min ${minCoverage}%: ${thresholdLabel} · ${t('marketMatchedOffers')(promoCount)} · ${formatTotal(store.coverage.estimatedTotal)}</p>
+            ${brochureLine}
             ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
             ${links ? `<div class="market-links">${links}</div>` : ''}
             ${store.coverage.matchedOffers.length > 0 ? `
@@ -2360,6 +2367,7 @@ export class MenuPlannerApp {
 
     results.innerHTML = `
       ${locationWarning}
+      ${analysisNote}
       ${summaryText ? `<p class="market-summary">${summaryText}</p>` : ''}
       ${budgetIndicator || ''}
       ${familyAdjustmentsMarkup}

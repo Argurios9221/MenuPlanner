@@ -1024,6 +1024,12 @@ body.authenticated #auth-gate {
   font-weight: 600;
 }
 
+.market-analysis-note {
+  margin: 0.4rem 0 0.45rem;
+  font-size: 0.82rem;
+  color: var(--muted-text);
+}
+
 .market-optimizer-card,
 .planning-card {
   background: var(--card-bg);
@@ -1394,6 +1400,13 @@ body.authenticated #auth-gate {
   color: var(--dark-text);
   font-size: 0.82rem;
   line-height: 1.4;
+}
+
+.market-brochure-line {
+  margin: -0.15rem 0 0.5rem;
+  color: #0b7285;
+  font-size: 0.79rem;
+  line-height: 1.35;
 }
 
 .market-links {
