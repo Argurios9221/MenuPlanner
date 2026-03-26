@@ -362,9 +362,16 @@ body.authenticated #auth-gate {
 }
 
 .form-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--spacing-sm);
   margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+}
+
+.form-actions .btn {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 0.7rem;
 }
 
 .btn {
@@ -2362,6 +2369,14 @@ recipe-modal-content .modal-close {
     min-width: 132px;
     height: 98px;
   }
+
+  .form-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #btn-generate {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 600px) {
@@ -2397,6 +2412,14 @@ recipe-modal-content .modal-close {
 
   .preferences-panel {
     padding: var(--spacing-md);
+  }
+
+  .form-actions {
+    grid-template-columns: 1fr;
+  }
+
+  #btn-generate {
+    grid-column: auto;
   }
 
   .form-group {
