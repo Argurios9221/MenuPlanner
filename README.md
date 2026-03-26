@@ -160,6 +160,13 @@ Also add your local and production domains to Firebase Authorized Domains.
 
 GDPR note: the app includes explicit consent in auth flow plus in-app actions for data export and account deletion.
 
+If deploying on GitHub Pages via Actions, add these repository secrets so the production build can enable auth:
+
+- VITE_FIREBASE_API_KEY
+- VITE_FIREBASE_AUTH_DOMAIN
+- VITE_FIREBASE_PROJECT_ID
+- VITE_FIREBASE_APP_ID
+
 ### Development
 
 ```bash
