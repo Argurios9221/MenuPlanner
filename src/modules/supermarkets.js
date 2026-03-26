@@ -2,7 +2,10 @@ import { getBasketIngredients } from './basket.js';
 import { getPricesForStore } from './price-scraper.js';
 
 const DEFAULT_COORDS = { lat: 42.6977, lon: 23.3219 }; // Sofia fallback (will be overridden by geolocation)
-const OVERPASS_API = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_APIS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
 const FX_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 let fxCache = null;
 
@@ -294,29 +297,28 @@ async function fetchNearbyChains(coords, options = {}) {
       node["shop"="supermarket"](around:8000,${coords.lat},${coords.lon});
       way["shop"="supermarket"](around:8000,${coords.lat},${coords.lon});
       relation["shop"="supermarket"](around:8000,${coords.lat},${coords.lon});
+      node["shop"="convenience"](around:5000,${coords.lat},${coords.lon});
+      way["shop"="convenience"](around:5000,${coords.lat},${coords.lon});
+      relation["shop"="convenience"](around:5000,${coords.lat},${coords.lon});
     );
     out center tags;
   `;
 
   try {
-    const response = await fetch(OVERPASS_API, {
-      method: 'POST',
-      body: query,
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    const parsed = await fetchFromOverpassMirrors(query);
+    console.log('🏪 [Supermarkets] Parsed stores from Overpass:', parsed.length, parsed.map(s => ({ id: s.id, name: s.name, chainLabel: s.chainLabel, lat: s.lat, lon: s.lon })));
+    
+    let candidates = parsed;
+    if (candidates.length === 0) {
+      const nominatim = await fetchFromNominatim(coords);
+      if (nominatim.length > 0) {
+        console.log('🏪 [Supermarkets] Using Nominatim fallback stores:', nominatim.length);
+        candidates = nominatim;
+      }
     }
 
-    const data = await response.json();
-    console.log('🏪 [Supermarkets] Overpass API raw response elements:', data.elements?.length || 0);
-    
-    const parsed = (data.elements || []).map(parseOverpassElement).filter(Boolean);
-    console.log('🏪 [Supermarkets] Parsed stores:', parsed.length, parsed.map(s => ({ id: s.id, name: s.name, chainLabel: s.chainLabel, lat: s.lat, lon: s.lon })));
-
     const deduped = new Map();
-    for (const store of parsed) {
+    for (const store of candidates) {
       const key = dedupeStoreKey(store);
       if (!deduped.has(key)) {
         deduped.set(key, store);
@@ -351,6 +353,77 @@ async function fetchNearbyChains(coords, options = {}) {
       isFallback: true,
     }];
     return fallback;
+  }
+}
+
+async function fetchFromOverpassMirrors(query) {
+  for (const endpoint of OVERPASS_APIS) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        body: query,
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      });
+
+      if (!response.ok) {
+        console.warn('🏪 [Supermarkets] Overpass mirror failed:', endpoint, response.status);
+        continue;
+      }
+
+      const data = await response.json();
+      console.log('🏪 [Supermarkets] Overpass mirror raw elements:', endpoint, data.elements?.length || 0);
+      return (data.elements || []).map(parseOverpassElement).filter(Boolean);
+    } catch (error) {
+      console.warn('🏪 [Supermarkets] Overpass mirror error:', endpoint, error?.message || error);
+    }
+  }
+
+  return [];
+}
+
+async function fetchFromNominatim(coords) {
+  try {
+    const lat = Number(coords.lat);
+    const lon = Number(coords.lon);
+    const delta = 0.06;
+    const left = lon - delta;
+    const right = lon + delta;
+    const top = lat + delta;
+    const bottom = lat - delta;
+
+    const url = new URL('https://nominatim.openstreetmap.org/search');
+    url.searchParams.set('q', 'supermarket');
+    url.searchParams.set('format', 'jsonv2');
+    url.searchParams.set('limit', '25');
+    url.searchParams.set('bounded', '1');
+    url.searchParams.set('viewbox', `${left},${top},${right},${bottom}`);
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    return (Array.isArray(data) ? data : []).map((item, idx) => {
+      const display = String(item.display_name || 'Supermarket');
+      const name = display.split(',')[0] || 'Supermarket';
+      return {
+        id: `nominatim_${item.place_id || idx}`,
+        chainId: normalizeText(name).replace(/\s+/g, '-').replace(/[^a-z0-9а-я-]/g, '') || 'supermarket',
+        chainLabel: name,
+        name,
+        lat: Number(item.lat),
+        lon: Number(item.lon),
+        address: display,
+      };
+    }).filter((store) => Number.isFinite(store.lat) && Number.isFinite(store.lon));
+  } catch {
+    return [];
   }
 }
 
