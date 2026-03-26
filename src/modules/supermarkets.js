@@ -1,4 +1,5 @@
 import { getBasketIngredients } from './basket.js';
+import { getPricesForStore } from './price-scraper.js';
 
 const DEFAULT_COORDS = { lat: 42.6977, lon: 23.3219 }; // Sofia fallback (will be overridden by geolocation)
 const OVERPASS_API = 'https://overpass-api.de/api/interpreter';
@@ -381,7 +382,7 @@ async function getFxRates() {
   }
 }
 
-async function getChainOffers(storeId, ingredientNames, options = {}) {
+async function getChainOffers(storeId, chainLabel, ingredientNames, options = {}) {
   const { useFallbackOnly = false } = options;
 
   const signature = ingredientNames
@@ -389,16 +390,23 @@ async function getChainOffers(storeId, ingredientNames, options = {}) {
     .filter(Boolean)
     .sort()
     .join('|');
-  const cacheKey = `${storeId}:${useFallbackOnly ? 'fallback' : 'live'}:${signature}`;
+  const cacheKey = `${storeId}:${chainLabel}:${useFallbackOnly ? 'fallback' : 'live'}:${signature}`;
   const cacheHit = offersCache.get(cacheKey);
   if (cacheHit && Date.now() - cacheHit.ts < CACHE_TTL_MS) {
     return cacheHit.value;
   }
 
-  // Use only generic fallback offers - no specific chains
-  const fallbackOnly = FALLBACK_OFFERS['generic'] || [];
-  offersCache.set(cacheKey, { ts: Date.now(), value: fallbackOnly });
-  return fallbackOnly;
+  // Try to get real prices from scraper database
+  let offers = getPricesForStore(storeId, chainLabel, ingredientNames);
+
+  // If no offers found for this store, use generic fallback
+  if (!offers || offers.length === 0) {
+    console.log(`🛒 [Supermarkets] No scraped prices found for ${chainLabel}, using fallback`);
+    offers = FALLBACK_OFFERS['generic'] || [];
+  }
+
+  offersCache.set(cacheKey, { ts: Date.now(), value: offers });
+  return offers;
 }
 
 // Parse package size from offer title (e.g. "Butter 125g" → 125, "Rice 1kg" → 1000)
@@ -555,7 +563,7 @@ export async function buildSupermarketRecommendations(basket) {
   console.log('🏪 [Supermarkets] Fetching offers for', nearbyStores.length, 'stores...');
   const offerEntries = await Promise.all(
     nearbyStores.map(async (store) => {
-      const offers = await getChainOffers(store.id, ingredientNames, {
+      const offers = await getChainOffers(store.id, store.chainLabel, ingredientNames, {
         useFallbackOnly: shouldUseFallbackOnly,
       });
       return [store.id, offers];
