@@ -215,6 +215,38 @@
             />
           </div>
 
+          <div class="form-group">
+            <label for="pantry-expiry-input" data-i18n="labelPantryExpiry">Pantry expiry tracker</label>
+            <textarea
+              id="pantry-expiry-input"
+              class="compact-textarea"
+              placeholder="milk|2026-03-29|1&#10;chicken breast|2026-03-27|2"
+              data-placeholder="placeholderPantryExpiry"
+            ></textarea>
+            <small class="form-help" data-i18n="pantryExpiryHelp">One item per line: product | expiry date | quantity.</small>
+          </div>
+
+          <div class="form-group">
+            <label class="toggle-card" for="meal-prep-mode">
+              <span>
+                <strong data-i18n="mealPrepModeTitle">Meal Prep Mode</strong>
+                <small data-i18n="mealPrepModeHint">Generate batch-cooking friendly repeats for lunch and dinner.</small>
+              </span>
+              <input type="checkbox" id="meal-prep-mode" />
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label for="family-profiles-input" data-i18n="labelFamilyProfiles">Family profiles</label>
+            <textarea
+              id="family-profiles-input"
+              class="compact-textarea"
+              placeholder="Mia|adult|1|lactose_free|milk>oat milk;cheese>tofu&#10;Niki|child|0.7|no_pork|"
+              data-placeholder="placeholderFamilyProfiles"
+            ></textarea>
+            <small class="form-help" data-i18n="familyProfilesHelp">One profile per line: name | role | portion multiplier | exclusions | replacements.</small>
+          </div>
+
           <div class="form-actions">
             <button id="btn-reset" class="btn btn-secondary" data-i18n="btnReset">Reset</button>
             <button id="btn-generate" class="btn btn-primary" data-i18n="btnGenerate">Generate Menu</button>

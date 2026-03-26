@@ -8,6 +8,8 @@ const STORAGE_KEYS = {
   CURRENT_MENU: 'menuPlanner_currentMenu',
   THEME: 'menuPlanner_theme',
   MENU_HISTORY: 'menuPlanner_menuHistory',
+  RECIPE_FEEDBACK: 'menuPlanner_recipeFeedback',
+  LEFTOVERS: 'menuPlanner_leftovers',
 };
 
 const DEFAULT_PREFERENCES = {
@@ -20,6 +22,9 @@ const DEFAULT_PREFERENCES = {
   notes: '',
   budget: 0,
   pantry: [],
+  pantryItemsDetailed: [],
+  mealPrepMode: false,
+  familyProfiles: [],
   goal: '',
 };
 
@@ -108,6 +113,95 @@ export function addFavoriteProduct(product) {
     });
     saveFavorites(favorites);
   }
+}
+
+export function getRecipeFeedback() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.RECIPE_FEEDBACK);
+    return saved ? JSON.parse(saved) : {};
+  } catch (error) {
+    console.error('Failed to parse recipe feedback:', error);
+    return {};
+  }
+}
+
+export function saveRecipeFeedback(feedback) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.RECIPE_FEEDBACK, JSON.stringify(feedback));
+  } catch (error) {
+    console.error('Failed to save recipe feedback:', error);
+  }
+}
+
+export function setRecipeRating(mealId, rating, recipeName = '') {
+  const safeRating = Math.max(1, Math.min(5, Number(rating) || 0));
+  if (!mealId || !safeRating) {
+    return null;
+  }
+
+  const feedback = getRecipeFeedback();
+  feedback[mealId] = {
+    ...(feedback[mealId] || {}),
+    recipeName: recipeName || feedback[mealId]?.recipeName || '',
+    rating: safeRating,
+    updatedAt: Date.now(),
+  };
+  saveRecipeFeedback(feedback);
+  return feedback[mealId];
+}
+
+export function getRecipeFeedbackEntry(mealId) {
+  return getRecipeFeedback()[mealId] || null;
+}
+
+export function getRecipeRating(mealId) {
+  return Number(getRecipeFeedback()[mealId]?.rating || 0);
+}
+
+export function getLowRatedRecipeIds(maxRating = 2) {
+  return Object.entries(getRecipeFeedback())
+    .filter(([, entry]) => Number(entry?.rating || 0) > 0 && Number(entry.rating) <= maxRating)
+    .map(([mealId]) => mealId);
+}
+
+export function getLeftovers() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.LEFTOVERS);
+    return saved ? JSON.parse(saved) : [];
+  } catch (error) {
+    console.error('Failed to parse leftovers:', error);
+    return [];
+  }
+}
+
+export function saveLeftovers(leftovers) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.LEFTOVERS, JSON.stringify(leftovers));
+  } catch (error) {
+    console.error('Failed to save leftovers:', error);
+  }
+}
+
+export function addLeftover(leftover) {
+  const leftovers = getLeftovers();
+  const nextEntry = {
+    id: generateId(),
+    mealId: leftover.mealId || '',
+    mealName: leftover.mealName || 'Meal',
+    ingredients: Array.isArray(leftover.ingredients) ? leftover.ingredients : [],
+    servingsLeft: Math.max(1, parseInt(leftover.servingsLeft || 1, 10)),
+    note: String(leftover.note || '').trim(),
+    createdAt: Date.now(),
+  };
+  leftovers.unshift(nextEntry);
+  saveLeftovers(leftovers.slice(0, 20));
+  return nextEntry;
+}
+
+export function removeLeftover(leftoverId) {
+  const leftovers = getLeftovers().filter((entry) => entry.id !== leftoverId);
+  saveLeftovers(leftovers);
+  return leftovers;
 }
 
 export function removeFavoriteProduct(productName) {

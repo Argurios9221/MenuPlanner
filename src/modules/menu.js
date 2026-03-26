@@ -1,6 +1,6 @@
 // Menu generation logic
 import { extractIngredients, fetchMealDetails, fetchMealsByCategory, getRandomMeal } from './api.js';
-import { saveCurrentMenu } from './storage.js';
+import { getRecipeRating, saveCurrentMenu } from './storage.js';
 import { estimateCalories, estimatePrepTime } from './metadata.js';
 import { getWeatherHint, getWeatherMealCategory } from './weather.js';
 
@@ -17,6 +17,9 @@ let _extraDietaryFilter = [];
 let _generationContext = {
   weatherHint: null,
   goal: '',
+  pantryUrgencyByToken: new Map(),
+  mealPrepMode: false,
+  familyProfiles: [],
   lastProteinBySlot: { Lunch: '', Dinner: '' },
 };
 
@@ -243,6 +246,210 @@ function matchesGenerationContext(meal, slotType, weatherCategory = 'balanced', 
   );
 }
 
+function isSuppressedByRecipeFeedback(mealId) {
+  const rating = getRecipeRating(mealId);
+  return rating > 0 && rating <= 2;
+}
+
+function getRecipeFeedbackScore(mealId) {
+  const rating = getRecipeRating(mealId);
+  if (!rating) {
+    return 0;
+  }
+  if (rating <= 2) {
+    return -100;
+  }
+  return rating * 10;
+}
+
+function tokenizeIngredientName(name) {
+  return normalizeText(name)
+    .replace(/[^a-zа-яё\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getMealIngredientTokens(meal) {
+  return (meal?.ingredients || [])
+    .map((ingredient) => tokenizeIngredientName(ingredient?.name || ''))
+    .filter(Boolean);
+}
+
+function getPantryPriorityScore(meal) {
+  const tokens = getMealIngredientTokens(meal);
+  let score = 0;
+  for (const token of tokens) {
+    const days = _generationContext.pantryUrgencyByToken.get(token);
+    if (days === undefined) {
+      continue;
+    }
+    if (days <= 1) {
+      score += 18;
+    } else if (days <= 3) {
+      score += 12;
+    } else if (days <= 5) {
+      score += 6;
+    } else {
+      score += 2;
+    }
+  }
+  return score;
+}
+
+function getIngredientOverlapScore(meal, referenceMeal) {
+  if (!referenceMeal) {
+    return 0;
+  }
+  const currentTokens = new Set(getMealIngredientTokens(meal));
+  const referenceTokens = new Set(getMealIngredientTokens(referenceMeal));
+  let overlap = 0;
+  for (const token of currentTokens) {
+    if (referenceTokens.has(token)) {
+      overlap += 1;
+    }
+  }
+  const prepMultiplier = _generationContext.mealPrepMode ? 7 : 3;
+  return overlap * prepMultiplier;
+}
+
+function buildPantryUrgencyMap(items = []) {
+  const map = new Map();
+  for (const item of items) {
+    const token = tokenizeIngredientName(item?.name || '');
+    if (!token) {
+      continue;
+    }
+    const days = item?.expiryDate
+      ? Math.ceil((new Date(item.expiryDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+      : 14;
+    if (!map.has(token) || days < map.get(token)) {
+      map.set(token, days);
+    }
+  }
+  return map;
+}
+
+function getProfileDietaryReplacements(exclusion) {
+  const replacements = {
+    lactose_free: [
+      { pattern: /milk|cream|cheese|butter|yogurt|yoghurt/i, to: 'lactose-free alternative' },
+    ],
+    no_pork: [
+      { pattern: /pork|bacon|ham/i, to: 'chicken' },
+    ],
+    no_beef: [
+      { pattern: /beef|veal/i, to: 'turkey or chicken' },
+    ],
+    no_chicken: [
+      { pattern: /chicken|hen/i, to: 'turkey or tofu' },
+    ],
+    no_seafood: [
+      { pattern: /fish|seafood|salmon|tuna|cod|shrimp|prawn|crab|lobster/i, to: 'chicken or legumes' },
+    ],
+    no_nuts: [
+      { pattern: /nut|peanut|almond|hazelnut|walnut|cashew|pistachio/i, to: 'seeds or omit' },
+    ],
+    gluten_free: [
+      { pattern: /flour|pasta|bread|noodle|breadcrumbs|barley|rye|semolina|couscous/i, to: 'gluten-free alternative' },
+    ],
+  };
+  return replacements[exclusion] || [];
+}
+
+function buildFamilyPlanForMeal(meal, familyProfiles = [], basePeople = 4) {
+  if (!familyProfiles.length) {
+    return [];
+  }
+
+  const ingredients = (meal.ingredients || []).map((ingredient) => ingredient?.name || '').filter(Boolean);
+  return familyProfiles.map((profile) => {
+    const portionMultiplier = Number(profile?.portionMultiplier || 1);
+    const suggestedPortions = Math.max(1, Number((basePeople * portionMultiplier).toFixed(1)));
+    const replacements = [];
+
+    for (const exclusion of profile.exclusions || []) {
+      for (const rule of getProfileDietaryReplacements(exclusion)) {
+        for (const ingredient of ingredients) {
+          if (rule.pattern.test(ingredient)) {
+            replacements.push(`${ingredient} -> ${rule.to}`);
+          }
+        }
+      }
+    }
+
+    for (const replacement of profile.replacements || []) {
+      for (const ingredient of ingredients) {
+        if (tokenizeIngredientName(ingredient).includes(tokenizeIngredientName(replacement.from))) {
+          replacements.push(`${replacement.from} -> ${replacement.to}`);
+        }
+      }
+    }
+
+    return {
+      name: profile.name,
+      role: profile.role || 'adult',
+      portionMultiplier,
+      suggestedPortions,
+      replacements: [...new Set(replacements)].slice(0, 3),
+    };
+  });
+}
+
+function annotateMealForProfiles(meal, familyProfiles = [], basePeople = 4, batchLabel = '') {
+  const familyPlan = buildFamilyPlanForMeal(meal, familyProfiles, basePeople);
+  return {
+    ...meal,
+    familyPlan,
+    familySummary: familyPlan
+      .map((entry) => `${entry.name} x${entry.portionMultiplier}${entry.replacements.length ? ` (${entry.replacements[0]})` : ''}`)
+      .join(' · '),
+    mealPrepLabel: batchLabel,
+  };
+}
+
+function cloneMealForBatch(meal, type, batchLabel = '') {
+  return {
+    ...meal,
+    type,
+    mealPrepLabel: batchLabel,
+  };
+}
+
+function buildMealPrepSummary(menu, enabled) {
+  if (!enabled) {
+    return null;
+  }
+  const repeatedMeals = menu.days
+    .flatMap((day) => day.meals || [])
+    .filter((meal) => meal.type === 'Lunch' || meal.type === 'Dinner')
+    .reduce((acc, meal) => {
+      acc[meal.strMeal] = (acc[meal.strMeal] || 0) + 1;
+      return acc;
+    }, {});
+  const repeatedEntries = Object.entries(repeatedMeals).filter(([, count]) => count > 1);
+  return {
+    cookSessions: repeatedEntries.length || 1,
+    repeatedMeals: repeatedEntries.reduce((sum, [, count]) => sum + count, 0),
+    lines: repeatedEntries.slice(0, 4).map(([name, count]) => ({
+      title: name,
+      detail: `${count} planned servings across the week`,
+    })),
+  };
+}
+
+function getBatchReferenceMeal(menu, dayIndex, mealType) {
+  if (!menu?.days?.length || dayIndex <= 0) {
+    return null;
+  }
+  for (let index = dayIndex - 1; index >= 0; index -= 1) {
+    const meal = (menu.days[index]?.meals || []).find((entry) => entry.type === mealType);
+    if (meal) {
+      return meal;
+    }
+  }
+  return null;
+}
+
 function matchesGoalPreference(meal, goal) {
   if (!goal) {
     return true;
@@ -423,6 +630,9 @@ export async function generateMenu(options = {}) {
     dietary = [],
     allergies = [],
     pantry = [],
+    pantryItemsDetailed = [],
+    mealPrepMode = false,
+    familyProfiles = [],
     goal = '',
   } = options;
 
@@ -431,11 +641,24 @@ export async function generateMenu(options = {}) {
     const menu = {
       id: generateMenuId(),
       generatedAt: Date.now(),
-      options: { people, variety, cuisine, prepTime, dietary, allergies, pantry, goal },
+      options: {
+        people,
+        variety,
+        cuisine,
+        prepTime,
+        dietary,
+        allergies,
+        pantry,
+        pantryItemsDetailed,
+        mealPrepMode,
+        familyProfiles,
+        goal,
+      },
       days: [],
     };
     const usedMealIds = new Set();
     const usedMealSignatures = new Set();
+    const batchAnchors = { Lunch: new Map(), Dinner: new Map() };
 
     const cuisineCategories = getCategoriesForCuisine(cuisine);
     const dietPreference = getDietPreference(cuisine, dietary);
@@ -445,6 +668,9 @@ export async function generateMenu(options = {}) {
     _generationContext = {
       weatherHint,
       goal,
+      pantryUrgencyByToken: buildPantryUrgencyMap(pantryItemsDetailed),
+      mealPrepMode,
+      familyProfiles,
       lastProteinBySlot: { Lunch: '', Dinner: '' },
     };
     menu.weatherHint = weatherHint;
@@ -474,48 +700,68 @@ export async function generateMenu(options = {}) {
         usedMealSignatures
       );
       if (breakfast) {
-        dayMeals.meals.push({ ...breakfast, type: 'Breakfast' });
+        dayMeals.meals.push(annotateMealForProfiles({ ...breakfast, type: 'Breakfast' }, familyProfiles, people));
         usedMealIds.add(breakfast.idMeal);
         usedMealSignatures.add(mealSignature(breakfast));
       }
 
-      // Lunch from cuisine categories
-      const lunchCategory = cuisineCategories[day % cuisineCategories.length];
-      const lunch = await getMealForSlot(
-        lunchCategory,
-        'Lunch',
-        variety,
-        day,
-        dietPreference,
-        cuisine,
-        allowedAreas,
-        prepTime,
-        usedMealIds,
-        usedMealSignatures
-      );
+      const lunchBatchId = mealPrepMode ? Math.floor(day / 3) : day;
+      const lunchReuse = mealPrepMode && batchAnchors.Lunch.has(lunchBatchId);
+      let lunch = lunchReuse ? cloneMealForBatch(batchAnchors.Lunch.get(lunchBatchId), 'Lunch', `Batch ${lunchBatchId + 1}`) : null;
+      if (!lunch) {
+        const lunchCategory = cuisineCategories[day % cuisineCategories.length];
+        lunch = await getMealForSlot(
+          lunchCategory,
+          'Lunch',
+          variety,
+          day,
+          dietPreference,
+          cuisine,
+          allowedAreas,
+          prepTime,
+          usedMealIds,
+          usedMealSignatures,
+          {
+            referenceMeal: mealPrepMode && lunchBatchId > 0 ? batchAnchors.Lunch.get(lunchBatchId - 1) : null,
+          }
+        );
+        if (mealPrepMode && lunch) {
+          batchAnchors.Lunch.set(lunchBatchId, lunch);
+        }
+      }
       if (lunch) {
-        dayMeals.meals.push({ ...lunch, type: 'Lunch' });
+        dayMeals.meals.push(annotateMealForProfiles({ ...lunch, type: 'Lunch' }, familyProfiles, people, mealPrepMode ? `Batch ${lunchBatchId + 1}` : ''));
         usedMealIds.add(lunch.idMeal);
         usedMealSignatures.add(mealSignature(lunch));
         updateProteinRotation(lunch, 'Lunch');
       }
 
-      // Dinner from cuisine categories (offset to get different category)
-      const dinnerCategory = cuisineCategories[(day + 2) % cuisineCategories.length];
-      const dinner = await getMealForSlot(
-        dinnerCategory,
-        'Dinner',
-        variety,
-        day + 3,
-        dietPreference,
-        cuisine,
-        allowedAreas,
-        prepTime,
-        usedMealIds,
-        usedMealSignatures
-      );
+      const dinnerBatchId = mealPrepMode ? Math.floor(day / 3) : day;
+      const dinnerReuse = mealPrepMode && batchAnchors.Dinner.has(dinnerBatchId);
+      let dinner = dinnerReuse ? cloneMealForBatch(batchAnchors.Dinner.get(dinnerBatchId), 'Dinner', `Batch ${dinnerBatchId + 1}`) : null;
+      if (!dinner) {
+        const dinnerCategory = cuisineCategories[(day + 2) % cuisineCategories.length];
+        dinner = await getMealForSlot(
+          dinnerCategory,
+          'Dinner',
+          variety,
+          day + 3,
+          dietPreference,
+          cuisine,
+          allowedAreas,
+          prepTime,
+          usedMealIds,
+          usedMealSignatures,
+          {
+            referenceMeal: mealPrepMode ? (dayMeals.meals.find((meal) => meal.type === 'Lunch') || batchAnchors.Dinner.get(dinnerBatchId - 1) || null) : null,
+          }
+        );
+        if (mealPrepMode && dinner) {
+          batchAnchors.Dinner.set(dinnerBatchId, dinner);
+        }
+      }
       if (dinner) {
-        dayMeals.meals.push({ ...dinner, type: 'Dinner' });
+        dayMeals.meals.push(annotateMealForProfiles({ ...dinner, type: 'Dinner' }, familyProfiles, people, mealPrepMode ? `Batch ${dinnerBatchId + 1}` : ''));
         usedMealIds.add(dinner.idMeal);
         usedMealSignatures.add(mealSignature(dinner));
         updateProteinRotation(dinner, 'Dinner');
@@ -592,7 +838,7 @@ export async function generateMenu(options = {}) {
         }
 
         if (randomMeal) {
-          dayMeals.meals.push({ ...randomMeal, type: mealType });
+          dayMeals.meals.push(annotateMealForProfiles({ ...randomMeal, type: mealType }, familyProfiles, people));
           usedMealIds.add(randomMeal.idMeal);
           usedMealSignatures.add(mealSignature(randomMeal));
           updateProteinRotation(randomMeal, mealType);
@@ -609,6 +855,7 @@ export async function generateMenu(options = {}) {
 
     const endTime = performance.now();
     menu.generationTime = ((endTime - startTime) / 1000).toFixed(1);
+    menu.mealPrepSummary = buildMealPrepSummary(menu, mealPrepMode);
 
     // Save to localStorage
     saveCurrentMenu(menu);
@@ -632,7 +879,7 @@ async function getMealForSlot(
   usedMealSignatures = new Set(),
   options = {}
 ) {
-  const { allowProteinRepeat = false } = options;
+  const { allowProteinRepeat = false, referenceMeal = null } = options;
   try {
     const meals = await fetchMealsByCategory(category);
     if (!meals || meals.length === 0) {
@@ -664,6 +911,8 @@ async function getMealForSlot(
     const candidateIndexes = Array.from({ length: meals.length }, (_, itemIndex) =>
       (index + itemIndex) % meals.length
     );
+    let bestCandidate = null;
+    let bestCandidateScore = Number.NEGATIVE_INFINITY;
 
     for (const candidateIndex of candidateIndexes.slice(0, 24)) {
       const candidate = meals.at(candidateIndex);
@@ -689,11 +938,30 @@ async function getMealForSlot(
           matchesWeatherPreference(details, weatherCategory) &&
           isEasyToShopMeal(details)
         ) {
-          return details;
+          if (isSuppressedByRecipeFeedback(details.idMeal)) {
+            continue;
+          }
+
+          const candidateScore =
+            getRecipeFeedbackScore(details.idMeal) +
+            getPantryPriorityScore(details) +
+            getIngredientOverlapScore(details, referenceMeal);
+          if (candidateScore > bestCandidateScore) {
+            bestCandidate = details;
+            bestCandidateScore = candidateScore;
+          }
+
+          if (candidateScore >= 55) {
+            break;
+          }
         }
       } catch (error) {
         console.warn(`Skipping candidate ${candidate?.idMeal || 'unknown'}:`, error);
       }
+    }
+
+    if (bestCandidate) {
+      return bestCandidate;
     }
 
     return await getCompatibleRandomMeal(
@@ -778,6 +1046,9 @@ async function getCompatibleRandomMeal(
         matchesDietaryExclusions(details) &&
         (ignoreEasyToShop || isEasyToShopMeal(details))
       ) {
+        if (isSuppressedByRecipeFeedback(details.idMeal)) {
+          continue;
+        }
         return details;
       }
     } catch (error) {
@@ -829,6 +1100,9 @@ async function getFallbackMealFromPools(
             matchesDietaryExclusions(details) &&
             (rules.ignoreEasyToShop || isEasyToShopMeal(details))
           ) {
+            if (isSuppressedByRecipeFeedback(details.idMeal)) {
+              continue;
+            }
             return details;
           }
         }
@@ -896,6 +1170,11 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
     cuisine = 'mix',
     prepTime = 'any',
     dietary = [],
+    pantryItemsDetailed = [],
+    mealPrepMode = false,
+    familyProfiles = [],
+    people = 4,
+    goal = '',
   } = options;
 
   const day = menu.days[dayIndex];
@@ -922,6 +1201,14 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
   const cuisineCategories = shuffle([...getCategoriesForCuisine(cuisine)]);
   const dietPreference = getDietPreference(cuisine, dietary);
   const allowedAreas = getAllowedAreasForCuisine(cuisine);
+  _generationContext = {
+    ..._generationContext,
+    goal,
+    pantryUrgencyByToken: buildPantryUrgencyMap(pantryItemsDetailed),
+    mealPrepMode,
+    familyProfiles,
+  };
+  const referenceMeal = mealPrepMode ? getBatchReferenceMeal(menu, dayIndex, mealType) : null;
 
   let newMeal = null;
 
@@ -936,7 +1223,10 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
       allowedAreas,
       prepTime,
       usedMealIds,
-      usedMealSignatures
+      usedMealSignatures,
+      {
+        referenceMeal,
+      }
     );
   } else {
     for (const cat of cuisineCategories) {
@@ -950,7 +1240,10 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
         allowedAreas,
         prepTime,
         usedMealIds,
-        usedMealSignatures
+        usedMealSignatures,
+        {
+          referenceMeal,
+        }
       );
       if (newMeal) {
         break;
@@ -976,5 +1269,5 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
   if (!newMeal || newMeal.idMeal === oldMeal.idMeal) {
     return null;
   }
-  return { ...newMeal, type: mealType };
+  return annotateMealForProfiles({ ...newMeal, type: mealType }, familyProfiles, people, oldMeal.mealPrepLabel || '');
 }

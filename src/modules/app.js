@@ -27,9 +27,14 @@ import {
   copyToClipboard,
 } from './sharing.js';
 import {
+  addLeftover,
   getPreferences,
+  getLeftovers,
+  getRecipeRating,
+  removeLeftover,
   savePreferences,
   saveCurrentMenu,
+  setRecipeRating,
   clearCurrentMenu,
   getTheme,
   saveTheme,
@@ -100,6 +105,98 @@ function parsePantryInput(value) {
     .filter(Boolean);
 }
 
+function parsePantryExpiryInput(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [nameRaw = '', expiryDateRaw = '', quantityRaw = '1'] = line.split('|').map((part) => part.trim());
+      const quantity = Math.max(1, Number(quantityRaw) || 1);
+      return {
+        name: nameRaw,
+        expiryDate: expiryDateRaw,
+        quantity,
+      };
+    })
+    .filter((item) => item.name);
+}
+
+function stringifyPantryExpiryItems(items = []) {
+  return items
+    .map((item) => `${item.name || ''}|${item.expiryDate || ''}|${item.quantity || 1}`)
+    .join('\n');
+}
+
+function parseFamilyProfilesInput(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [nameRaw = '', roleRaw = 'adult', portionRaw = '1', exclusionsRaw = '', replacementsRaw = ''] = line
+        .split('|')
+        .map((part) => part.trim());
+      const replacements = replacementsRaw
+        .split(';')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .map((entry) => {
+          const [from = '', to = ''] = entry.split('>').map((part) => part.trim());
+          return { from, to };
+        })
+        .filter((entry) => entry.from && entry.to);
+      return {
+        name: nameRaw,
+        role: roleRaw || 'adult',
+        portionMultiplier: Math.max(0.5, Number(portionRaw) || 1),
+        exclusions: exclusionsRaw
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        replacements,
+      };
+    })
+    .filter((profile) => profile.name);
+}
+
+function stringifyFamilyProfiles(profiles = []) {
+  return profiles
+    .map((profile) => {
+      const exclusions = (profile.exclusions || []).join(',');
+      const replacements = (profile.replacements || [])
+        .map((entry) => `${entry.from}>${entry.to}`)
+        .join(';');
+      return `${profile.name || ''}|${profile.role || 'adult'}|${profile.portionMultiplier || 1}|${exclusions}|${replacements}`;
+    })
+    .join('\n');
+}
+
+function getDaysUntil(dateText) {
+  if (!dateText) {
+    return Number.POSITIVE_INFINITY;
+  }
+  const date = new Date(dateText);
+  if (Number.isNaN(date.getTime())) {
+    return Number.POSITIVE_INFINITY;
+  }
+  const diffMs = date.getTime() - Date.now();
+  return Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+}
+
+function getPantryUrgencyClass(daysUntil) {
+  if (daysUntil <= 1) {
+    return 'is-urgent';
+  }
+  if (daysUntil <= 3) {
+    return 'is-soon';
+  }
+  if (daysUntil <= 7) {
+    return 'is-upcoming';
+  }
+  return 'is-stable';
+}
+
 function parseGoalFromNotes(notes) {
   const text = String(notes || '');
   const match = text.match(/(?:goal|цел)\s*:\s*([^\n]+)/i);
@@ -122,6 +219,14 @@ function parseGoalFromNotes(notes) {
 
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function normalizeInsightToken(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-zа-яё\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export class MenuPlannerApp {
@@ -198,6 +303,14 @@ export class MenuPlannerApp {
     setValue('budget-input', prefs.budget || '');
     setValue('goal-select', prefs.goal || '');
     setValue('pantry-input', Array.isArray(prefs.pantry) ? prefs.pantry.join(', ') : '');
+    setValue('pantry-expiry-input', stringifyPantryExpiryItems(prefs.pantryItemsDetailed || []));
+
+    const mealPrepMode = document.getElementById('meal-prep-mode');
+    if (mealPrepMode) {
+      mealPrepMode.checked = Boolean(prefs.mealPrepMode);
+    }
+
+    setValue('family-profiles-input', stringifyFamilyProfiles(prefs.familyProfiles || []));
 
     const dietarySet = new Set(Array.isArray(prefs.dietary) ? prefs.dietary : []);
     const dietaryCheckboxes = [
@@ -680,6 +793,18 @@ export class MenuPlannerApp {
     if (pantryInput) {
       pantryInput.value = '';
     }
+    const pantryExpiryInput = document.getElementById('pantry-expiry-input');
+    if (pantryExpiryInput) {
+      pantryExpiryInput.value = '';
+    }
+    const mealPrepMode = document.getElementById('meal-prep-mode');
+    if (mealPrepMode) {
+      mealPrepMode.checked = false;
+    }
+    const familyProfilesInput = document.getElementById('family-profiles-input');
+    if (familyProfilesInput) {
+      familyProfilesInput.value = '';
+    }
 
     const defaultPrefs = {
       people: 4,
@@ -691,6 +816,9 @@ export class MenuPlannerApp {
       notes: '',
       budget: 0,
       pantry: [],
+      pantryItemsDetailed: [],
+      mealPrepMode: false,
+      familyProfiles: [],
       goal: '',
     };
     savePreferences(defaultPrefs);
@@ -736,7 +864,7 @@ export class MenuPlannerApp {
 
   attachPreferencesListeners() {
     const inputs = document.querySelectorAll(
-      '#people-input, #variety-select, #cuisine-select, #prep-time-select, #allergies-input, #notes-input, #budget-input, #goal-select, #pantry-input, #diet-no-beef, #diet-no-pork, #diet-lactose-free, #diet-no-chicken, #diet-no-seafood, #diet-no-nuts, #diet-gluten-free'
+      '#people-input, #variety-select, #cuisine-select, #prep-time-select, #allergies-input, #notes-input, #budget-input, #goal-select, #pantry-input, #pantry-expiry-input, #meal-prep-mode, #family-profiles-input, #diet-no-beef, #diet-no-pork, #diet-lactose-free, #diet-no-chicken, #diet-no-seafood, #diet-no-nuts, #diet-gluten-free'
     );
     inputs.forEach((input) => {
       input.addEventListener('change', () => {
@@ -808,6 +936,9 @@ export class MenuPlannerApp {
     const notes = document.getElementById('notes-input')?.value || '';
     const pantryInput = document.getElementById('pantry-input')?.value || '';
     const parsedPantry = parsePantryInput(pantryInput);
+    const pantryItemsDetailed = parsePantryExpiryInput(document.getElementById('pantry-expiry-input')?.value || '');
+    const familyProfiles = parseFamilyProfilesInput(document.getElementById('family-profiles-input')?.value || '');
+    const pantryNamesFromExpiry = pantryItemsDetailed.map((item) => item.name).filter(Boolean);
     return {
       people: parseInt(document.getElementById('people-input')?.value || 4, 10),
       variety: document.getElementById('variety-select')?.value || 'medium',
@@ -819,7 +950,10 @@ export class MenuPlannerApp {
         .filter((x) => x.trim()),
       notes,
       budget: parseFloat(document.getElementById('budget-input')?.value) || 0,
-      pantry: parsedPantry.length > 0 ? parsedPantry : parsePantryFromNotes(notes),
+      pantry: [...new Set((parsedPantry.length > 0 ? parsedPantry : parsePantryFromNotes(notes)).concat(pantryNamesFromExpiry))],
+      pantryItemsDetailed,
+      mealPrepMode: Boolean(document.getElementById('meal-prep-mode')?.checked),
+      familyProfiles,
       goal: document.getElementById('goal-select')?.value || parseGoalFromNotes(notes),
     };
   }
@@ -860,6 +994,8 @@ export class MenuPlannerApp {
       container.appendChild(weatherInfo);
     }
 
+    this.renderPlanningInsights(container);
+
     const actionBar = document.createElement('div');
     actionBar.className = 'menu-actions-bar';
     actionBar.innerHTML = `
@@ -885,6 +1021,137 @@ export class MenuPlannerApp {
     if (getLang() === 'bg') {
       this.localizeMenuMealNames();
     }
+  }
+
+  renderPlanningInsights(container) {
+    const leftovers = getLeftovers();
+    const currentMeals = (this.currentMenu?.days || []).flatMap((day) => day.meals || []);
+    const prefs = this.state.preferences || {};
+    const pantryItemsDetailed = Array.isArray(prefs.pantryItemsDetailed) ? prefs.pantryItemsDetailed : [];
+    const urgentPantry = [...pantryItemsDetailed]
+      .map((item) => ({ ...item, daysUntil: getDaysUntil(item.expiryDate) }))
+      .sort((a, b) => a.daysUntil - b.daysUntil)
+      .slice(0, 4);
+    const familyProfiles = Array.isArray(prefs.familyProfiles) ? prefs.familyProfiles : [];
+    const ratedMeals = currentMeals
+      .map((meal) => ({ meal, rating: getRecipeRating(meal.idMeal) }))
+      .filter((entry) => entry.rating > 0)
+      .sort((a, b) => b.rating - a.rating);
+    const leftoverSuggestions = this.getLeftoverSuggestions(leftovers);
+    const mealPrepSummary = this.currentMenu?.mealPrepSummary || null;
+
+    if (!leftovers.length && !ratedMeals.length && !leftoverSuggestions.length && !urgentPantry.length && !familyProfiles.length && !mealPrepSummary) {
+      return;
+    }
+
+    const averageRating = ratedMeals.length
+      ? (ratedMeals.reduce((sum, entry) => sum + entry.rating, 0) / ratedMeals.length).toFixed(1)
+      : '';
+    const leftoversHtml = leftovers.length
+      ? leftovers
+        .slice(0, 4)
+        .map((entry) => `
+          <li class="planning-list-item">
+            <div>
+              <strong>${entry.mealName}</strong>
+              <small>${typeof t('leftoversServings') === 'function' ? t('leftoversServings')(entry.servingsLeft) : `${entry.servingsLeft} portions left`}</small>
+              ${entry.note ? `<small>${entry.note}</small>` : ''}
+            </div>
+            <button class="planning-remove-btn" data-leftover-remove="${entry.id}" type="button">✕</button>
+          </li>
+        `)
+        .join('')
+      : `<p class="planning-empty">${t('leftoversEmpty')}</p>`;
+    const suggestionsHtml = leftoverSuggestions.length
+      ? leftoverSuggestions
+        .map((entry) => `<li class="planning-list-item"><div><strong>${entry.mealName}</strong><small>${typeof t('leftoverSuggestionMatch') === 'function' ? t('leftoverSuggestionMatch')(entry.matchCount) : `${entry.matchCount} ingredient matches`}</small></div></li>`)
+        .join('')
+      : `<p class="planning-empty">${t('leftoverSuggestionsEmpty')}</p>`;
+    const ratingsHtml = ratedMeals.length
+      ? ratedMeals
+        .slice(0, 4)
+        .map((entry) => `<li class="planning-list-item"><div><strong>${entry.meal.strMealTranslated || entry.meal.strMeal}</strong><small>⭐ ${entry.rating.toFixed(1)}</small></div></li>`)
+        .join('')
+      : `<p class="planning-empty">${t('recipeRatingEmpty')}</p>`;
+    const pantryHtml = urgentPantry.length
+      ? urgentPantry
+        .map((item) => `<li class="planning-list-item pantry-urgency ${getPantryUrgencyClass(item.daysUntil)}"><div><strong>${item.name}</strong><small>${typeof t('pantryExpiresIn') === 'function' ? t('pantryExpiresIn')(item.daysUntil) : `${item.daysUntil} days`}</small></div></li>`)
+        .join('')
+      : `<p class="planning-empty">${t('pantryExpiryEmpty')}</p>`;
+    const familyHtml = familyProfiles.length
+      ? familyProfiles
+        .map((profile) => `<li class="planning-list-item"><div><strong>${profile.name}</strong><small>${profile.role} · x${profile.portionMultiplier}${profile.exclusions?.length ? ` · ${profile.exclusions.join(', ')}` : ''}</small></div></li>`)
+        .join('')
+      : `<p class="planning-empty">${t('familyProfilesEmpty')}</p>`;
+
+    const section = document.createElement('section');
+    section.className = 'planning-insights';
+    section.innerHTML = `
+      <article class="planning-card">
+        <h3>${t('pantryExpiryTitle')}</h3>
+        <ul class="planning-list">${pantryHtml}</ul>
+      </article>
+      <article class="planning-card">
+        <h3>${t('mealPrepModeTitle')}</h3>
+        ${mealPrepSummary ? `<p class="planning-highlight">${typeof t('mealPrepSummary') === 'function' ? t('mealPrepSummary')(mealPrepSummary.cookSessions, mealPrepSummary.repeatedMeals) : ''}</p>` : ''}
+        <ul class="planning-list">${mealPrepSummary?.lines?.map((line) => `<li class="planning-list-item"><div><strong>${line.title}</strong><small>${line.detail}</small></div></li>`).join('') || `<p class="planning-empty">${t('mealPrepEmpty')}</p>`}</ul>
+      </article>
+      <article class="planning-card">
+        <h3>${t('labelFamilyProfiles')}</h3>
+        <ul class="planning-list">${familyHtml}</ul>
+      </article>
+      <article class="planning-card">
+        <h3>${t('leftoversTitle')}</h3>
+        <ul class="planning-list">${leftoversHtml}</ul>
+      </article>
+      <article class="planning-card">
+        <h3>${t('leftoverSuggestionsTitle')}</h3>
+        <ul class="planning-list">${suggestionsHtml}</ul>
+      </article>
+      <article class="planning-card">
+        <h3>${t('recipeRatingTitle')}</h3>
+        ${ratedMeals.length ? `<p class="planning-highlight">${typeof t('recipeRatingAverage') === 'function' ? t('recipeRatingAverage')(averageRating, ratedMeals.length) : `Average rating ${averageRating}`}</p>` : ''}
+        <ul class="planning-list">${ratingsHtml}</ul>
+      </article>
+    `;
+    container.appendChild(section);
+
+    section.querySelectorAll('[data-leftover-remove]').forEach((button) => {
+      button.addEventListener('click', () => {
+        removeLeftover(button.getAttribute('data-leftover-remove'));
+        this.renderMenu();
+      });
+    });
+  }
+
+  getLeftoverSuggestions(leftovers) {
+    if (!leftovers.length || !this.currentMenu?.days?.length) {
+      return [];
+    }
+
+    const leftoverTokens = new Set(
+      leftovers
+        .flatMap((entry) => entry.ingredients || [])
+        .map((ingredient) => normalizeInsightToken(ingredient.name || ingredient))
+        .filter(Boolean)
+    );
+
+    return this.currentMenu.days
+      .flatMap((day) => day.meals || [])
+      .map((meal) => {
+        const ingredientTokens = (meal.ingredients || [])
+          .map((ingredient) => normalizeInsightToken(ingredient.name || ingredient))
+          .filter(Boolean);
+        const matchCount = ingredientTokens.filter((token) => leftoverTokens.has(token)).length;
+        return {
+          mealId: meal.idMeal,
+          mealName: meal.strMealTranslated || meal.strMeal,
+          matchCount,
+        };
+      })
+      .filter((entry) => entry.matchCount >= 2)
+      .sort((a, b) => b.matchCount - a.matchCount)
+      .slice(0, 3);
   }
 
   async localizeMenuMealNames() {
@@ -1070,6 +1337,9 @@ export class MenuPlannerApp {
     const favBtn = modal.querySelector('.fav-recipe-btn');
     const shareBtn = modal.querySelector('.share-recipe-btn');
     const exportPdfBtn = modal.querySelector('.export-recipe-pdf-btn');
+    const leftoversBtn = modal.querySelector('.leftover-recipe-btn');
+    const ratingLabel = modal.querySelector('.recipe-rating-value');
+    const ratingButtons = Array.from(modal.querySelectorAll('.recipe-rating-btn'));
 
     if (favBtn) {
       favBtn.addEventListener('click', async () => {
@@ -1098,6 +1368,48 @@ export class MenuPlannerApp {
           console.error('PDF export error:', error);
           showToast(t('failedExportPDF'));
         }
+      });
+    }
+
+    ratingButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const rating = Number(button.getAttribute('data-rating') || 0);
+        if (!rating) {
+          return;
+        }
+        setRecipeRating(recipe.idMeal, rating, recipe.strMeal);
+        ratingButtons.forEach((item) => {
+          item.classList.toggle('active', Number(item.getAttribute('data-rating')) <= rating);
+        });
+        if (ratingLabel) {
+          ratingLabel.textContent = t('recipeRatedValue')(rating);
+        }
+        showToast(t('recipeRatingSaved')(rating));
+        this.renderMenu();
+      });
+    });
+
+    if (leftoversBtn) {
+      leftoversBtn.addEventListener('click', () => {
+        const servingsRaw = window.prompt(t('leftoverPromptServings'), '2');
+        if (servingsRaw === null) {
+          return;
+        }
+        const servingsLeft = parseInt(servingsRaw, 10);
+        if (!servingsLeft || servingsLeft < 1) {
+          showToast(t('leftoverInvalidServings'));
+          return;
+        }
+        const note = window.prompt(t('leftoverPromptNote'), '') || '';
+        addLeftover({
+          mealId: recipe.idMeal,
+          mealName: recipe.strMeal,
+          servingsLeft,
+          note,
+          ingredients: recipe.ingredients || [],
+        });
+        showToast(t('leftoversAdded'));
+        this.renderMenu();
       });
     }
 
@@ -1383,7 +1695,7 @@ export class MenuPlannerApp {
 
     container.querySelector('.export-basket-pdf-btn')?.addEventListener('click', async () => {
       try {
-        const blob = await exportBasketToPDF(this.currentBasket, stats, getLang());
+        const blob = await exportBasketToPDF(this.currentBasket, stats, getLang(), this.currentMenu?.options || {});
         downloadFile(blob, generatePDFFilename('basket'));
         showToast(t('basketExportedPDF'));
       } catch (error) {
@@ -1473,7 +1785,7 @@ export class MenuPlannerApp {
       results.innerHTML = this.getMarketsLoadingMarkup();
 
       try {
-        const report = await buildSupermarketRecommendations(this.currentBasket);
+        const report = await buildSupermarketRecommendations(this.currentBasket, this.currentMenu?.options || {});
         if (requestId !== this.marketState.requestId) {
           return;
         }
@@ -1691,6 +2003,36 @@ export class MenuPlannerApp {
           : t('budgetOnBudget');
       budgetIndicator = `<p class="budget-indicator ${status}">${statusText}: ${formatTotal(cheapestTotal)} / ${formatTotal(budget)}</p>`;
     }
+    const splitPlan = report.optimization?.splitPlan;
+    const swapSuggestions = report.optimization?.swapSuggestions || [];
+    const familyAdjustments = report.familyAdjustments?.lines || [];
+    const familyAdjustmentsMarkup = familyAdjustments.length
+      ? `
+        <section class="market-optimizer-card market-family-adjustments">
+          <h3>${t('marketFamilyAdjustmentsTitle') || 'Family substitutions applied'}</h3>
+          <ul class="planning-list">
+            ${familyAdjustments.map((entry) => `<li class="planning-list-item"><div><strong>${entry.from}</strong><small>${entry.to}</small></div></li>`).join('')}
+          </ul>
+        </section>
+      `
+      : '';
+    const splitAssignments = (splitPlan?.assignments || [])
+      .slice(0, 3)
+      .map((assignment) => `<li><strong>${assignment.chainLabel}</strong> · ${formatTotal(assignment.subtotal)} · ${assignment.items.slice(0, 3).map((item) => item.ingredient).join(', ')}</li>`)
+      .join('');
+    const swapHtml = swapSuggestions
+      .map((suggestion) => `<li>${typeof t('marketSwapSuggestion') === 'function' ? t('marketSwapSuggestion')(suggestion.fromLabel, suggestion.toLabel, suggestion.savings.toFixed(2), suggestion.replacementStore) : `${suggestion.fromLabel} → ${suggestion.toLabel}`}</li>`)
+      .join('');
+    const optimizerMarkup = splitPlan && (splitPlan.itemCount > 0 || swapSuggestions.length > 0)
+      ? `
+        <section class="market-optimizer-card">
+          <h3>${t('marketOptimizerTitle')}</h3>
+          ${splitPlan.itemCount > 0 ? `<p class="planning-highlight">${typeof t('marketSplitSavings') === 'function' ? t('marketSplitSavings')(formatTotal(splitPlan.total), formatTotal(Math.max(0, splitPlan.savingsVsCheapestSingle))) : ''}</p>` : ''}
+          ${splitAssignments ? `<ul class="planning-list market-optimizer-list">${splitAssignments}</ul>` : ''}
+          ${swapHtml ? `<div class="market-smart-swaps"><h4>${t('marketSmartSwaps')}</h4><ul class="planning-list">${swapHtml}</ul></div>` : ''}
+        </section>
+      `
+      : '';
 
     const cards = storesForRender
       .map((store) => {
@@ -1703,6 +2045,7 @@ export class MenuPlannerApp {
         const minCoverage = report.minRecommendedCoverage || 70;
         const promoCount = store.coverage.promoMatchedCount || 0;
         const thresholdLabel = store.coverage.percent >= minCoverage ? 'OK' : 'LOW';
+        const confidenceLevel = store.priceConfidence?.level || 'low';
 
         let budgetBadgeHtml = '';
         if (budget > 0) {
@@ -1760,6 +2103,7 @@ export class MenuPlannerApp {
               <span class="market-meta-item coverage-tag">${store.coverage.percent}% ${availabilityLabel}</span>
               <span class="market-meta-item promo-tag">${store.coverage.promoPercent || 0}% ${promoLabel}</span>
               <span class="market-meta-item price-tag">${formatTotal(store.coverage.estimatedTotal)}</span>
+              <span class="market-meta-item confidence-tag confidence-${confidenceLevel}">${t('marketConfidenceLabel')}: ${t(`confidence${confidenceLevel.charAt(0).toUpperCase()}${confidenceLevel.slice(1)}`)}</span>
               ${budgetBadgeHtml}
             </div>
             <p class="market-coverage-line">${t('marketCoverage')(store.coverage.matchedCount, store.coverage.total, store.coverage.percent)} · min ${minCoverage}%: ${thresholdLabel} · ${t('marketMatchedOffers')(promoCount)} · ${formatTotal(store.coverage.estimatedTotal)}</p>
@@ -1800,6 +2144,8 @@ export class MenuPlannerApp {
       ${locationWarning}
       ${summaryText ? `<p class="market-summary">${summaryText}</p>` : ''}
       ${budgetIndicator || ''}
+      ${familyAdjustmentsMarkup}
+      ${optimizerMarkup}
       <div class="market-results-layout">
         <div class="market-cards all-chains">${cardsMarkup}</div>
         <aside class="market-chain-sidebar">

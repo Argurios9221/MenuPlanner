@@ -6,16 +6,19 @@ const OVERPASS_APIS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
 ];
-const MAX_PHYSICAL_STORES_FOR_COMPARISON = 12;
+const MAX_PHYSICAL_STORES_FOR_COMPARISON = 24;
 const OVERPASS_REQUEST_TIMEOUT_MS = 8000;
+const SHOP_TAG_PATTERN = 'supermarket|hypermarket|grocery|convenience|wholesale';
 const ALLOWED_CHAIN_RULES = [
   { id: 'lidl', label: 'Lidl', regex: /(^|\W)lidl(\W|$)|лидл/iu },
   { id: 'kaufland', label: 'Kaufland', regex: /(^|\W)kaufland(\W|$)|кауфланд/iu },
   { id: 'billa', label: 'BILLA', regex: /(^|\W)billa(\W|$)|била/iu },
   { id: 'metro', label: 'Metro', regex: /(^|\W)metro(\W|$)|метро/iu },
   { id: 'fantastico', label: 'Fantastico', regex: /(^|\W)fantastico(\W|$)|фантастико/iu },
+  { id: 't-market', label: 'T-Market', regex: /(^|\W)t[\s-]?market(\W|$)|т[\s-]?маркет/iu },
   { id: 'cba', label: 'CBA', regex: /(^|\W)cba(\W|$)|(^|\W)сба(\W|$)/iu },
   { id: '345', label: '345', regex: /(^|\W)345(\W|$)/iu },
+  { id: 'fresco', label: 'FRESCO', regex: /(^|\W)fresco(\W|$)|фреско/iu },
   { id: 'dar', label: 'Dar', regex: /(^|\W)dar(\W|$)|(^|\W)дар(\W|$)/iu },
 ];
 const ONLINE_GROCERY_STORES = [
@@ -50,31 +53,37 @@ let fxCache = null;
 // Generic fallback offers - realistic European supermarket prices
 const FALLBACK_OFFERS = {
   generic: [
-    { keyword: 'bread', title: 'Bread/Baguette', price: 1.40 },
-    { keyword: 'milk', title: 'Milk 1L', price: 1.40 },
-    { keyword: 'egg', title: 'Eggs 12-pack', price: 2.20 },
-    { keyword: 'chicken', title: 'Chicken Breast', price: 4.50 },
-    { keyword: 'pork', title: 'Pork Chop', price: 4.50 },
-    { keyword: 'rice', title: 'Rice 1kg', price: 1.30 },
-    { keyword: 'pasta', title: 'Pasta 500g', price: 1.00 },
-    { keyword: 'cheese', title: 'Cheese 200g', price: 3.20 },
-    { keyword: 'yogurt', title: 'Yogurt 500g', price: 1.20 },
-    { keyword: 'butter', title: 'Butter 200g', price: 2.80 },
-    { keyword: 'tomato', title: 'Tomatoes 1kg', price: 1.30 },
-    { keyword: 'potato', title: 'Potatoes 1kg', price: 0.70 },
-    { keyword: 'onion', title: 'Onions 500g', price: 0.60 },
-    { keyword: 'carrot', title: 'Carrots 500g', price: 0.70 },
-    { keyword: 'pepper', title: 'Bell Peppers', price: 1.30 },
-    { keyword: 'apple', title: 'Apples 1kg', price: 1.50 },
-    { keyword: 'banana', title: 'Bananas 500g', price: 1.10 },
-    { keyword: 'orange', title: 'Oranges 1kg', price: 1.40 },
-    { keyword: 'lemon', title: 'Lemons', price: 1.20 },
-    { keyword: 'fish', title: 'White Fish Fillet', price: 6.00 },
-    { keyword: 'oil', title: 'Cooking Oil 500ml', price: 2.80 },
-    { keyword: 'sugar', title: 'Sugar 1kg', price: 1.20 },
-    { keyword: 'flour', title: 'Flour 1kg', price: 1.10 },
+    { keyword: 'bread', title: 'Bread/Baguette', price: 1.40, sourceType: 'fallback_estimate' },
+    { keyword: 'milk', title: 'Milk 1L', price: 1.40, sourceType: 'fallback_estimate' },
+    { keyword: 'egg', title: 'Eggs 12-pack', price: 2.20, sourceType: 'fallback_estimate' },
+    { keyword: 'chicken', title: 'Chicken Breast', price: 4.50, sourceType: 'fallback_estimate' },
+    { keyword: 'pork', title: 'Pork Chop', price: 4.50, sourceType: 'fallback_estimate' },
+    { keyword: 'rice', title: 'Rice 1kg', price: 1.30, sourceType: 'fallback_estimate' },
+    { keyword: 'pasta', title: 'Pasta 500g', price: 1.00, sourceType: 'fallback_estimate' },
+    { keyword: 'cheese', title: 'Cheese 200g', price: 3.20, sourceType: 'fallback_estimate' },
+    { keyword: 'yogurt', title: 'Yogurt 500g', price: 1.20, sourceType: 'fallback_estimate' },
+    { keyword: 'butter', title: 'Butter 200g', price: 2.80, sourceType: 'fallback_estimate' },
+    { keyword: 'tomato', title: 'Tomatoes 1kg', price: 1.30, sourceType: 'fallback_estimate' },
+    { keyword: 'potato', title: 'Potatoes 1kg', price: 0.70, sourceType: 'fallback_estimate' },
+    { keyword: 'onion', title: 'Onions 500g', price: 0.60, sourceType: 'fallback_estimate' },
+    { keyword: 'carrot', title: 'Carrots 500g', price: 0.70, sourceType: 'fallback_estimate' },
+    { keyword: 'pepper', title: 'Bell Peppers', price: 1.30, sourceType: 'fallback_estimate' },
+    { keyword: 'apple', title: 'Apples 1kg', price: 1.50, sourceType: 'fallback_estimate' },
+    { keyword: 'banana', title: 'Bananas 500g', price: 1.10, sourceType: 'fallback_estimate' },
+    { keyword: 'orange', title: 'Oranges 1kg', price: 1.40, sourceType: 'fallback_estimate' },
+    { keyword: 'lemon', title: 'Lemons', price: 1.20, sourceType: 'fallback_estimate' },
+    { keyword: 'fish', title: 'White Fish Fillet', price: 6.00, sourceType: 'fallback_estimate' },
+    { keyword: 'oil', title: 'Cooking Oil 500ml', price: 2.80, sourceType: 'fallback_estimate' },
+    { keyword: 'sugar', title: 'Sugar 1kg', price: 1.20, sourceType: 'fallback_estimate' },
+    { keyword: 'flour', title: 'Flour 1kg', price: 1.10, sourceType: 'fallback_estimate' },
   ],
 };
+
+const SMART_BUDGET_SWAPS = [
+  { from: 'beef', to: 'pork', fromLabel: 'beef', toLabel: 'pork' },
+  { from: 'lamb', to: 'chicken', fromLabel: 'lamb', toLabel: 'chicken' },
+  { from: 'salmon', to: 'fish', fromLabel: 'salmon', toLabel: 'white fish' },
+];
 
 function normalizeText(value) {
   return String(value || '')
@@ -211,6 +220,67 @@ function canonicalToken(value) {
   return INGREDIENT_ALIASES[raw] || raw;
 }
 
+function getFamilyDietaryReplacementRules(exclusion) {
+  const rules = {
+    lactose_free: [
+      { pattern: /milk|cream|cheese|butter|yogurt|yoghurt/i, to: 'oat milk' },
+    ],
+    no_pork: [
+      { pattern: /pork|bacon|ham/i, to: 'chicken' },
+    ],
+    no_beef: [
+      { pattern: /beef|veal/i, to: 'chicken' },
+    ],
+    no_chicken: [
+      { pattern: /chicken|hen/i, to: 'fish' },
+    ],
+    no_seafood: [
+      { pattern: /fish|seafood|salmon|tuna|cod|shrimp|prawn|crab|lobster/i, to: 'chicken' },
+    ],
+    gluten_free: [
+      { pattern: /flour|pasta|bread|noodle|breadcrumbs|barley|rye|semolina|couscous/i, to: 'rice' },
+    ],
+  };
+  return rules[exclusion] || [];
+}
+
+function resolveFamilyAdjustedIngredientName(name, familyProfiles = []) {
+  const sourceName = String(name || '').trim();
+  if (!sourceName || !familyProfiles.length) {
+    return sourceName;
+  }
+
+  const sourceToken = normalizeText(sourceName);
+  let adjustedName = sourceName;
+
+  // Explicit profile replacements take priority over generic exclusion rules.
+  for (const profile of familyProfiles) {
+    for (const replacement of profile?.replacements || []) {
+      const fromToken = normalizeText(replacement?.from || '');
+      const toToken = String(replacement?.to || '').trim();
+      if (!fromToken || !toToken) {
+        continue;
+      }
+      if (sourceToken.includes(fromToken) || fromToken.includes(sourceToken)) {
+        adjustedName = toToken;
+      }
+    }
+  }
+
+  for (const profile of familyProfiles) {
+    for (const exclusion of profile?.exclusions || []) {
+      const rules = getFamilyDietaryReplacementRules(exclusion);
+      for (const rule of rules) {
+        if (rule.pattern.test(adjustedName)) {
+          adjustedName = rule.to;
+        }
+      }
+    }
+  }
+
+  return adjustedName;
+}
+
 function isPantryItem(value) {
   return PANTRY_SKIP_PATTERN.test(normalizeText(value));
 }
@@ -273,10 +343,16 @@ function parseOverpassElement(el) {
     return null;
   }
 
-  const brand = el.tags?.brand || '';
+  const brand = el.tags?.brand || el.tags?.['brand:en'] || '';
   const operator = el.tags?.operator || '';
-  const name = el.tags?.name || brand || operator || '';
-  const allowed = resolveAllowedChain(name, brand, operator);
+  const shortName = el.tags?.short_name || '';
+  const officialName = el.tags?.official_name || el.tags?.['name:en'] || el.tags?.alt_name || '';
+  const name = el.tags?.name || brand || operator || shortName || officialName || '';
+  const allowed = resolveAllowedChain(
+    `${name} ${shortName} ${officialName}`,
+    brand,
+    operator,
+  );
   if (!allowed) {
     return null;
   }
@@ -292,6 +368,29 @@ function parseOverpassElement(el) {
   };
 
   return result;
+}
+
+function limitStoresForComparison(stores, coords) {
+  const sorted = [...stores].sort(
+    (a, b) => haversineKm(coords, { lat: a.lat, lon: a.lon }) - haversineKm(coords, { lat: b.lat, lon: b.lon }),
+  );
+  const perChainCounts = new Map();
+  const selected = [];
+
+  for (const store of sorted) {
+    const chainKey = store.chainId || store.chainLabel || store.id;
+    const currentCount = perChainCounts.get(chainKey) || 0;
+    if (currentCount >= 3) {
+      continue;
+    }
+    selected.push(store);
+    perChainCounts.set(chainKey, currentCount + 1);
+    if (selected.length >= MAX_PHYSICAL_STORES_FOR_COMPARISON) {
+      break;
+    }
+  }
+
+  return selected;
 }
 
 function dedupeStoreKey(store) {
@@ -338,21 +437,23 @@ async function fetchNearbyChains(coords, options = {}) {
   const buildQuery = (radiusMeters) => `
     [out:json][timeout:8];
     (
-      node["shop"~"supermarket|hypermarket|grocery",i](around:${radiusMeters},${coords.lat},${coords.lon});
-      way["shop"~"supermarket|hypermarket|grocery",i](around:${radiusMeters},${coords.lat},${coords.lon});
-      relation["shop"~"supermarket|hypermarket|grocery",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      node["shop"~"${SHOP_TAG_PATTERN}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      way["shop"~"${SHOP_TAG_PATTERN}",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      relation["shop"~"${SHOP_TAG_PATTERN}",i](around:${radiusMeters},${coords.lat},${coords.lon});
     );
     out center tags;
   `;
 
   try {
-    // First pass: close radius for speed.
-    let parsed = await fetchFromOverpassMirrors(buildQuery(9000));
-    // Second pass: wider radius if too few allowed stores were discovered.
-    if (parsed.length < 2) {
-      const wider = await fetchFromOverpassMirrors(buildQuery(18000));
-      if (wider.length > parsed.length) {
-        parsed = wider;
+    let parsed = [];
+    const radii = [9000, 18000, 35000];
+    for (const radius of radii) {
+      const nextBatch = await fetchFromOverpassMirrors(buildQuery(radius));
+      if (nextBatch.length > parsed.length) {
+        parsed = nextBatch;
+      }
+      if (parsed.length >= 6) {
+        break;
       }
     }
     const candidates = parsed;
@@ -444,7 +545,199 @@ async function getChainOffers(storeId, chainLabel, ingredientNames, options = {}
   if (!offers || offers.length === 0) {
     offers = FALLBACK_OFFERS['generic'] || [];
   }
-  return offers;
+  return offers.map((offer) => addOfferConfidence(offer, chainLabel));
+}
+
+function addOfferConfidence(offer, chainLabel) {
+  const sourceType = offer.sourceType || (offer.scraped ? 'live_offer' : 'fallback_estimate');
+  let confidenceLevel = 'low';
+  let confidenceReason = 'Estimated price';
+
+  if (offer.scraped || offer.discountPercent > 0 || sourceType === 'live_offer') {
+    confidenceLevel = 'high';
+    confidenceReason = 'Live or brochure-backed offer';
+  } else if (sourceType === 'manual_db') {
+    confidenceLevel = 'medium';
+    confidenceReason = `${chainLabel} price database`;
+  } else if (sourceType === 'fallback_estimate') {
+    confidenceLevel = 'low';
+    confidenceReason = 'Category estimate';
+  }
+
+  return {
+    ...offer,
+    sourceType,
+    confidenceLevel,
+    confidenceReason,
+  };
+}
+
+function summarizeConfidence(offers = []) {
+  const counts = { high: 0, medium: 0, low: 0 };
+  for (const offer of offers) {
+    const level = offer?.confidenceLevel || 'low';
+    counts[level] = (counts[level] || 0) + 1;
+  }
+
+  let level = 'low';
+  if (counts.high > 0 && counts.high >= counts.medium) {
+    level = 'high';
+  } else if (counts.medium > 0) {
+    level = 'medium';
+  }
+
+  return {
+    level,
+    counts,
+  };
+}
+
+function findBestOfferForIngredient(stores, ingredientItem) {
+  let best = null;
+  for (const store of stores) {
+    for (const offer of store.offers || []) {
+      if (!ingredientMatchesOffer(ingredientItem.name, offer.keyword) || offer.price === null) {
+        continue;
+      }
+      const pkgSizeG = parsePackageSizeGrams(offer.title) || DEFAULT_PACKAGE_SIZE_G;
+      const packagesNeeded = ingredientItem.totalGrams > 0
+        ? Math.max(1, Math.ceil(ingredientItem.totalGrams / pkgSizeG))
+        : (ingredientItem.count >= 2 ? ingredientItem.count : 1);
+      const totalPrice = offer.price * packagesNeeded;
+      if (!best || totalPrice < best.totalPrice) {
+        best = {
+          ingredient: ingredientItem.name,
+          storeId: store.id,
+          chainLabel: store.chainLabel,
+          totalPrice: Number(totalPrice.toFixed(2)),
+          confidenceLevel: offer.confidenceLevel,
+        };
+      }
+    }
+  }
+  return best;
+}
+
+function buildSplitBasketPlan(stores, ingredientItems) {
+  const assignments = new Map();
+  let splitTotal = 0;
+  let itemCount = 0;
+
+  for (const ingredientItem of ingredientItems.filter((item) => !isPantryItem(item.name))) {
+    const best = findBestOfferForIngredient(stores, ingredientItem);
+    if (!best) {
+      continue;
+    }
+
+    itemCount += 1;
+    splitTotal += best.totalPrice;
+    const existing = assignments.get(best.storeId) || {
+      storeId: best.storeId,
+      chainLabel: best.chainLabel,
+      subtotal: 0,
+      items: [],
+    };
+    existing.items.push({
+      ingredient: best.ingredient,
+      totalPrice: best.totalPrice,
+      confidenceLevel: best.confidenceLevel,
+    });
+    existing.subtotal += best.totalPrice;
+    assignments.set(best.storeId, existing);
+  }
+
+  const cheapestSingleTotal = stores
+    .map((store) => Number(store.coverage?.estimatedTotal || 0))
+    .filter((value) => value > 0)
+    .sort((a, b) => a - b)[0] || 0;
+
+  return {
+    total: Number(splitTotal.toFixed(2)),
+    itemCount,
+    storeCount: assignments.size,
+    savingsVsCheapestSingle: cheapestSingleTotal > 0
+      ? Number((cheapestSingleTotal - splitTotal).toFixed(2))
+      : 0,
+    assignments: Array.from(assignments.values())
+      .map((entry) => ({
+        ...entry,
+        subtotal: Number(entry.subtotal.toFixed(2)),
+        items: entry.items.sort((a, b) => b.totalPrice - a.totalPrice),
+      }))
+      .sort((a, b) => b.subtotal - a.subtotal),
+  };
+}
+
+function getCheapestOfferPriceForToken(stores, token) {
+  let best = null;
+  for (const store of stores) {
+    for (const offer of store.offers || []) {
+      if (!ingredientMatchesOffer(token, offer.keyword) || offer.price === null) {
+        continue;
+      }
+      if (!best || offer.price < best.price) {
+        best = {
+          price: offer.price,
+          chainLabel: store.chainLabel,
+        };
+      }
+    }
+  }
+  return best;
+}
+
+function getBlockedSwapTokens(familyProfiles = []) {
+  const blocked = new Set();
+  const exclusionToTokens = {
+    no_beef: ['beef'],
+    no_pork: ['pork'],
+    no_chicken: ['chicken'],
+    no_seafood: ['fish', 'salmon', 'tuna', 'cod', 'seafood'],
+    lactose_free: ['milk', 'cheese', 'butter', 'yogurt'],
+    gluten_free: ['flour', 'pasta', 'bread'],
+  };
+
+  for (const profile of familyProfiles || []) {
+    for (const exclusion of profile?.exclusions || []) {
+      for (const token of exclusionToTokens[exclusion] || []) {
+        blocked.add(canonicalToken(token));
+      }
+    }
+
+    for (const replacement of profile?.replacements || []) {
+      const fromToken = canonicalToken(replacement?.from || '');
+      if (fromToken) {
+        blocked.add(fromToken);
+      }
+    }
+  }
+
+  return blocked;
+}
+
+function buildSwapSuggestions(stores, ingredientItems, familyProfiles = []) {
+  const presentTokens = new Set(ingredientItems.map((item) => canonicalToken(item.name)).filter(Boolean));
+  const blockedTokens = getBlockedSwapTokens(familyProfiles);
+  return SMART_BUDGET_SWAPS
+    .filter((rule) => presentTokens.has(rule.from))
+    .filter((rule) => !blockedTokens.has(canonicalToken(rule.from)) && !blockedTokens.has(canonicalToken(rule.to)))
+    .map((rule) => {
+      const original = getCheapestOfferPriceForToken(stores, rule.from);
+      const replacement = getCheapestOfferPriceForToken(stores, rule.to);
+      if (!original || !replacement || replacement.price >= original.price) {
+        return null;
+      }
+      return {
+        ...rule,
+        priceFrom: original.price,
+        priceTo: replacement.price,
+        savings: Number((original.price - replacement.price).toFixed(2)),
+        replacementStore: replacement.chainLabel,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.savings - a.savings)
+    .slice(0, 3);
 }
 
 // Parse package size from offer title (e.g. "Butter 125g" → 125, "Rice 1kg" → 1000)
@@ -559,19 +852,29 @@ export async function buildSupermarketRecommendations(basket) {
     minRecommendedCoverage = 70,
     forceFallbackCoords = false,
     useFallbackOnly = false,
+    familyProfiles = [],
   } = options;
 
   const allBasketIngredients = getBasketIngredients(basket);
   const ingredientByCanonical = new Map();
+  const familyAdjustments = [];
   for (const item of allBasketIngredients) {
-    const canonical = canonicalToken(item.name);
+    const adjustedName = resolveFamilyAdjustedIngredientName(item.name, familyProfiles);
+    if (normalizeText(adjustedName) && normalizeText(adjustedName) !== normalizeText(item.name)) {
+      familyAdjustments.push({
+        from: item.name,
+        to: adjustedName,
+      });
+    }
+
+    const canonical = canonicalToken(adjustedName);
     if (!canonical) {
       continue;
     }
     const current = ingredientByCanonical.get(canonical);
     if (!current) {
       ingredientByCanonical.set(canonical, {
-        name: canonical === 'flour' ? 'Flour' : item.name,
+        name: canonical === 'flour' ? 'Flour' : adjustedName,
         totalGrams: item.totalGrams || 0,
         count: item.count || 1,
       });
@@ -588,9 +891,7 @@ export async function buildSupermarketRecommendations(basket) {
 
   const shouldUseFallbackOnly = useFallbackOnly || forceFallbackCoords;
   const nearbyStores = await fetchNearbyChains(coords, { useFallbackOnly: shouldUseFallbackOnly });
-  const limitedNearbyStores = [...nearbyStores]
-    .sort((a, b) => haversineKm(coords, { lat: a.lat, lon: a.lon }) - haversineKm(coords, { lat: b.lat, lon: b.lon }))
-    .slice(0, MAX_PHYSICAL_STORES_FOR_COMPARISON);
+  const limitedNearbyStores = limitStoresForComparison(nearbyStores, coords);
   const onlineStores = ONLINE_GROCERY_STORES.map((store) => ({
     ...store,
     lat: coords.lat,
@@ -625,6 +926,7 @@ export async function buildSupermarketRecommendations(basket) {
       id: store.id || `store_${Math.random()}`,
       offers,
       coverage,
+      priceConfidence: summarizeConfidence(coverage.matchedOffers.map((entry) => entry.offer)),
       distanceKm: distanceKm !== null ? Number(distanceKm.toFixed(2)) : null,
       score,
       directionsUrl: makeDirectionsUrl(store, coords),
@@ -649,6 +951,8 @@ export async function buildSupermarketRecommendations(basket) {
     const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
     return aDist - bDist;
   });
+  const splitPlan = buildSplitBasketPlan(orderedStores, ingredientItems);
+  const swapSuggestions = buildSwapSuggestions(orderedStores, ingredientItems, familyProfiles);
 
   return {
     coords,
@@ -656,6 +960,14 @@ export async function buildSupermarketRecommendations(basket) {
     minRecommendedCoverage,
     bestCoveragePercent,
     fx,
+    familyAdjustments: {
+      count: familyAdjustments.length,
+      lines: familyAdjustments.slice(0, 6),
+    },
+    optimization: {
+      splitPlan,
+      swapSuggestions,
+    },
     stores: orderedStores,
   };
 }

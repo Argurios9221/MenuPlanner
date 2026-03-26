@@ -56,7 +56,7 @@ export async function exportMenuToPDF(menu, preferences = {}, lang = 'en') {
 }
 
 // Export shopping basket to PDF
-export async function exportBasketToPDF(basket, stats = {}, lang = 'en') {
+export async function exportBasketToPDF(basket, stats = {}, lang = 'en', options = {}) {
   const labels = getPdfLabels(lang);
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]); // A4
@@ -82,6 +82,20 @@ export async function exportBasketToPDF(basket, stats = {}, lang = 'en') {
       }
     );
     yPosition -= 30;
+  }
+
+  const basketScaleInfo = getFamilyScalingInfo(options || {});
+  if (basketScaleInfo) {
+    currentPage.drawText(
+      sanitizePdfText(`${labels.familyScaling}: ${basketScaleInfo}`),
+      {
+        x: 50,
+        y: yPosition,
+        size: 10,
+        color: Colors.secondary,
+      }
+    );
+    yPosition -= 24;
   }
 
   // Categories
@@ -253,6 +267,11 @@ function drawPreferencesPanel(page, yPosition, preferences, labels, _width) {
     `${labels.cuisine}: ${cuisineMap[preferences.cuisine] || preferences.cuisine || labels.cuisineMix}`,
   ];
 
+  const familyScaleInfo = getFamilyScalingInfo(preferences || {});
+  if (familyScaleInfo) {
+    prefTexts.push(`${labels.familyScaling}: ${familyScaleInfo}`);
+  }
+
   for (const text of prefTexts) {
     page.drawText(sanitizePdfText(text), {
       x: 50,
@@ -265,6 +284,24 @@ function drawPreferencesPanel(page, yPosition, preferences, labels, _width) {
 
   yPosition -= 10;
   return yPosition;
+}
+
+function getFamilyScalingInfo(options = {}) {
+  const people = Math.max(1, Number(options.people) || 4);
+  const familyProfiles = Array.isArray(options.familyProfiles) ? options.familyProfiles : [];
+  if (!familyProfiles.length) {
+    return '';
+  }
+  const totalUnits = familyProfiles.reduce((sum, profile) => {
+    const multiplier = Number(profile?.portionMultiplier || 1);
+    return sum + (Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1);
+  }, 0);
+  if (!totalUnits) {
+    return '';
+  }
+  const scale = totalUnits / people;
+  const roundedScale = parseFloat(scale.toFixed(2));
+  return `${familyProfiles.length} profiles, x${roundedScale}`;
 }
 
 // Helper function to draw day meals
@@ -377,6 +414,7 @@ function getPdfLabels(lang = 'en') {
       shoppingList: 'Spisak za pazaruvane',
       totalItems: 'Obshto produkti',
       checkedItems: 'Otmetnati',
+      familyScaling: 'Family scaling',
       ingredients: 'Sastavki',
       instructions: 'Nachin na prigotvyane',
       minuteShort: 'min',
@@ -400,6 +438,7 @@ function getPdfLabels(lang = 'en') {
     shoppingList: 'Shopping List',
     totalItems: 'Total Items',
     checkedItems: 'Checked',
+    familyScaling: 'Family scaling',
     ingredients: 'INGREDIENTS',
     instructions: 'INSTRUCTIONS',
     minuteShort: 'min',

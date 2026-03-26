@@ -123,9 +123,29 @@ function isPantryIngredient(name, pantrySet) {
   return Array.from(pantrySet).some((pantryToken) => token.includes(pantryToken) || pantryToken.includes(token));
 }
 
+function getFamilyPortionFactor(options = {}) {
+  const basePeople = Math.max(1, Number(options?.people) || 4);
+  const profiles = Array.isArray(options?.familyProfiles) ? options.familyProfiles : [];
+  if (!profiles.length) {
+    return 1;
+  }
+
+  const totalProfileUnits = profiles.reduce((sum, profile) => {
+    const multiplier = Number(profile?.portionMultiplier || 1);
+    return sum + (Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1);
+  }, 0);
+
+  if (!totalProfileUnits) {
+    return 1;
+  }
+
+  return Math.max(0.6, Math.min(2.5, totalProfileUnits / basePeople));
+}
+
 export async function buildBasket(menu) {
   const ingredients = {};
   const pantrySet = new Set((menu?.options?.pantry || []).map(normalizePantryToken).filter(Boolean));
+  const portionFactor = getFamilyPortionFactor(menu?.options || {});
 
   const meals = menu.days.flatMap((day) => day.meals);
 
@@ -162,10 +182,10 @@ export async function buildBasket(menu) {
           if (ingredient.measure) {
             const m = String(ingredient.measure).trim();
             if (m) {
-              ingredients[key].measureCounts[m] = (ingredients[key].measureCounts[m] || 0) + 1;
+              ingredients[key].measureCounts[m] = (ingredients[key].measureCounts[m] || 0) + portionFactor;
             }
           }
-          ingredients[key].count += 1;
+          ingredients[key].count += portionFactor;
         }
       }
     }
@@ -177,6 +197,7 @@ export async function buildBasket(menu) {
     ing.displayMeasure = totals.displayMeasure;
     ing.totalGrams = totals.totalGrams;
     ing.measures = totals.measures;
+    ing.count = ing.count % 1 === 0 ? ing.count : parseFloat(ing.count.toFixed(1));
     delete ing.measureCounts;
   }
 
@@ -348,7 +369,8 @@ export function exportBasketAsText(basket, _lang = 'en') {
     text += `${category}\n${'-'.repeat(category.length)}\n`;
     for (const ingredient of basket[category]) {
       const measureStr = ingredient.displayMeasure || (ingredient.measures?.length > 0 ? ingredient.measures.join(', ') : '');
-      const countStr = ingredient.count > 1 ? ` ×${ingredient.count}` : '';
+      const roundedCount = ingredient.count % 1 === 0 ? ingredient.count : Number(ingredient.count).toFixed(1);
+      const countStr = ingredient.count > 1 ? ` ×${roundedCount}` : '';
       text += `☐ ${ingredient.name}${countStr}${measureStr ? ` (${measureStr})` : ''}\n`;
     }
     text += '\n';

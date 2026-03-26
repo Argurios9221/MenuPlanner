@@ -320,6 +320,47 @@ body.authenticated #auth-gate {
   min-height: 80px;
 }
 
+.compact-textarea {
+  min-height: 92px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.form-help {
+  margin-top: 0.35rem;
+  color: var(--muted-text);
+  font-size: 0.78rem;
+}
+
+.toggle-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background: var(--light-bg);
+}
+
+.toggle-card strong {
+  display: block;
+  color: var(--dark-text);
+}
+
+.toggle-card small {
+  display: block;
+  color: var(--muted-text);
+  margin-top: 0.15rem;
+}
+
+.toggle-card input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--primary-color);
+  flex-shrink: 0;
+}
+
 .form-actions {
   display: flex;
   gap: var(--spacing-sm);
@@ -626,6 +667,25 @@ body.authenticated #auth-gate {
   flex-wrap: wrap;
   gap: 0.35rem;
   margin-top: 0.35rem;
+}
+
+.meal-prep-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.35rem;
+  padding: 0.18rem 0.48rem;
+  border-radius: 999px;
+  background: #ffedd5;
+  color: #c2410c;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.meal-family-summary {
+  margin-top: 0.35rem;
+  color: var(--muted-text);
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .meal-source-chip {
@@ -950,6 +1010,100 @@ body.authenticated #auth-gate {
   font-weight: 600;
 }
 
+.market-optimizer-card,
+.planning-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-md);
+}
+
+.market-optimizer-card {
+  margin-bottom: var(--spacing-md);
+}
+
+.market-optimizer-card h3,
+.planning-card h3,
+.market-smart-swaps h4 {
+  color: var(--primary-color);
+  margin-bottom: 0.55rem;
+}
+
+.planning-highlight {
+  margin-bottom: 0.7rem;
+  font-weight: 700;
+  color: var(--dark-text);
+}
+
+.planning-insights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.planning-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.planning-list-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.planning-list-item.pantry-urgency {
+  border-left: 4px solid var(--border-color);
+  border-radius: 0.55rem;
+  padding-left: 0.6rem;
+}
+
+.planning-list-item.pantry-urgency.is-urgent {
+  border-left-color: #d04848;
+  background: rgba(208, 72, 72, 0.08);
+}
+
+.planning-list-item.pantry-urgency.is-soon {
+  border-left-color: #e39b2b;
+  background: rgba(227, 155, 43, 0.08);
+}
+
+.planning-list-item.pantry-urgency.is-upcoming {
+  border-left-color: #4d9f5a;
+  background: rgba(77, 159, 90, 0.08);
+}
+
+.planning-list-item.pantry-urgency.is-stable {
+  border-left-color: #5f7e99;
+  background: rgba(95, 126, 153, 0.07);
+}
+
+.planning-list-item small {
+  display: block;
+  color: var(--muted-text);
+}
+
+.planning-remove-btn {
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--muted-text);
+  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.planning-empty {
+  color: var(--muted-text);
+}
+
 .budget-indicator {
   display: inline-flex;
   align-items: center;
@@ -1187,6 +1341,28 @@ body.authenticated #auth-gate {
   color: var(--success-color);
   border-color: var(--success-color);
   font-weight: 700;
+}
+
+.market-meta-item.confidence-tag {
+  font-weight: 700;
+}
+
+.market-meta-item.confidence-tag.confidence-high {
+  color: #065f46;
+  border-color: #34d399;
+  background: #d1fae5;
+}
+
+.market-meta-item.confidence-tag.confidence-medium {
+  color: #92400e;
+  border-color: #fbbf24;
+  background: #fef3c7;
+}
+
+.market-meta-item.confidence-tag.confidence-low {
+  color: #991b1b;
+  border-color: #fca5a5;
+  background: #fee2e2;
 }
 
 .market-address {
@@ -1691,6 +1867,17 @@ recipe-modal-content .modal-close {
   color: var(--dark-text);
 }
 
+.meal-rating-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  background: #fff4d6;
+  color: #a16207;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .recipe-section {
   margin-bottom: var(--spacing-lg);
 }
@@ -1791,8 +1978,48 @@ recipe-modal-content .modal-close {
   font-style: italic;
 }
 
+.recipe-feedback-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  background: var(--light-bg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.recipe-rating-value {
+  color: var(--muted-text);
+}
+
+.recipe-rating-stars {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.recipe-rating-btn {
+  border: none;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--transition-speed), color var(--transition-speed);
+}
+
+.recipe-rating-btn.active {
+  color: #f59e0b;
+}
+
+.recipe-rating-btn:hover {
+  transform: translateY(-1px) scale(1.06);
+  color: #fbbf24;
+}
+
 .recipe-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-md);
   margin-top: var(--spacing-lg);
   padding-top: var(--spacing-lg);
@@ -1814,9 +2041,9 @@ recipe-modal-content .modal-close {
 }
 
 .recipe-action-btn:hover {
-  background: linear-gradient(135deg, #5B54E6, #9370DB);
+  background: linear-gradient(135deg, #0b615b, #0f9f95);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(12, 125, 117, 0.3);
 }
 
 /* Toast Notifications */

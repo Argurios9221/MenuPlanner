@@ -1,6 +1,11 @@
 // UI rendering and DOM manipulation
 import { t } from './i18n.js';
-import { getCheckedItems, toggleCheckedItem, isFavoriteRecipe as isFavRecipe } from './storage.js';
+import {
+  getCheckedItems,
+  getRecipeRating,
+  toggleCheckedItem,
+  isFavoriteRecipe as isFavRecipe,
+} from './storage.js';
 import { formatIngredients, formatInstructions } from './recipe.js';
 import { estimateCalories } from './metadata.js';
 
@@ -93,6 +98,16 @@ export function createMenuDayCard(day, dayIndex, lockedMeals = new Map()) {
     const nutritionBadge = meal.nutrition?.calories
       ? `<span class="meal-nutrition-badge" title="Per serving">🔥 ${meal.nutrition.calories} kcal</span>`
       : '';
+    const rating = getRecipeRating(meal.idMeal);
+    const ratingBadge = rating
+      ? `<span class="meal-rating-badge" title="${t('recipeRatingTitle')}">⭐ ${rating.toFixed(1)}</span>`
+      : '';
+    const prepBadge = meal.mealPrepLabel
+      ? `<span class="meal-prep-badge" title="${t('mealPrepModeTitle')}">🍱 ${meal.mealPrepLabel}</span>`
+      : '';
+    const familySummary = meal.familySummary
+      ? `<p class="meal-family-summary">${meal.familySummary}</p>`
+      : '';
     const spoonBadges = meal._source === 'spoonacular'
       ? `
         <div class="meal-source-meta">
@@ -110,6 +125,9 @@ export function createMenuDayCard(day, dayIndex, lockedMeals = new Map()) {
             <span class="meal-type-badge">${mealTypeLabel}</span>
             <p class="meal-name">${mealName}</p>
             ${nutritionBadge}
+            ${ratingBadge}
+            ${prepBadge}
+            ${familySummary}
             ${spoonBadges}
           </div>
         </div>
@@ -177,7 +195,8 @@ function createBasketItem(ingredient) {
 
   const label = document.createElement('label');
   const measureStr = ingredient.displayMeasure || (ingredient.measures?.length > 0 ? ingredient.measures.join(', ') : '');
-  const countBadge = ingredient.count > 1 ? ` ×${ingredient.count}` : '';
+  const roundedCount = ingredient.count % 1 === 0 ? ingredient.count : Number(ingredient.count).toFixed(1);
+  const countBadge = ingredient.count > 1 ? ` ×${roundedCount}` : '';
   label.textContent = `${ingredient.name}${countBadge}${measureStr ? ` — ${measureStr}` : ''}`;
 
   li.appendChild(checkbox);
@@ -370,6 +389,13 @@ export function populateRecipeModal(recipe, lang = 'en') {
     .map((tag) => tag.trim())
     .filter(Boolean)
     .slice(0, 4);
+  const currentRating = getRecipeRating(recipe.idMeal);
+  const ratingButtons = [1, 2, 3, 4, 5]
+    .map(
+      (value) =>
+        `<button class="recipe-rating-btn ${value <= currentRating ? 'active' : ''}" data-rating="${value}" type="button" aria-label="${value} stars">★</button>`
+    )
+    .join('');
 
   content.innerHTML = `
     <div class="recipe-header">
@@ -423,6 +449,16 @@ export function populateRecipeModal(recipe, lang = 'en') {
       <p class="instructions">${instructions}</p>
       ${isTranslated ? `<small class="translation-note">${t('recipeNote')}</small>` : ''}
     </div>
+
+    <div class="recipe-feedback-panel">
+      <div>
+        <h3>${t('recipeRatingTitle')}</h3>
+        <p class="recipe-rating-value">${currentRating ? t('recipeRatedValue')(currentRating) : t('recipeRatingEmpty')}</p>
+      </div>
+      <div class="recipe-rating-stars" role="group" aria-label="${t('recipeRatingTitle')}">
+        ${ratingButtons}
+      </div>
+    </div>
     
     <div class="recipe-actions">
       <button class="recipe-action-btn fav-recipe-btn" data-meal-id="${recipe.idMeal}">
@@ -433,6 +469,9 @@ export function populateRecipeModal(recipe, lang = 'en') {
       </button>
       <button class="recipe-action-btn export-recipe-pdf-btn" data-meal-id="${recipe.idMeal}">
         📄 ${t('exportPDF')}
+      </button>
+      <button class="recipe-action-btn leftover-recipe-btn" data-meal-id="${recipe.idMeal}">
+        🍱 ${t('leftoversAdd')}
       </button>
     </div>
   `;

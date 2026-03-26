@@ -125,6 +125,7 @@ export function getPricesForStore(storeId, chainLabel, ingredients = []) {
         title: ingredient,
         price,
         source: chainLabel,
+        sourceType: 'manual_db',
         scraped: false,
       });
     }
