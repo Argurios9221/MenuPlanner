@@ -2357,8 +2357,9 @@ recipe-modal-content .modal-close {
   .header-controls {
     width: auto;
     justify-content: flex-end;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 0.45rem;
+    flex-shrink: 0;
   }
 
   .auth-user-label {
@@ -2420,45 +2421,77 @@ recipe-modal-content .modal-close {
   }
 
   .header {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
   }
 
   .header-content {
-    gap: var(--spacing-sm);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .logo-section {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    min-width: 0;
   }
 
   .logo-section h1 {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0;
   }
 
   .logo-section p {
     display: none;
   }
 
-  .header-chips {
-    margin-top: 0.3rem;
+  .brand-glow-dot {
+    width: 9px;
+    height: 9px;
+    flex-shrink: 0;
   }
 
-  .header-chip {
-    font-size: 0.68rem;
-    padding: 0.2rem 0.5rem;
+  .header-chips {
+    display: none;
   }
 
   .header-controls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.4rem;
     width: 100%;
     overflow-x: auto;
-    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .header-controls::-webkit-scrollbar {
+    display: none;
   }
 
   .control-btn,
   .lang-btn {
-    padding: 0.5rem 0.78rem;
-    font-size: 0.92rem;
+    padding: 0.52rem 0.9rem;
+    font-size: 0.88rem;
+    min-height: 44px;
+    flex-shrink: 0;
   }
 
   .auth-user-label {
-    width: 100%;
+    max-width: 100%;
     text-align: center;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .main-container {
@@ -2616,6 +2649,36 @@ recipe-modal-content .modal-close {
     left: var(--spacing-md);
     right: var(--spacing-md);
     max-width: none;
+  }
+}
+
+@media (max-width: 400px) {
+  .header {
+    padding: 0.5rem var(--spacing-sm);
+  }
+
+  .logo-section h1 {
+    font-size: 1.15rem;
+  }
+
+  .brand-row {
+    gap: 0.4rem;
+  }
+
+  .brand-glow-dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .header-controls {
+    gap: 0.3rem;
+  }
+
+  .control-btn,
+  .lang-btn {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.82rem;
+    min-height: 40px;
   }
 }
 
