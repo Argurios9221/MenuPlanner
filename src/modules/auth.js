@@ -2,7 +2,6 @@ import { initializeApp } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
   deleteUser,
-  FacebookAuthProvider,
   getRedirectResult,
   getAuth,
   GoogleAuthProvider,
@@ -12,7 +11,6 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signOut,
-  TwitterAuthProvider,
 } from 'firebase/auth';
 
 const GDPR_CONSENT_KEY = 'menuPlanner_gdprConsent_v1';
@@ -93,16 +91,6 @@ export async function resetPassword(email) {
 export async function loginWithGoogle() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
-  return loginWithProvider(provider);
-}
-
-export async function loginWithFacebook() {
-  const provider = new FacebookAuthProvider();
-  return loginWithProvider(provider);
-}
-
-export async function loginWithX() {
-  const provider = new TwitterAuthProvider();
   return loginWithProvider(provider);
 }
 

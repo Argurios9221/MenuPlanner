@@ -51,9 +51,7 @@ import {
   initAuth,
   isAuthConfigured,
   loginWithEmail,
-  loginWithFacebook,
   loginWithGoogle,
-  loginWithX,
   logout,
   registerWithEmail,
   resolveAuthRedirectResult,
@@ -266,14 +264,6 @@ export class MenuPlannerApp {
     if (gateGoogleBtn) {
       gateGoogleBtn.addEventListener('click', () => this.handleProviderLogin('google', 'gate'));
     }
-    const gateFacebookBtn = document.getElementById('auth-gate-facebook');
-    if (gateFacebookBtn) {
-      gateFacebookBtn.addEventListener('click', () => this.handleProviderLogin('facebook', 'gate'));
-    }
-    const gateXBtn = document.getElementById('auth-gate-x');
-    if (gateXBtn) {
-      gateXBtn.addEventListener('click', () => this.handleProviderLogin('x', 'gate'));
-    }
 
     const authModal = document.getElementById('auth-modal');
     if (authModal) {
@@ -445,8 +435,6 @@ export class MenuPlannerApp {
 
     const actionMap = {
       google: loginWithGoogle,
-      facebook: loginWithFacebook,
-      x: loginWithX,
     };
     const action = actionMap[provider];
     if (!action) {
@@ -513,7 +501,7 @@ export class MenuPlannerApp {
     }
 
     const providersDisabled = !isAuthConfigured();
-    for (const id of ['auth-email-login', 'auth-email-register', 'auth-email-reset', 'auth-google', 'auth-facebook', 'auth-x', 'auth-gate-login', 'auth-gate-register', 'auth-gate-reset', 'auth-gate-google', 'auth-gate-facebook', 'auth-gate-x']) {
+    for (const id of ['auth-email-login', 'auth-email-register', 'auth-email-reset', 'auth-google', 'auth-gate-login', 'auth-gate-register', 'auth-gate-reset', 'auth-gate-google']) {
       const btn = document.getElementById(id);
       if (btn) {
         btn.disabled = providersDisabled;
