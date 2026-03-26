@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fresh Kitchen - Weekly Menu Planner</title>
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#6C63FF" />
+    <meta name="description" content="Plan your weekly meals with ease using AI-powered recommendations" />
+    <style>
+      html.app-loading #app {
+        opacity: 0;
+      }
+
+      html.app-ready #app {
+        opacity: 1;
+        transition: opacity 220ms ease;
+      }
+    </style>
+    <script>
+      document.documentElement.classList.add('app-loading');
+      try {
+        const savedTheme = localStorage.getItem('menuPlanner_theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      } catch (_) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+      setTimeout(function () {
+        document.documentElement.classList.remove('app-loading');
+        document.documentElement.classList.add('app-ready');
+      }, 1800);
+    </script>
+  </head>
+  <body>
+    <div id="auth-gate" class="auth-gate" role="dialog" aria-modal="true" aria-labelledby="auth-gate-title">
+      <div class="auth-gate-card">
+        <h1 id="auth-gate-title" data-i18n="authGateTitle">Welcome to Fresh Kitchen</h1>
+        <p class="auth-gate-subtitle" data-i18n="authGateSubtitle">Login or create an account to continue.</p>
+
+        <div class="form-group">
+          <label for="auth-gate-email" data-i18n="authEmail">Email</label>
+          <input id="auth-gate-email" type="email" autocomplete="email" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label for="auth-gate-password" data-i18n="authPassword">Password</label>
+          <input id="auth-gate-password" type="password" autocomplete="current-password" />
+        </div>
+
+        <div class="form-group auth-consent-box">
+          <label class="diet-check-label">
+            <input type="checkbox" id="auth-gate-consent" />
+            <span data-i18n="authConsent">I agree to Privacy Policy and Terms and consent to data processing for account access.</span>
+          </label>
+          <small>
+            <a href="./privacy.html" target="_blank" rel="noopener" data-i18n="privacyPolicy">Privacy Policy</a>
+            ·
+            <a href="./terms.html" target="_blank" rel="noopener" data-i18n="termsOfUse">Terms of Use</a>
+          </small>
+        </div>
+
+        <div class="auth-grid-btns">
+          <button id="auth-gate-login" type="button" class="btn btn-primary" data-i18n="authLogin">Login</button>
+          <button id="auth-gate-register" type="button" class="btn btn-secondary" data-i18n="authRegister">Register</button>
+          <button id="auth-gate-reset" type="button" class="btn btn-secondary" data-i18n="authResetPassword">Reset password</button>
+        </div>
+
+        <div class="auth-provider-buttons">
+          <button id="auth-gate-google" type="button" class="btn btn-secondary" data-i18n="authGoogle">Continue with Google</button>
+        </div>
+
+        <p id="auth-gate-status" class="auth-gate-status" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <div id="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <div class="logo-section">
+            <div class="brand-row">
+              <span class="brand-emoji" aria-hidden="true">🍽️</span>
+              <h1 data-i18n="appName">Fresh Kitchen</h1>
+              <span class="brand-glow-dot" aria-hidden="true"></span>
+            </div>
+            <p class="header-tagline" data-i18n="tagline">Smart weekly meal planning</p>
+            <div class="header-chips" aria-hidden="true">
+              <span class="header-chip">🗓 Weekly</span>
+              <span class="header-chip">🛒 Basket</span>
+              <span class="header-chip">🏪 Markets</span>
+            </div>
+          </div>
+          <div class="header-controls">
+            <button id="auth-btn" type="button" class="control-btn" data-i18n="authLogin">Login</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="main-container">
+        <!-- Preferences Panel -->
+        <aside class="preferences-panel">
+          <h2 data-i18n="preferences">Preferences</h2>
+
+          <div class="form-group">
+            <label for="people-input" data-i18n="labelPeople">Number of people</label>
+            <select id="people-input">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4" selected>4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="variety-select" data-i18n="labelVariety">Variety</label>
+            <select id="variety-select">
+              <option value="low" data-i18n="varietyLow">Low</option>
+              <option value="medium" data-i18n="varietyMedium" selected>Medium</option>
+              <option value="high" data-i18n="varietyHigh">High</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="cuisine-select" data-i18n="labelCuisine">Cuisine</label>
+            <select id="cuisine-select">
+              <option value="mix" data-i18n="cuisineMix" selected>International (Mix)</option>
+              <option value="Bulgarian" data-i18n="cuisineBulgarian">Bulgarian</option>
+              <option value="Italian" data-i18n="cuisineItalian">Italian</option>
+              <option value="Vegetarian" data-i18n="cuisineVegetarian">Vegetarian</option>
+              <option value="Vegan" data-i18n="cuisineVegan">Vegan</option>
+              <option value="GlutenFree" data-i18n="cuisineGlutenfree">Gluten-free</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="prep-time-select" data-i18n="labelPrepTime">Prep time</label>
+            <select id="prep-time-select">
+              <option value="any" data-i18n="prepTimeAny" selected>Any duration</option>
+              <option value="quick" data-i18n="prepTimeQuick">Quick (up to 25 min)</option>
+              <option value="medium" data-i18n="prepTimeMedium">Medium (up to 45 min)</option>
+              <option value="long" data-i18n="prepTimeLong">Long (45+ min)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="allergies-input" data-i18n="labelAllergies">Allergies (comma-separated)</label>
+            <input
+              type="text"
+              id="allergies-input"
+              placeholder="e.g., nuts, shellfish"
+              data-placeholder="placeholderAllergies"
+            />
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="labelDietaryExclusions">Exclude from meals</label>
+            <div class="dietary-checkboxes">
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-no-beef" value="no_beef"> <span data-i18n="dietNoBeef">No beef</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-no-pork" value="no_pork"> <span data-i18n="dietNoPork">No pork</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-lactose-free" value="lactose_free"> <span data-i18n="dietLactoseFree">Lactose-free</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-no-chicken" value="no_chicken"> <span data-i18n="dietNoChicken">No chicken</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-no-seafood" value="no_seafood"> <span data-i18n="dietNoSeafood">No seafood</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-no-nuts" value="no_nuts"> <span data-i18n="dietNoNuts">No nuts</span>
+              </label>
+              <label class="diet-check-label">
+                <input type="checkbox" id="diet-gluten-free" value="gluten_free"> <span data-i18n="dietGlutenFree">Gluten-free ingredients</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="notes-input" data-i18n="labelNotes">Additional notes</label>
+            <textarea id="notes-input" placeholder="Any dietary preferences..." data-placeholder="placeholderNotes"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="budget-input" data-i18n="weeklyBudget">Weekly Budget (€)</label>
+            <input type="number" id="budget-input" min="0" step="5" placeholder="e.g. 80" data-placeholder="placeholderBudget" />
+          </div>
+
+          <div class="form-group">
+            <label for="goal-select" data-i18n="labelGoal">Goal</label>
+            <select id="goal-select">
+              <option value="" data-i18n="goalAny" selected>Any</option>
+              <option value="high_protein" data-i18n="goalHighProtein">High protein</option>
+              <option value="low_calorie" data-i18n="goalLowCalorie">Low calorie</option>
+              <option value="budget" data-i18n="goalBudget">Budget friendly</option>
+            </select>
+          </div>
+
+          <div class="form-group feature-hidden" aria-hidden="true">
+            <label for="pantry-input" data-i18n="labelPantry">Pantry items (comma-separated)</label>
+            <input
+              type="text"
+              id="pantry-input"
+              placeholder="e.g., rice, flour, eggs"
+              data-placeholder="placeholderPantry"
+            />
+          </div>
+
+          <div class="form-group feature-hidden" aria-hidden="true">
+            <label for="pantry-expiry-input" data-i18n="labelPantryExpiry">Pantry expiry tracker</label>
+            <textarea
+              id="pantry-expiry-input"
+              class="compact-textarea"
+              placeholder="milk|2026-03-29|1&#10;chicken breast|2026-03-27|2"
+              data-placeholder="placeholderPantryExpiry"
+            ></textarea>
+            <small class="form-help" data-i18n="pantryExpiryHelp">One item per line: product | expiry date | quantity.</small>
+          </div>
+
+          <div class="form-group">
+            <label class="toggle-card" for="meal-prep-mode">
+              <span>
+                <strong data-i18n="mealPrepModeTitle">Meal Prep Mode</strong>
+                <small data-i18n="mealPrepModeHint">Generate batch-cooking friendly repeats for lunch and dinner.</small>
+              </span>
+              <input type="checkbox" id="meal-prep-mode" />
+            </label>
+          </div>
+
+          <div class="form-group feature-hidden" aria-hidden="true">
+            <label for="family-profiles-input" data-i18n="labelFamilyProfiles">Family profiles</label>
+            <textarea
+              id="family-profiles-input"
+              class="compact-textarea"
+              placeholder="Mia|adult|1|lactose_free|milk>oat milk;cheese>tofu&#10;Niki|child|0.7|no_pork|"
+              data-placeholder="placeholderFamilyProfiles"
+            ></textarea>
+            <small class="form-help" data-i18n="familyProfilesHelp">One profile per line: name | role | portion multiplier | exclusions | replacements.</small>
+          </div>
+
+          <div class="form-actions">
+            <button id="btn-reset" class="btn btn-secondary" data-i18n="btnReset">Reset</button>
+            <button id="btn-budget-crisis" class="btn btn-secondary" data-i18n="btnBudgetCrisis">Budget Crisis</button>
+            <button id="btn-generate" class="btn btn-primary" data-i18n="btnGenerate">Generate Menu</button>
+          </div>
+
+          <!-- Spoonacular API Integration -->
+          <div class="spoonacular-section" id="spoonacular-settings">
+            <span class="spoon-logo" aria-hidden="true">🥄</span>
+            <span data-i18n="spoonacularTitle">Spoonacular API</span>
+            <span class="spoon-status-dot" id="spoon-status-dot" aria-label="Status"></span>
+            <span class="spoon-status-label" id="spoon-status-label"></span>
+          </div>
+
+          <section class="api-health-panel" id="api-health-panel">
+            <div class="api-health-head">
+              <div>
+                <h3 data-i18n="apiStatusTitle">API Status</h3>
+                <p class="api-health-subtitle" data-i18n="apiStatusSubtitle">Live connection monitor for all data providers</p>
+              </div>
+              <span class="api-live-pulse" aria-hidden="true"></span>
+            </div>
+
+            <div class="api-health-toolbar">
+              <button type="button" class="btn api-mini-btn" id="api-refresh-btn" data-i18n="apiStatusRefresh">Refresh</button>
+              <button type="button" class="btn api-mini-btn" id="api-toggle-btn" data-i18n="apiStatusCollapse">Collapse</button>
+            </div>
+
+            <div class="api-health-summary" id="api-health-summary">
+              <span class="api-summary-pill api-summary-online"><strong id="api-online-count">0</strong> <span data-i18n="apiStatusOnline">online</span></span>
+              <span class="api-summary-pill api-summary-offline"><strong id="api-offline-count">0</strong> <span data-i18n="apiStatusOffline">offline</span></span>
+            </div>
+
+            <div class="api-health-grid" id="api-health-grid">
+              <article class="api-health-card" data-api="spoonacular">
+                <span class="api-card-title" data-i18n="apiStatusSpoonacular">Spoonacular</span>
+                <span class="api-dot" data-api-dot="spoonacular"></span>
+                <span class="api-label" data-api-label="spoonacular"></span>
+              </article>
+              <article class="api-health-card" data-api="themealdb">
+                <span class="api-card-title" data-i18n="apiStatusMealDb">TheMealDB Cache</span>
+                <span class="api-dot" data-api-dot="themealdb"></span>
+                <span class="api-label" data-api-label="themealdb"></span>
+              </article>
+              <article class="api-health-card" data-api="openfoodfacts">
+                <span class="api-card-title" data-i18n="apiStatusOpenFoodFacts">OpenFoodFacts</span>
+                <span class="api-dot" data-api-dot="openfoodfacts"></span>
+                <span class="api-label" data-api-label="openfoodfacts"></span>
+              </article>
+              <article class="api-health-card" data-api="usda">
+                <span class="api-card-title" data-i18n="apiStatusUsda">USDA</span>
+                <span class="api-dot" data-api-dot="usda"></span>
+                <span class="api-label" data-api-label="usda"></span>
+              </article>
+              <article class="api-health-card" data-api="openverse">
+                <span class="api-card-title" data-i18n="apiStatusOpenverse">OpenVerse</span>
+                <span class="api-dot" data-api-dot="openverse"></span>
+                <span class="api-label" data-api-label="openverse"></span>
+              </article>
+              <article class="api-health-card" data-api="sampleapis">
+                <span class="api-card-title" data-i18n="apiStatusSampleApis">SampleAPIs</span>
+                <span class="api-dot" data-api-dot="sampleapis"></span>
+                <span class="api-label" data-api-label="sampleapis"></span>
+              </article>
+              <article class="api-health-card" data-api="mymemory">
+                <span class="api-card-title" data-i18n="apiStatusMyMemory">MyMemory</span>
+                <span class="api-dot" data-api-dot="mymemory"></span>
+                <span class="api-label" data-api-label="mymemory"></span>
+              </article>
+              <article class="api-health-card" data-api="cloude">
+                <span class="api-card-title" data-i18n="apiStatusCloude">Cloude Analyzer</span>
+                <span class="api-dot" data-api-dot="cloude"></span>
+                <span class="api-label" data-api-label="cloude"></span>
+              </article>
+            </div>
+          </section>
+
+        </aside>
+
+        <!-- Tabs -->
+        <div class="tabs-container">
+          <div class="tabs">
+            <button class="tab active" data-tab="menu" data-i18n="tabMenu">Weekly Menu</button>
+            <button class="tab" data-tab="basket" data-i18n="tabBasket">Shopping Basket</button>
+            <button class="tab" data-tab="markets" data-i18n="tabMarkets">Markets</button>
+            <button class="tab" data-tab="barcode" data-i18n="tabBarcode">Barcode Scanner</button>
+          </div>
+
+          <!-- Menu Tab -->
+          <section class="pane active" data-pane="menu">
+            <div id="menu-container" class="menu-container"></div>
+          </section>
+
+          <!-- Basket Tab -->
+          <section class="pane" data-pane="basket">
+            <div id="basket-container" class="basket-container"></div>
+          </section>
+
+          <!-- Markets Tab -->
+          <section class="pane" data-pane="markets">
+            <div id="markets-container" class="markets-container"></div>
+          </section>
+
+          <!-- Barcode Scanner Tab -->
+          <section class="pane" data-pane="barcode">
+            <div id="barcode-container" class="barcode-container">
+              <div class="barcode-hero">
+                <h2 data-i18n="barcodeTitle">Barcode Scanner</h2>
+                <p class="barcode-hint" data-i18n="barcodeHint">Scan products to check allergens and menu compliance</p>
+                <button class="btn btn-primary start-scanner-btn" id="start-scanner-btn">📷 <span data-i18n="barcodeStartCamera">Start Camera</span></button>
+              </div>
+              <div id="scanner-preview" class="scanner-preview" style="display: none;">
+                <video id="barcode-video" class="barcode-video"></video>
+                <button class="btn btn-secondary stop-scanner-btn" id="stop-scanner-btn" data-i18n="barcodeStop">Stop</button>
+              </div>
+              <div id="scan-results" class="scan-results"></div>
+            </div>
+          </section>
+
+        </div>
+      </main>
+    </div>
+
+    <!-- Recipe Modal -->
+    <div id="recipe-modal" class="modal">
+      <div class="modal-content recipe-modal-content"></div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+      <div class="modal-content auth-modal-content">
+        <div class="recipe-header">
+          <h2 id="auth-modal-title" data-i18n="authTitle">Account</h2>
+          <button type="button" class="modal-close auth-close" aria-label="Close">✕</button>
+        </div>
+
+        <div class="auth-logged-out" id="auth-logged-out">
+          <div class="form-group">
+            <label for="auth-email" data-i18n="authEmail">Email</label>
+            <input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" />
+          </div>
+          <div class="form-group">
+            <label for="auth-password" data-i18n="authPassword">Password</label>
+            <input id="auth-password" type="password" autocomplete="current-password" />
+          </div>
+
+          <div class="form-group auth-consent-box">
+            <label class="diet-check-label">
+              <input type="checkbox" id="auth-gdpr-consent" />
+              <span data-i18n="authConsent">I agree to Privacy Policy and Terms and consent to data processing for account access.</span>
+            </label>
+            <small>
+              <a href="./privacy.html" target="_blank" rel="noopener" data-i18n="privacyPolicy">Privacy Policy</a>
+              ·
+              <a href="./terms.html" target="_blank" rel="noopener" data-i18n="termsOfUse">Terms of Use</a>
+            </small>
+          </div>
+
+          <div class="auth-grid-btns">
+            <button id="auth-email-login" class="btn btn-primary" data-i18n="authLogin">Login</button>
+            <button id="auth-email-register" class="btn btn-secondary" data-i18n="authRegister">Register</button>
+            <button id="auth-email-reset" class="btn btn-secondary" data-i18n="authResetPassword">Reset password</button>
+          </div>
+
+          <div class="auth-provider-buttons">
+            <button id="auth-google" class="btn btn-secondary" data-i18n="authGoogle">Continue with Google</button>
+          </div>
+        </div>
+
+        <div class="auth-logged-in" id="auth-logged-in" hidden>
+          <p id="auth-user-email" class="market-summary"></p>
+          <div class="account-settings-row">
+            <button id="account-theme-btn" class="btn btn-secondary" type="button">Theme</button>
+            <button id="account-lang-btn" class="btn btn-secondary" type="button">Language</button>
+          </div>
+          <div class="account-favorites-wrapper">
+            <h3 data-i18n="tabFavorites">Favorites</h3>
+            <div id="account-favorites-container" class="favorites-container"></div>
+          </div>
+          <div class="auth-grid-btns">
+            <button id="auth-export-data" class="btn btn-secondary" data-i18n="authExportData">Export my data</button>
+            <button id="auth-delete-account" class="btn btn-secondary" data-i18n="authDeleteAccount">Delete my account</button>
+            <button id="auth-logout" class="btn btn-primary" data-i18n="authLogout">Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.js"></script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

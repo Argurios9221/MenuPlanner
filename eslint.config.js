@@ -1,0 +1,51 @@
+import js from '@eslint/js';
+
+export default [
+  {
+    ignores: ['dist', 'node_modules', 'vite.config.js', '.prettierrc.json', 'src/data/themealdb-cache.js'],
+  },
+  {
+    files: ['src/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2021,
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        fetch: 'readonly',
+        localStorage: 'readonly',
+        IndexedDB: 'readonly',
+        crypto: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+        File: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-debugger': 'warn',
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-var': 'error',
+      'prefer-const': 'error',
+      'eqeqeq': ['error', 'always'],
+      'curly': ['error', 'all'],
+      'brace-style': ['error', '1tbs'],
+      'no-trailing-spaces': 'error',
+      'indent': ['error', 2, { SwitchCase: 1 }],
+      'semi': ['error', 'always'],
+      'quotes': ['error', 'single', { avoidEscape: true }],
+      'comma-dangle': ['error', 'only-multiline'],
+      'object-curly-spacing': ['error', 'always'],
+      'array-bracket-spacing': ['error', 'never'],
+      'arrow-spacing': 'error',
+      'no-multiple-empty-lines': ['error', { max: 1 }],
+      'space-before-function-paren': ['error', { anonymous: 'always', named: 'never' }],
+      'keyword-spacing': 'error',
+      'space-infix-ops': 'error',
+    },
+  },
+];

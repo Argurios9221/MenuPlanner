@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fresh Kitchen - Weekly Menu Planner</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#f5e6d3" />
+    <meta
+      name="description"
+      content="Plan your weekly meals with ease using AI-powered recommendations"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <div class="logo-section">
+            <h1 data-i18n="appName">Fresh Kitchen</h1>
+            <p data-i18n="tagline">Plan your weekly meals with ease</p>
+          </div>
+          <div class="header-controls">
+            <button id="auth-btn" type="button" class="control-btn" data-i18n="authLogin">Login</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="main-container">
+        <!-- Preferences Panel -->
+        <aside class="preferences-panel">
+          <h2 data-i18n="preferences">Preferences</h2>
+
+          <div class="form-group">
+            <label for="people-input" data-i18n="labelPeople">Number of people</label>
+            <select id="people-input">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4" selected>4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="variety-select" data-i18n="labelVariety">Variety</label>
+            <select id="variety-select">
+              <option value="low" data-i18n="varietyLow">Low</option>
+              <option value="medium" data-i18n="varietyMedium" selected>Medium</option>
+              <option value="high" data-i18n="varietyHigh">High</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="cuisine-select" data-i18n="labelCuisine">Cuisine</label>
+            <select id="cuisine-select">
+              <option value="mix" data-i18n="cuisineMix" selected>Mix of all cuisines</option>
+              <option value="Italian" data-i18n="cuisineItalian">Italian</option>
+              <option value="Mexican" data-i18n="labelCuisine">Mexican</option>
+              <option value="Japanese">Japanese</option>
+              <option value="Indian">Indian</option>
+              <option value="Chinese">Chinese</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="dietary-input" data-i18n="labelDietary">Dietary Preferences</label>
+            <input
+              type="text"
+              id="dietary-input"
+              placeholder="e.g., Vegetarian, Vegan"
+              data-placeholder="labelDietary"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="allergies-input" data-i18n="labelAllergies"
+              >Allergies (comma-separated)</label
+            >
+            <input
+              type="text"
+              id="allergies-input"
+              placeholder="e.g., nuts, shellfish"
+              data-placeholder="labelAllergies"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="notes-input" data-i18n="labelNotes">Additional notes</label>
+            <textarea
+              id="notes-input"
+              placeholder="Any dietary preferences..."
+              data-placeholder="placeholderNotes"
+            ></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button id="btn-reset" class="btn btn-secondary" data-i18n="btnReset">Reset</button>
+            <button id="btn-generate" class="btn btn-primary" data-i18n="btnGenerate">
+              Generate Menu
+            </button>
+          </div>
+
+          <div id="status-text" class="status-text status-ready" data-i18n="statusReady">
+            Ready to generate.
+          </div>
+        </aside>
+
+        <!-- Tabs -->
+        <div class="tabs-container">
+          <div class="tabs">
+            <button class="tab active" data-tab="menu" data-i18n="tabMenu">Weekly Menu</button>
+            <button class="tab" data-tab="basket" data-i18n="tabBasket">Shopping Basket</button>
+            <button class="tab" data-tab="markets" data-i18n="tabMarkets">Markets</button>
+            <button class="tab" data-tab="favorites" data-i18n="tabFavorites">Favorites</button>
+          </div>
+
+          <!-- Menu Tab -->
+          <section class="pane active" data-pane="menu">
+            <div id="menu-container" class="menu-container"></div>
+          </section>
+
+          <!-- Basket Tab -->
+          <section class="pane" data-pane="basket">
+            <div id="basket-container" class="basket-container"></div>
+          </section>
+
+          <!-- Markets Tab -->
+          <section class="pane" data-pane="markets">
+            <div id="markets-container" class="markets-container"></div>
+          </section>
+
+          <!-- Favorites Tab -->
+          <section class="pane" data-pane="favorites">
+            <div id="favorites-container" class="favorites-container"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- Recipe Modal -->
+    <div id="recipe-modal" class="modal">
+      <div class="modal-content recipe-modal-content"></div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
