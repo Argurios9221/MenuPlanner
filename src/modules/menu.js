@@ -407,14 +407,6 @@ function annotateMealForProfiles(meal, familyProfiles = [], basePeople = 4, batc
   };
 }
 
-function cloneMealForBatch(meal, type, batchLabel = '') {
-  return {
-    ...meal,
-    type,
-    mealPrepLabel: batchLabel,
-  };
-}
-
 function buildMealPrepSummary(menu, enabled) {
   if (!enabled) {
     return null;
@@ -706,28 +698,27 @@ export async function generateMenu(options = {}) {
       }
 
       const lunchBatchId = mealPrepMode ? Math.floor(day / 3) : day;
-      const lunchReuse = mealPrepMode && batchAnchors.Lunch.has(lunchBatchId);
-      let lunch = lunchReuse ? cloneMealForBatch(batchAnchors.Lunch.get(lunchBatchId), 'Lunch', `Batch ${lunchBatchId + 1}`) : null;
-      if (!lunch) {
-        const lunchCategory = cuisineCategories[day % cuisineCategories.length];
-        lunch = await getMealForSlot(
-          lunchCategory,
-          'Lunch',
-          variety,
-          day,
-          dietPreference,
-          cuisine,
-          allowedAreas,
-          prepTime,
-          usedMealIds,
-          usedMealSignatures,
-          {
-            referenceMeal: mealPrepMode && lunchBatchId > 0 ? batchAnchors.Lunch.get(lunchBatchId - 1) : null,
-          }
-        );
-        if (mealPrepMode && lunch) {
-          batchAnchors.Lunch.set(lunchBatchId, lunch);
+      const lunchReference = mealPrepMode
+        ? (batchAnchors.Lunch.get(lunchBatchId) || (lunchBatchId > 0 ? batchAnchors.Lunch.get(lunchBatchId - 1) : null))
+        : null;
+      const lunchCategory = cuisineCategories[day % cuisineCategories.length];
+      const lunch = await getMealForSlot(
+        lunchCategory,
+        'Lunch',
+        variety,
+        day,
+        dietPreference,
+        cuisine,
+        allowedAreas,
+        prepTime,
+        usedMealIds,
+        usedMealSignatures,
+        {
+          referenceMeal: lunchReference,
         }
+      );
+      if (mealPrepMode && lunch && !batchAnchors.Lunch.has(lunchBatchId)) {
+        batchAnchors.Lunch.set(lunchBatchId, lunch);
       }
       if (lunch) {
         dayMeals.meals.push(annotateMealForProfiles({ ...lunch, type: 'Lunch' }, familyProfiles, people, mealPrepMode ? `Batch ${lunchBatchId + 1}` : ''));
@@ -737,28 +728,27 @@ export async function generateMenu(options = {}) {
       }
 
       const dinnerBatchId = mealPrepMode ? Math.floor(day / 3) : day;
-      const dinnerReuse = mealPrepMode && batchAnchors.Dinner.has(dinnerBatchId);
-      let dinner = dinnerReuse ? cloneMealForBatch(batchAnchors.Dinner.get(dinnerBatchId), 'Dinner', `Batch ${dinnerBatchId + 1}`) : null;
-      if (!dinner) {
-        const dinnerCategory = cuisineCategories[(day + 2) % cuisineCategories.length];
-        dinner = await getMealForSlot(
-          dinnerCategory,
-          'Dinner',
-          variety,
-          day + 3,
-          dietPreference,
-          cuisine,
-          allowedAreas,
-          prepTime,
-          usedMealIds,
-          usedMealSignatures,
-          {
-            referenceMeal: mealPrepMode ? (dayMeals.meals.find((meal) => meal.type === 'Lunch') || batchAnchors.Dinner.get(dinnerBatchId - 1) || null) : null,
-          }
-        );
-        if (mealPrepMode && dinner) {
-          batchAnchors.Dinner.set(dinnerBatchId, dinner);
+      const dinnerReference = mealPrepMode
+        ? (dayMeals.meals.find((meal) => meal.type === 'Lunch') || batchAnchors.Dinner.get(dinnerBatchId) || batchAnchors.Dinner.get(dinnerBatchId - 1) || null)
+        : null;
+      const dinnerCategory = cuisineCategories[(day + 2) % cuisineCategories.length];
+      const dinner = await getMealForSlot(
+        dinnerCategory,
+        'Dinner',
+        variety,
+        day + 3,
+        dietPreference,
+        cuisine,
+        allowedAreas,
+        prepTime,
+        usedMealIds,
+        usedMealSignatures,
+        {
+          referenceMeal: dinnerReference,
         }
+      );
+      if (mealPrepMode && dinner && !batchAnchors.Dinner.has(dinnerBatchId)) {
+        batchAnchors.Dinner.set(dinnerBatchId, dinner);
       }
       if (dinner) {
         dayMeals.meals.push(annotateMealForProfiles({ ...dinner, type: 'Dinner' }, familyProfiles, people, mealPrepMode ? `Batch ${dinnerBatchId + 1}` : ''));

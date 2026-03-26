@@ -631,7 +631,8 @@ function buildSplitBasketPlan(stores, ingredientItems) {
 
     itemCount += 1;
     splitTotal += best.totalPrice;
-    const existing = assignments.get(best.storeId) || {
+    const assignmentKey = best.chainLabel || best.storeId;
+    const existing = assignments.get(assignmentKey) || {
       storeId: best.storeId,
       chainLabel: best.chainLabel,
       subtotal: 0,
@@ -643,7 +644,7 @@ function buildSplitBasketPlan(stores, ingredientItems) {
       confidenceLevel: best.confidenceLevel,
     });
     existing.subtotal += best.totalPrice;
-    assignments.set(best.storeId, existing);
+    assignments.set(assignmentKey, existing);
   }
 
   const cheapestSingleTotal = stores
