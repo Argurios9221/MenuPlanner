@@ -6,6 +6,15 @@ const OVERPASS_APIS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
 ];
+const ALLOWED_CHAIN_RULES = [
+  { id: 'lidl', label: 'Lidl', regex: /(^|\W)lidl(\W|$)|лидл/iu },
+  { id: 'kaufland', label: 'Kaufland', regex: /(^|\W)kaufland(\W|$)|кауфланд/iu },
+  { id: 'billa', label: 'BILLA', regex: /(^|\W)billa(\W|$)|била/iu },
+  { id: 'metro', label: 'Metro', regex: /(^|\W)metro(\W|$)|метро/iu },
+  { id: 'fantastico', label: 'Fantastico', regex: /(^|\W)fantastico(\W|$)|фантастико/iu },
+  { id: '345', label: '345', regex: /(^|\W)345(\W|$)/iu },
+  { id: 'dar', label: 'Dar', regex: /(^|\W)dar(\W|$)|(^|\W)дар(\W|$)/iu },
+];
 const FX_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 let fxCache = null;
 
@@ -218,6 +227,16 @@ function haversineKm(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
+function resolveAllowedChain(name, brand, operator) {
+  const haystack = `${name || ''} ${brand || ''} ${operator || ''}`.toLowerCase();
+  for (const rule of ALLOWED_CHAIN_RULES) {
+    if (rule.regex.test(haystack)) {
+      return { chainId: rule.id, chainLabel: rule.label };
+    }
+  }
+  return null;
+}
+
 function parseOverpassElement(el) {
   const lat = el.lat || el.center?.lat;
   const lon = el.lon || el.center?.lon;
@@ -225,18 +244,19 @@ function parseOverpassElement(el) {
     return null;
   }
 
-  const brand = el.tags?.brand || el.tags?.operator || '';
-  const name = el.tags?.name || brand || '';
-  const chainKeyRaw = normalizeText(brand || name || 'supermarket')
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9а-я-]/g, '');
-  const chainId = chainKeyRaw || 'supermarket';
+  const brand = el.tags?.brand || '';
+  const operator = el.tags?.operator || '';
+  const name = el.tags?.name || brand || operator || '';
+  const allowed = resolveAllowedChain(name, brand, operator);
+  if (!allowed) {
+    return null;
+  }
 
   const result = {
     id: `store_${el.id}`,
-    chainId,
-    chainLabel: brand || name || 'Supermarket',
-    name: name || 'Supermarket',
+    chainId: allowed.chainId,
+    chainLabel: allowed.chainLabel,
+    name: name || allowed.chainLabel,
     lat,
     lon,
     address: [el.tags?.['addr:street'], el.tags?.['addr:housenumber']].filter(Boolean).join(' '),
@@ -289,17 +309,14 @@ async function fetchNearbyChains(coords, options = {}) {
   const { useFallbackOnly = false } = options;
 
   console.log('🏪 [Supermarkets] Fetching nearby stores. Coords:', coords);
-  
-  // Always try Overpass API, even without GPS (uses fallback coords)
+
+  // Only allowed supermarket/hypermarket/grocery chains.
   const query = `
     [out:json][timeout:12];
     (
-      node["shop"="supermarket"](around:8000,${coords.lat},${coords.lon});
-      way["shop"="supermarket"](around:8000,${coords.lat},${coords.lon});
-      relation["shop"="supermarket"](around:8000,${coords.lat},${coords.lon});
-      node["shop"="convenience"](around:5000,${coords.lat},${coords.lon});
-      way["shop"="convenience"](around:5000,${coords.lat},${coords.lon});
-      relation["shop"="convenience"](around:5000,${coords.lat},${coords.lon});
+      node["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
+      way["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
+      relation["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|345|dar|дар",i](around:10000,${coords.lat},${coords.lon});
     );
     out center tags;
   `;
@@ -308,14 +325,7 @@ async function fetchNearbyChains(coords, options = {}) {
     const parsed = await fetchFromOverpassMirrors(query);
     console.log('🏪 [Supermarkets] Parsed stores from Overpass:', parsed.length, parsed.map(s => ({ id: s.id, name: s.name, chainLabel: s.chainLabel, lat: s.lat, lon: s.lon })));
     
-    let candidates = parsed;
-    if (candidates.length === 0) {
-      const nominatim = await fetchFromNominatim(coords);
-      if (nominatim.length > 0) {
-        console.log('🏪 [Supermarkets] Using Nominatim fallback stores:', nominatim.length);
-        candidates = nominatim;
-      }
-    }
+    const candidates = parsed;
 
     const deduped = new Map();
     for (const store of candidates) {
@@ -328,31 +338,14 @@ async function fetchNearbyChains(coords, options = {}) {
     const result = Array.from(deduped.values());
     console.log('🏪 [Supermarkets] Deduped stores:', result.length, result.map(s => ({ name: s.name, chainLabel: s.chainLabel, key: dedupeStoreKey(s) })));
     
-    // If we got real stores, use them; otherwise fall back to generic
-    const finalResult = result.length > 0 ? result : [{
-      id: 'fallback_generic',
-      chainLabel: 'Supermarket (Estimated)',
-      name: 'Supermarket (Estimated)',
-      lat: coords.lat,
-      lon: coords.lon,
-      address: '',
-      isFallback: true,
-    }];
+    // Strict mode: return only allowed real chains.
+    const finalResult = result;
     
     console.log('🏪 [Supermarkets] Final result:', finalResult.length, 'stores');
     return finalResult;
   } catch (err) {
     console.error('🏪 [Supermarkets] Overpass API error:', err);
-    const fallback = [{
-      id: 'fallback_generic_error',
-      chainLabel: 'Supermarket (Estimated)',
-      name: 'Supermarket (Estimated)',
-      lat: coords.lat,
-      lon: coords.lon,
-      address: '',
-      isFallback: true,
-    }];
-    return fallback;
+    return [];
   }
 }
 
@@ -379,52 +372,6 @@ async function fetchFromOverpassMirrors(query) {
   }
 
   return [];
-}
-
-async function fetchFromNominatim(coords) {
-  try {
-    const lat = Number(coords.lat);
-    const lon = Number(coords.lon);
-    const delta = 0.06;
-    const left = lon - delta;
-    const right = lon + delta;
-    const top = lat + delta;
-    const bottom = lat - delta;
-
-    const url = new URL('https://nominatim.openstreetmap.org/search');
-    url.searchParams.set('q', 'supermarket');
-    url.searchParams.set('format', 'jsonv2');
-    url.searchParams.set('limit', '25');
-    url.searchParams.set('bounded', '1');
-    url.searchParams.set('viewbox', `${left},${top},${right},${bottom}`);
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        Accept: 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      return [];
-    }
-
-    const data = await response.json();
-    return (Array.isArray(data) ? data : []).map((item, idx) => {
-      const display = String(item.display_name || 'Supermarket');
-      const name = display.split(',')[0] || 'Supermarket';
-      return {
-        id: `nominatim_${item.place_id || idx}`,
-        chainId: normalizeText(name).replace(/\s+/g, '-').replace(/[^a-z0-9а-я-]/g, '') || 'supermarket',
-        chainLabel: name,
-        name,
-        lat: Number(item.lat),
-        lon: Number(item.lon),
-        address: display,
-      };
-    }).filter((store) => Number.isFinite(store.lat) && Number.isFinite(store.lon));
-  } catch {
-    return [];
-  }
 }
 
 async function getFxRates() {
