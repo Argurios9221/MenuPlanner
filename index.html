@@ -78,14 +78,15 @@
         <div class="header-content">
           <div class="logo-section">
             <div class="brand-row">
+              <span class="brand-emoji" aria-hidden="true">🍽️</span>
               <h1 data-i18n="appName">Fresh Kitchen</h1>
               <span class="brand-glow-dot" aria-hidden="true"></span>
             </div>
-            <p data-i18n="tagline">Plan your weekly meals with ease</p>
+            <p class="header-tagline" data-i18n="tagline">Smart weekly meal planning</p>
             <div class="header-chips" aria-hidden="true">
-              <span class="header-chip">Weekly</span>
-              <span class="header-chip">Smart Basket</span>
-              <span class="header-chip">Market Match</span>
+              <span class="header-chip">🗓 Weekly</span>
+              <span class="header-chip">🛒 Basket</span>
+              <span class="header-chip">🏪 Markets</span>
             </div>
           </div>
           <div class="header-controls">
@@ -204,7 +205,7 @@
             </select>
           </div>
 
-          <div class="form-group">
+          <div class="form-group feature-hidden" aria-hidden="true">
             <label for="pantry-input" data-i18n="labelPantry">Pantry items (comma-separated)</label>
             <input
               type="text"
@@ -214,7 +215,7 @@
             />
           </div>
 
-          <div class="form-group">
+          <div class="form-group feature-hidden" aria-hidden="true">
             <label for="pantry-expiry-input" data-i18n="labelPantryExpiry">Pantry expiry tracker</label>
             <textarea
               id="pantry-expiry-input"
@@ -235,7 +236,7 @@
             </label>
           </div>
 
-          <div class="form-group">
+          <div class="form-group feature-hidden" aria-hidden="true">
             <label for="family-profiles-input" data-i18n="labelFamilyProfiles">Family profiles</label>
             <textarea
               id="family-profiles-input"

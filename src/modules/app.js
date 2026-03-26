@@ -1260,38 +1260,38 @@ export class MenuPlannerApp {
     const section = document.createElement('section');
     section.className = 'planning-insights';
     section.innerHTML = `
-      <article class="planning-card">
+      <article class="planning-card" data-insight="pantry">
         <h3>${t('pantryExpiryTitle')}</h3>
         <ul class="planning-list">${pantryHtml}</ul>
       </article>
-      <article class="planning-card">
+      <article class="planning-card" data-insight="meal-prep">
         <h3>${t('mealPrepModeTitle')}</h3>
         ${mealPrepSummary ? `<p class="planning-highlight">${typeof t('mealPrepSummary') === 'function' ? t('mealPrepSummary')(mealPrepSummary.cookSessions, mealPrepSummary.repeatedMeals) : ''}</p>` : ''}
         <ul class="planning-list">${mealPrepSummary?.lines?.map((line) => `<li class="planning-list-item"><div><strong>${line.title}</strong><small>${line.detail}</small></div></li>`).join('') || `<p class="planning-empty">${t('mealPrepEmpty')}</p>`}</ul>
       </article>
-      <article class="planning-card">
+      <article class="planning-card" data-insight="batch-calendar">
         <h3>${t('batchCalendarTitle') || 'Batch Cooking Calendar'}</h3>
         <ul class="planning-list">${batchCalendarHtml}</ul>
       </article>
-      <article class="planning-card">
+      <article class="planning-card" data-insight="nutrition">
         <h3>${t('nutritionDashboardTitle') || 'Weekly Nutrition Goals'}</h3>
         ${nutritionDashboard ? `<p class="planning-highlight">${typeof t('nutritionDaysOnTarget') === 'function' ? t('nutritionDaysOnTarget')(nutritionDashboard.daysOnTarget, nutritionDashboard.lines.length) : ''}</p>` : ''}
         ${nutritionDashboard ? `<p class="planning-empty">${t('nutritionKcalTarget') || 'Kcal target'}: ${nutritionDashboard.kcalTarget} · ${t('nutritionProteinTarget') || 'Protein target'}: ${nutritionDashboard.proteinTarget}g</p>` : ''}
         <ul class="planning-list">${nutritionHtml}</ul>
       </article>
-      <article class="planning-card">
+      <article class="planning-card" data-insight="family">
         <h3>${t('labelFamilyProfiles')}</h3>
         <ul class="planning-list">${familyHtml}</ul>
       </article>
-      <article class="planning-card">
+      <article class="planning-card" data-insight="leftovers">
         <h3>${t('leftoversTitle')}</h3>
         <ul class="planning-list">${leftoversHtml}</ul>
       </article>
-      <article class="planning-card">
+      <article class="planning-card" data-insight="leftover-suggestions">
         <h3>${t('leftoverSuggestionsTitle')}</h3>
         <ul class="planning-list">${suggestionsHtml}</ul>
       </article>
-      <article class="planning-card">
+      <article class="planning-card" data-insight="rating">
         <h3>${t('recipeRatingTitle')}</h3>
         ${ratedMeals.length ? `<p class="planning-highlight">${typeof t('recipeRatingAverage') === 'function' ? t('recipeRatingAverage')(averageRating, ratedMeals.length) : `Average rating ${averageRating}`}</p>` : ''}
         <ul class="planning-list">${ratingsHtml}</ul>

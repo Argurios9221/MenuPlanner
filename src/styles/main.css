@@ -109,41 +109,34 @@ body.authenticated #auth-gate {
 /* Header */
 .header {
   background:
-    radial-gradient(circle at 8% 20%, rgba(255, 255, 255, 0.22), transparent 36%),
-    radial-gradient(circle at 85% 12%, rgba(255, 232, 196, 0.24), transparent 32%),
-    linear-gradient(120deg, #0f766e 0%, #0d9488 48%, #f97316 100%);
+    radial-gradient(circle at 12% -50%, rgba(52, 211, 153, 0.3) 0%, transparent 55%),
+    radial-gradient(circle at 95% 110%, rgba(249, 115, 22, 0.28) 0%, transparent 52%),
+    radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.06) 0%, transparent 60%),
+    linear-gradient(155deg, #0d1f1c 0%, #162d28 40%, #1e3c30 70%, #1a2e24 100%);
   color: white;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  box-shadow: 0 10px 32px rgba(13, 90, 85, 0.34);
+  padding: 0.8rem var(--spacing-xl);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(52, 211, 153, 0.12);
   position: sticky;
   top: 0;
   z-index: 100;
   isolation: isolate;
   overflow: hidden;
-  transition: transform 220ms ease, opacity 220ms ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .header::before {
-  content: '';
-  position: absolute;
-  inset: -20% -30% auto;
-  height: 220px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0));
-  transform: rotate(-8deg);
-  animation: headerSweep 10s linear infinite;
-  z-index: -1;
+  display: none;
 }
 
-@keyframes headerSweep {
-  0% {
-    transform: translateX(-25%) rotate(-8deg);
-  }
-  50% {
-    transform: translateX(10%) rotate(-8deg);
-  }
-  100% {
-    transform: translateX(-25%) rotate(-8deg);
-  }
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(52, 211, 153, 0.65) 30%, rgba(249, 115, 22, 0.65) 70%, transparent 100%);
+  pointer-events: none;
 }
 
 .header-content {
@@ -155,27 +148,35 @@ body.authenticated #auth-gate {
   gap: var(--spacing-lg);
 }
 
+.brand-emoji {
+  font-size: 1.55rem;
+  line-height: 1;
+  display: inline-block;
+  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.5));
+}
+
 .logo-section h1 {
   font-family: 'Sora', sans-serif;
-  font-size: clamp(1.7rem, 2.8vw, 2.35rem);
+  font-size: clamp(1.4rem, 2.4vw, 2.1rem);
   font-weight: 800;
-  letter-spacing: 0.03em;
-  margin-bottom: 0.2rem;
+  letter-spacing: 0.02em;
+  margin-bottom: 0;
 }
 
 .brand-row {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.55rem;
 }
 
 .brand-glow-dot {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #fff8cf;
-  box-shadow: 0 0 0 0 rgba(255, 248, 207, 0.9);
-  animation: glowPulse 1.8s ease-in-out infinite;
+  background: rgba(52, 211, 153, 0.9);
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+  animation: glowPulse 2.4s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
 @keyframes glowPulse {
@@ -191,9 +192,11 @@ body.authenticated #auth-gate {
 }
 
 .logo-section p {
-  font-size: 0.95rem;
-  opacity: 0.95;
+  font-size: 0.85rem;
+  opacity: 0.7;
   max-width: 560px;
+  font-weight: 500;
+  margin-top: 0.1rem;
 }
 
 .header-chips {
@@ -204,11 +207,11 @@ body.authenticated #auth-gate {
 }
 
 .header-chip {
-  padding: 0.24rem 0.6rem;
+  padding: 0.22rem 0.56rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.73rem;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -370,7 +373,7 @@ body.authenticated #auth-gate {
 
 .form-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: var(--spacing-sm);
   margin: var(--spacing-lg) 0 var(--spacing-md) 0;
 }
@@ -379,6 +382,10 @@ body.authenticated #auth-gate {
   width: 100%;
   min-width: 0;
   padding-inline: 0.7rem;
+}
+
+#btn-generate {
+  grid-column: 1 / -1;
 }
 
 .btn {
@@ -2202,9 +2209,10 @@ recipe-modal-content .modal-close {
 
 [data-theme='dark'] .header {
   background:
-    radial-gradient(circle at 8% 20%, rgba(255, 255, 255, 0.12), transparent 36%),
-    radial-gradient(circle at 85% 12%, rgba(255, 180, 128, 0.16), transparent 32%),
-    linear-gradient(120deg, #115e59 0%, #0f766e 48%, #c2410c 100%);
+    radial-gradient(circle at 12% -50%, rgba(52, 211, 153, 0.22) 0%, transparent 55%),
+    radial-gradient(circle at 95% 110%, rgba(249, 115, 22, 0.2) 0%, transparent 52%),
+    linear-gradient(155deg, #080f0d 0%, #0e1e1a 40%, #121f18 70%, #0e1a14 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(52, 211, 153, 0.08);
 }
 
 [data-theme='dark'] body,
@@ -2344,9 +2352,12 @@ recipe-modal-content .modal-close {
 }
 
 @media (max-width: 900px) {
+  .header {
+    padding: 0.75rem var(--spacing-lg);
+  }
+
   .header-content {
-    align-items: center;
-    gap: 0.65rem;
+    gap: 0.6rem;
   }
 
   .logo-section p,
@@ -2366,8 +2377,12 @@ recipe-modal-content .modal-close {
     display: none;
   }
 
-  .header {
-    padding: var(--spacing-lg);
+  .form-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #btn-generate {
+    grid-column: 1 / -1;
   }
 
   .main-container {
@@ -2405,14 +2420,6 @@ recipe-modal-content .modal-close {
   .planning-insights {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
-
-  .form-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  #btn-generate {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 600px) {
@@ -2421,40 +2428,38 @@ recipe-modal-content .modal-close {
   }
 
   .header {
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: 0.6rem var(--spacing-md);
   }
 
   .header-content {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
   }
 
   .logo-section {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
+    flex: 1;
     min-width: 0;
   }
 
   .logo-section h1 {
-    font-size: 1.35rem;
+    font-size: 1.2rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-bottom: 0;
   }
 
   .logo-section p {
     display: none;
   }
 
+  .brand-emoji {
+    font-size: 1.25rem;
+  }
+
   .brand-glow-dot {
-    width: 9px;
-    height: 9px;
-    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
   }
 
   .header-chips {
@@ -2462,36 +2467,24 @@ recipe-modal-content .modal-close {
   }
 
   .header-controls {
-    display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 2px;
-  }
-
-  .header-controls::-webkit-scrollbar {
-    display: none;
+    flex-shrink: 0;
+    gap: 0.3rem;
+    width: auto;
+    overflow-x: visible;
   }
 
   .control-btn,
   .lang-btn {
-    padding: 0.52rem 0.9rem;
-    font-size: 0.88rem;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.84rem;
     min-height: 44px;
     flex-shrink: 0;
   }
 
   .auth-user-label {
-    max-width: 100%;
-    text-align: center;
-    flex: 1 1 auto;
-    min-width: 0;
+    display: none;
   }
 
   .main-container {
@@ -2504,11 +2497,11 @@ recipe-modal-content .modal-close {
   }
 
   .form-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 
   #btn-generate {
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
 
   .form-group {
@@ -2654,32 +2647,56 @@ recipe-modal-content .modal-close {
 
 @media (max-width: 400px) {
   .header {
-    padding: 0.5rem var(--spacing-sm);
+    padding: 0.45rem var(--spacing-sm);
   }
 
   .logo-section h1 {
-    font-size: 1.15rem;
+    font-size: 1rem;
+  }
+
+  .brand-emoji {
+    font-size: 1.1rem;
   }
 
   .brand-row {
-    gap: 0.4rem;
+    gap: 0.3rem;
   }
 
   .brand-glow-dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   .header-controls {
-    gap: 0.3rem;
+    gap: 0.25rem;
   }
 
   .control-btn,
   .lang-btn {
-    padding: 0.45rem 0.65rem;
-    font-size: 0.82rem;
-    min-height: 40px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    min-height: 38px;
   }
+}
+
+/* ===== Hidden features (functionality kept, visual hidden) ===== */
+.feature-hidden {
+  display: none !important;
+}
+
+/* Hide planning insight cards that are deprioritised */
+.planning-insights [data-insight="pantry"],
+.planning-insights [data-insight="family"],
+.planning-insights [data-insight="leftovers"],
+.planning-insights [data-insight="leftover-suggestions"],
+.planning-insights [data-insight="rating"] {
+  display: none !important;
+}
+
+/* Hide recipe rating panel and leftover button in recipe modal */
+.recipe-feedback-panel,
+.leftover-recipe-btn {
+  display: none !important;
 }
 
 /* Accessibility */
