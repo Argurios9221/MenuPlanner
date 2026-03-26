@@ -869,7 +869,7 @@ async function getMealForSlot(
   usedMealSignatures = new Set(),
   options = {}
 ) {
-  const { allowProteinRepeat = false, referenceMeal = null } = options;
+  const { allowProteinRepeat = false, referenceMeal = null, excludeMealId = '' } = options;
   try {
     const meals = await fetchMealsByCategory(category);
     if (!meals || meals.length === 0) {
@@ -917,6 +917,7 @@ async function getMealForSlot(
 
         if (
           hasRequiredIngredients(details) &&
+          (!excludeMealId || details.idMeal !== excludeMealId) &&
           !usedMealIds.has(details.idMeal) &&
           !usedMealSignatures.has(mealSignature(details)) &&
           matchesMealSlot(details, slotType) &&
@@ -961,7 +962,10 @@ async function getMealForSlot(
       prepTimePreference,
       slotType,
       usedMealIds,
-      usedMealSignatures
+      usedMealSignatures,
+      {
+        excludeMealId,
+      }
     );
   } catch (error) {
     console.error('Failed to get meal for slot:', error);
@@ -1010,6 +1014,7 @@ async function getCompatibleRandomMeal(
     ignoreGoal = false,
     ignoreCuisine = false,
     maxAttempts = 30,
+    excludeMealId = '',
   } = options;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -1024,6 +1029,7 @@ async function getCompatibleRandomMeal(
 
       if (
         hasRequiredIngredients(details) &&
+        (!excludeMealId || details.idMeal !== excludeMealId) &&
         (allowReuse || !usedMealIds.has(details.idMeal)) &&
         (allowReuse || !usedMealSignatures.has(mealSignature(details))) &&
         matchesMealSlot(details, slotType) &&
@@ -1056,7 +1062,8 @@ async function getFallbackMealFromPools(
   allowedAreas,
   prepTimePreference,
   usedMealIds,
-  usedMealSignatures
+  usedMealSignatures,
+  excludeMealId = ''
 ) {
   const categories =
     slotType === 'Breakfast'
@@ -1080,6 +1087,7 @@ async function getFallbackMealFromPools(
 
           if (
             hasRequiredIngredients(details) &&
+            (!excludeMealId || details.idMeal !== excludeMealId) &&
             (rules.allowReuse || !usedMealIds.has(details.idMeal)) &&
             (rules.allowReuse || !usedMealSignatures.has(mealSignature(details))) &&
             matchesMealSlot(details, slotType) &&
@@ -1199,6 +1207,7 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
     familyProfiles,
   };
   const referenceMeal = mealPrepMode ? getBatchReferenceMeal(menu, dayIndex, mealType) : null;
+  const excludeMealId = oldMeal.idMeal;
 
   let newMeal = null;
 
@@ -1216,6 +1225,7 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
       usedMealSignatures,
       {
         referenceMeal,
+        excludeMealId,
       }
     );
   } else {
@@ -1233,6 +1243,7 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
         usedMealSignatures,
         {
           referenceMeal,
+          excludeMealId,
         }
       );
       if (newMeal) {
@@ -1250,7 +1261,60 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
       mealType,
       usedMealIds,
       usedMealSignatures,
-      { ignoreEasyToShop: true, allowReuse: false }
+      { ignoreEasyToShop: true, allowReuse: false, excludeMealId }
+    );
+  }
+
+  if (!newMeal) {
+    newMeal = await getCompatibleRandomMeal(
+      dietPreference,
+      cuisine,
+      allowedAreas,
+      prepTime,
+      mealType,
+      usedMealIds,
+      usedMealSignatures,
+      {
+        ignoreEasyToShop: true,
+        allowReuse: false,
+        allowProteinRepeat: true,
+        maxAttempts: 40,
+        excludeMealId,
+      }
+    );
+  }
+
+  if (!newMeal) {
+    newMeal = await getCompatibleRandomMeal(
+      dietPreference,
+      cuisine,
+      allowedAreas,
+      prepTime,
+      mealType,
+      usedMealIds,
+      usedMealSignatures,
+      {
+        ignoreEasyToShop: true,
+        allowReuse: true,
+        allowProteinRepeat: true,
+        ignoreGoal: true,
+        ignoreCuisine: true,
+        maxAttempts: 60,
+        excludeMealId,
+      }
+    );
+  }
+
+  if (!newMeal) {
+    newMeal = await getFallbackMealFromPools(
+      mealType,
+      dietPreference,
+      cuisine,
+      allowedAreas,
+      prepTime,
+      usedMealIds,
+      usedMealSignatures,
+      excludeMealId,
     );
   }
 

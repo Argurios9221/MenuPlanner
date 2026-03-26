@@ -60,6 +60,7 @@ import {
 import { exportMenuToPDF, exportBasketToPDF, exportRecipeToPDF, downloadFile, generatePDFFilename } from './pdf.js';
 import { isSpoonacularEnabled } from './spoonacular.js';
 import { getWeatherDescription, getWeatherMealSuggestion } from './weather.js';
+import { estimateCalories } from './metadata.js';
 import {
   deleteCurrentAccount,
   exportUserLocalData,
@@ -229,6 +230,150 @@ function normalizeInsightToken(value) {
     .trim();
 }
 
+function estimateMealCalories(meal) {
+  return Number(meal?.nutrition?.calories || estimateCalories(meal?.ingredients || []) || 0);
+}
+
+function estimateMealProteinGrams(meal) {
+  const explicitProtein = Number(meal?.nutrition?.protein || 0);
+  if (explicitProtein > 0) {
+    return explicitProtein;
+  }
+
+  const haystack = [
+    meal?.strMeal,
+    meal?.strCategory,
+    ...(meal?.ingredients || []).map((item) => item?.name || ''),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  let grams = 6;
+  if (/chicken|beef|pork|lamb|fish|salmon|tuna|cod|shrimp|egg|eggs/.test(haystack)) {
+    grams += 16;
+  }
+  if (/bean|lentil|chickpea|tofu|yogurt|cheese/.test(haystack)) {
+    grams += 10;
+  }
+  return grams;
+}
+
+function getNutritionTargets(goal) {
+  if (goal === 'low_calorie') {
+    return { kcalTarget: 1800, proteinTarget: 75 };
+  }
+  if (goal === 'high_protein') {
+    return { kcalTarget: 2400, proteinTarget: 120 };
+  }
+  if (goal === 'budget') {
+    return { kcalTarget: 2200, proteinTarget: 80 };
+  }
+  return { kcalTarget: 2200, proteinTarget: 85 };
+}
+
+function buildWeeklyNutritionDashboard(menu, goal) {
+  const days = menu?.days || [];
+  if (!days.length) {
+    return null;
+  }
+
+  const targets = getNutritionTargets(goal);
+  const lines = [];
+  let daysOnTarget = 0;
+
+  days.forEach((day, index) => {
+    const meals = day?.meals || [];
+    const kcal = meals.reduce((sum, meal) => sum + estimateMealCalories(meal), 0);
+    const protein = meals.reduce((sum, meal) => sum + estimateMealProteinGrams(meal), 0);
+    const onTarget = kcal <= targets.kcalTarget && protein >= targets.proteinTarget * 0.75;
+    if (onTarget) {
+      daysOnTarget += 1;
+    }
+
+    lines.push({
+      dayIndex: index,
+      kcal: Math.round(kcal),
+      protein: Math.round(protein),
+      onTarget,
+    });
+  });
+
+  return {
+    kcalTarget: targets.kcalTarget,
+    proteinTarget: targets.proteinTarget,
+    daysOnTarget,
+    lines,
+  };
+}
+
+function buildBatchCookingCalendar(menu) {
+  const days = menu?.days || [];
+  const dayNames = t('days') || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const groups = new Map();
+
+  days.forEach((day, dayIndex) => {
+    (day?.meals || []).forEach((meal) => {
+      const label = meal?.mealPrepLabel;
+      if (!label) {
+        return;
+      }
+      const existing = groups.get(label) || [];
+      existing.push({
+        dayIndex,
+        dayName: dayNames[dayIndex] || `Day ${dayIndex + 1}`,
+        mealName: meal.strMealTranslated || meal.strMeal,
+      });
+      groups.set(label, existing);
+    });
+  });
+
+  if (!groups.size) {
+    return null;
+  }
+
+  const lines = Array.from(groups.entries()).map(([label, items]) => {
+    const sorted = items.sort((a, b) => a.dayIndex - b.dayIndex);
+    const cook = sorted[0];
+    const reheatDays = sorted.slice(1).map((item) => item.dayName).join(', ');
+    return {
+      label,
+      cookDay: cook.dayName,
+      mealName: cook.mealName,
+      reheatDays,
+    };
+  });
+
+  return { lines };
+}
+
+function buildRouteOptimizer(report, splitPlan) {
+  const assignments = splitPlan?.assignments || [];
+  if (assignments.length < 2) {
+    return null;
+  }
+
+  const route = assignments
+    .map((assignment) => {
+      const chainStores = (report?.stores || []).filter((store) => store.chainLabel === assignment.chainLabel);
+      const nearestStore = chainStores
+        .sort((a, b) => (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY))[0] || null;
+      return {
+        ...assignment,
+        distanceKm: nearestStore?.distanceKm ?? null,
+      };
+    })
+    .sort((a, b) => (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY));
+
+  const knownDistance = route.reduce((sum, stop) => sum + (stop.distanceKm || 0), 0);
+  const estimatedMinutes = Math.round(knownDistance * 4 + route.length * 6);
+
+  return {
+    route,
+    estimatedMinutes,
+  };
+}
+
 export class MenuPlannerApp {
   constructor() {
     this.currentMenu = null;
@@ -341,6 +486,11 @@ export class MenuPlannerApp {
       resetBtn.addEventListener('click', () => this.handleResetPreferences());
     }
 
+    const budgetCrisisBtn = document.getElementById('btn-budget-crisis');
+    if (budgetCrisisBtn) {
+      budgetCrisisBtn.addEventListener('click', () => this.handleBudgetCrisisMode());
+    }
+
     const langBtn = document.getElementById('lang-btn');
     if (langBtn) {
       langBtn.addEventListener('click', () => this.handleLanguageToggle());
@@ -372,6 +522,30 @@ export class MenuPlannerApp {
         }
       });
     }
+  }
+
+  async handleBudgetCrisisMode() {
+    const setValue = (id, value) => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.value = value;
+      }
+    };
+
+    setValue('variety-select', 'low');
+    setValue('goal-select', 'budget');
+    setValue('prep-time-select', 'quick');
+    const budgetInput = document.getElementById('budget-input');
+    if (budgetInput && !Number(budgetInput.value)) {
+      budgetInput.value = '60';
+    }
+    const mealPrepMode = document.getElementById('meal-prep-mode');
+    if (mealPrepMode) {
+      mealPrepMode.checked = true;
+    }
+
+    showToast(t('budgetCrisisApplied') || 'Budget crisis mode enabled');
+    await this.handleGenerateMenu();
   }
 
   attachAuthListeners() {
@@ -1039,8 +1213,10 @@ export class MenuPlannerApp {
       .sort((a, b) => b.rating - a.rating);
     const leftoverSuggestions = this.getLeftoverSuggestions(leftovers);
     const mealPrepSummary = this.currentMenu?.mealPrepSummary || null;
+    const batchCalendar = buildBatchCookingCalendar(this.currentMenu);
+    const nutritionDashboard = buildWeeklyNutritionDashboard(this.currentMenu, prefs.goal || '');
 
-    if (!leftovers.length && !ratedMeals.length && !leftoverSuggestions.length && !urgentPantry.length && !familyProfiles.length && !mealPrepSummary) {
+    if (!leftovers.length && !ratedMeals.length && !leftoverSuggestions.length && !urgentPantry.length && !familyProfiles.length && !mealPrepSummary && !batchCalendar && !nutritionDashboard) {
       return;
     }
 
@@ -1083,6 +1259,16 @@ export class MenuPlannerApp {
         .map((profile) => `<li class="planning-list-item"><div><strong>${profile.name}</strong><small>${profile.role} · x${profile.portionMultiplier}${profile.exclusions?.length ? ` · ${profile.exclusions.join(', ')}` : ''}</small></div></li>`)
         .join('')
       : `<p class="planning-empty">${t('familyProfilesEmpty')}</p>`;
+    const batchCalendarHtml = batchCalendar?.lines?.length
+      ? batchCalendar.lines
+        .map((entry) => `<li class="planning-list-item"><div><strong>${entry.label} · ${entry.mealName}</strong><small>${t('batchCalendarCook') || 'Cook'}: ${entry.cookDay}${entry.reheatDays ? ` · ${t('batchCalendarReheat') || 'Reheat'}: ${entry.reheatDays}` : ''}</small></div></li>`)
+        .join('')
+      : `<p class="planning-empty">${t('batchCalendarEmpty') || 'Enable meal prep to generate calendar'}</p>`;
+    const nutritionHtml = nutritionDashboard?.lines?.length
+      ? nutritionDashboard.lines
+        .map((line) => `<li class="planning-list-item"><div><strong>${(t('days') || [])[line.dayIndex] || `Day ${line.dayIndex + 1}`}</strong><small>${line.kcal} kcal · ${line.protein}g protein ${line.onTarget ? '✓' : '•'}</small></div></li>`)
+        .join('')
+      : `<p class="planning-empty">${t('emptyMenuHint') || ''}</p>`;
 
     const section = document.createElement('section');
     section.className = 'planning-insights';
@@ -1095,6 +1281,16 @@ export class MenuPlannerApp {
         <h3>${t('mealPrepModeTitle')}</h3>
         ${mealPrepSummary ? `<p class="planning-highlight">${typeof t('mealPrepSummary') === 'function' ? t('mealPrepSummary')(mealPrepSummary.cookSessions, mealPrepSummary.repeatedMeals) : ''}</p>` : ''}
         <ul class="planning-list">${mealPrepSummary?.lines?.map((line) => `<li class="planning-list-item"><div><strong>${line.title}</strong><small>${line.detail}</small></div></li>`).join('') || `<p class="planning-empty">${t('mealPrepEmpty')}</p>`}</ul>
+      </article>
+      <article class="planning-card">
+        <h3>${t('batchCalendarTitle') || 'Batch Cooking Calendar'}</h3>
+        <ul class="planning-list">${batchCalendarHtml}</ul>
+      </article>
+      <article class="planning-card">
+        <h3>${t('nutritionDashboardTitle') || 'Weekly Nutrition Goals'}</h3>
+        ${nutritionDashboard ? `<p class="planning-highlight">${typeof t('nutritionDaysOnTarget') === 'function' ? t('nutritionDaysOnTarget')(nutritionDashboard.daysOnTarget, nutritionDashboard.lines.length) : ''}</p>` : ''}
+        ${nutritionDashboard ? `<p class="planning-empty">${t('nutritionKcalTarget') || 'Kcal target'}: ${nutritionDashboard.kcalTarget} · ${t('nutritionProteinTarget') || 'Protein target'}: ${nutritionDashboard.proteinTarget}g</p>` : ''}
+        <ul class="planning-list">${nutritionHtml}</ul>
       </article>
       <article class="planning-card">
         <h3>${t('labelFamilyProfiles')}</h3>
@@ -1955,18 +2151,51 @@ export class MenuPlannerApp {
   renderMarketResults(results, report, selectedChains = []) {
     const selected = Array.isArray(selectedChains) ? selectedChains : [];
     let storesForRender = report.stores || [];
+    const allCandidateStores = [...storesForRender];
 
     if (selected.length > 0) {
       const selectedSet = new Set(selected);
       storesForRender = storesForRender.filter((store) => selectedSet.has(store.chainId || store.chainLabel));
     }
 
+    const recommendedStore = (report.stores || []).find((store) => store.id === report.recommendedStoreId) || null;
+    const recommendedChainKey = recommendedStore ? (recommendedStore.chainId || recommendedStore.chainLabel) : '';
+
+    const bestStoreByChain = new Map();
+    for (const store of storesForRender) {
+      const chainKey = store.chainId || store.chainLabel || store.id;
+      const existing = bestStoreByChain.get(chainKey);
+      if (!existing) {
+        bestStoreByChain.set(chainKey, store);
+        continue;
+      }
+
+      const existingCoverage = Number(existing.coverage?.percent || 0);
+      const currentCoverage = Number(store.coverage?.percent || 0);
+      const existingTotal = Number(existing.coverage?.estimatedTotal || Number.POSITIVE_INFINITY);
+      const currentTotal = Number(store.coverage?.estimatedTotal || Number.POSITIVE_INFINITY);
+      const existingDistance = existing.distanceKm ?? Number.POSITIVE_INFINITY;
+      const currentDistance = store.distanceKm ?? Number.POSITIVE_INFINITY;
+
+      if (
+        currentCoverage > existingCoverage ||
+        (currentCoverage === existingCoverage && currentTotal < existingTotal) ||
+        (currentCoverage === existingCoverage && currentTotal === existingTotal && currentDistance < existingDistance)
+      ) {
+        bestStoreByChain.set(chainKey, store);
+      }
+    }
+
+    storesForRender = Array.from(bestStoreByChain.values());
+
     // Sort: recommended store first, then by offer coverage % desc, then by distance
     storesForRender = storesForRender.sort((a, b) => {
-      if (a.id === report.recommendedStoreId) {
+      const aChainKey = a.chainId || a.chainLabel;
+      const bChainKey = b.chainId || b.chainLabel;
+      if (recommendedChainKey && aChainKey === recommendedChainKey) {
         return -1;
       }
-      if (b.id === report.recommendedStoreId) {
+      if (recommendedChainKey && bChainKey === recommendedChainKey) {
         return 1;
       }
       if (b.coverage.percent !== a.coverage.percent) {
@@ -2005,6 +2234,7 @@ export class MenuPlannerApp {
     }
     const splitPlan = report.optimization?.splitPlan;
     const swapSuggestions = report.optimization?.swapSuggestions || [];
+    const routePlan = buildRouteOptimizer(report, splitPlan);
     const familyAdjustments = report.familyAdjustments?.lines || [];
     const familyAdjustmentsMarkup = familyAdjustments.length
       ? `
@@ -2029,6 +2259,7 @@ export class MenuPlannerApp {
           <h3>${t('marketOptimizerTitle')}</h3>
           ${splitPlan.itemCount > 0 ? `<p class="planning-highlight">${typeof t('marketSplitSavings') === 'function' ? t('marketSplitSavings')(formatTotal(splitPlan.total), formatTotal(Math.max(0, splitPlan.savingsVsCheapestSingle))) : ''}</p>` : ''}
           ${splitAssignments ? `<ul class="planning-list market-optimizer-list">${splitAssignments}</ul>` : ''}
+          ${routePlan?.route?.length ? `<div class="market-route-plan"><h4>${t('marketRouteOptimizerTitle') || 'Store route optimizer'}</h4><p class="planning-empty">${typeof t('marketRouteSummary') === 'function' ? t('marketRouteSummary')(routePlan.route.length, routePlan.estimatedMinutes) : ''}</p><ul class="planning-list">${routePlan.route.map((stop) => `<li class="planning-list-item"><div><strong>${stop.chainLabel}</strong><small>${stop.distanceKm !== null ? `${stop.distanceKm} km` : (t('marketLocationApprox') || 'distance n/a')}</small></div></li>`).join('')}</ul></div>` : ''}
           ${swapHtml ? `<div class="market-smart-swaps"><h4>${t('marketSmartSwaps')}</h4><ul class="planning-list">${swapHtml}</ul></div>` : ''}
         </section>
       `
@@ -2130,7 +2361,7 @@ export class MenuPlannerApp {
 
     const chains = Array.from(
       new Map(
-        report.stores.map((store) => [store.chainId || store.chainLabel, store.chainLabel || store.name || 'Supermarket']),
+        allCandidateStores.map((store) => [store.chainId || store.chainLabel, store.chainLabel || store.name || 'Supermarket']),
       ).entries(),
     );
     const chainChecks = chains
