@@ -18,6 +18,9 @@ const DEFAULT_PREFERENCES = {
   dietary: [],
   allergies: [],
   notes: '',
+  budget: 0,
+  pantry: [],
+  goal: '',
 };
 
 // Favorites schema: { menus: [...], recipes: [...], products: [...] }

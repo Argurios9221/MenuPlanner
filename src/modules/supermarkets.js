@@ -4,8 +4,10 @@ const DEFAULT_COORDS = { lat: 42.6977, lon: 23.3219 }; // Sofia fallback
 const OVERPASS_API = 'https://overpass-api.de/api/interpreter';
 const LIVE_OFFERS_TIMEOUT_MS = 2500;
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const FX_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const storesCache = new Map();
 const offersCache = new Map();
+let fxCache = null;
 
 const CHAIN_DEFS = [
   {
@@ -605,6 +607,29 @@ async function fetchOfferText(url) {
 
 const BGN_TO_EUR = 1 / 1.9558; // fixed ECB rate
 
+async function getFxRates() {
+  if (fxCache && Date.now() - fxCache.ts < FX_CACHE_TTL_MS) {
+    return fxCache.value;
+  }
+
+  try {
+    const response = await fetch('https://open.er-api.com/v6/latest/EUR');
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const eurToBgn = Number(data?.rates?.BGN || 1.9558);
+    const rates = { base: 'EUR', EUR: 1, BGN: eurToBgn };
+    fxCache = { ts: Date.now(), value: rates };
+    return rates;
+  } catch {
+    const fallback = { base: 'EUR', EUR: 1, BGN: 1.9558 };
+    fxCache = { ts: Date.now(), value: fallback };
+    return fallback;
+  }
+}
+
 function extractLiveOffers(text, ingredientNames) {
   const hay = normalizeText(text);
   const offers = [];
@@ -812,6 +837,7 @@ export async function buildSupermarketRecommendations(basket) {
     : await getUserCoords();
   const shouldUseFallbackOnly = useFallbackOnly || forceFallbackCoords;
   const nearbyStores = await fetchNearbyChains(coords, { useFallbackOnly: shouldUseFallbackOnly });
+  const fx = await getFxRates();
 
   const neededChainIds = new Set(nearbyStores.map((store) => store.chainId));
   for (const chain of CHAIN_DEFS) {
@@ -899,6 +925,7 @@ export async function buildSupermarketRecommendations(basket) {
     recommendedStoreId: recommended?.id || null,
     minRecommendedCoverage,
     bestCoveragePercent,
+    fx,
     stores: orderedStores,
   };
 }

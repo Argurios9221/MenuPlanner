@@ -101,8 +101,31 @@ const INGREDIENT_ALIASES = {
   lentils: 'lentil',
 };
 
+function normalizePantryToken(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-zа-яё\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isPantryIngredient(name, pantrySet) {
+  if (!pantrySet || pantrySet.size === 0) {
+    return false;
+  }
+  const token = normalizePantryToken(name);
+  if (!token) {
+    return false;
+  }
+  if (pantrySet.has(token)) {
+    return true;
+  }
+  return Array.from(pantrySet).some((pantryToken) => token.includes(pantryToken) || pantryToken.includes(token));
+}
+
 export async function buildBasket(menu) {
   const ingredients = {};
+  const pantrySet = new Set((menu?.options?.pantry || []).map(normalizePantryToken).filter(Boolean));
 
   const meals = menu.days.flatMap((day) => day.meals);
 
@@ -124,6 +147,9 @@ export async function buildBasket(menu) {
     for (const meal of day.meals) {
       if (meal.ingredients && Array.isArray(meal.ingredients)) {
         for (const ingredient of meal.ingredients) {
+          if (isPantryIngredient(ingredient.name, pantrySet)) {
+            continue;
+          }
           const key = normalizeIngredientKey(ingredient.name);
           if (!ingredients[key]) {
             ingredients[key] = {

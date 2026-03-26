@@ -155,6 +155,26 @@
             <input type="number" id="budget-input" min="0" step="5" placeholder="e.g. 80" data-placeholder="placeholderBudget" />
           </div>
 
+          <div class="form-group">
+            <label for="goal-select" data-i18n="labelGoal">Goal</label>
+            <select id="goal-select">
+              <option value="" data-i18n="goalAny" selected>Any</option>
+              <option value="high_protein" data-i18n="goalHighProtein">High protein</option>
+              <option value="low_calorie" data-i18n="goalLowCalorie">Low calorie</option>
+              <option value="budget" data-i18n="goalBudget">Budget friendly</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pantry-input" data-i18n="labelPantry">Pantry items (comma-separated)</label>
+            <input
+              type="text"
+              id="pantry-input"
+              placeholder="e.g., rice, flour, eggs"
+              data-placeholder="placeholderPantry"
+            />
+          </div>
+
           <div class="form-actions">
             <button id="btn-reset" class="btn btn-secondary" data-i18n="btnReset">Reset</button>
             <button id="btn-generate" class="btn btn-primary" data-i18n="btnGenerate">Generate Menu</button>

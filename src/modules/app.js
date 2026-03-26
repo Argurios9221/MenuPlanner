@@ -53,6 +53,45 @@ function scaleIngredientMeasure(measureStr, factor) {
   });
 }
 
+function parsePantryFromNotes(notes) {
+  const text = String(notes || '');
+  const match = text.match(/(?:pantry|килер)\s*:\s*([^\n]+)/i);
+  if (!match) {
+    return [];
+  }
+  return match[1]
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parsePantryInput(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseGoalFromNotes(notes) {
+  const text = String(notes || '');
+  const match = text.match(/(?:goal|цел)\s*:\s*([^\n]+)/i);
+  if (!match) {
+    return '';
+  }
+
+  const value = match[1].toLowerCase();
+  if (value.includes('high') || value.includes('protein') || value.includes('протеин')) {
+    return 'high_protein';
+  }
+  if (value.includes('low') || value.includes('calorie') || value.includes('калор')) {
+    return 'low_calorie';
+  }
+  if (value.includes('budget') || value.includes('бюдж')) {
+    return 'budget';
+  }
+  return '';
+}
+
 export class MenuPlannerApp {
   constructor() {
     this.currentMenu = null;
@@ -80,9 +119,46 @@ export class MenuPlannerApp {
     this.currentMenu = null;
     clearCurrentMenu();
 
+    this.applyPreferencesToForm(this.state.preferences);
     this.attachEventListeners();
     this.updateUI();
     this.renderMenu();
+  }
+
+  applyPreferencesToForm(prefs = {}) {
+    const setValue = (id, value) => {
+      const element = document.getElementById(id);
+      if (element && value !== undefined && value !== null) {
+        element.value = String(value);
+      }
+    };
+
+    setValue('people-input', prefs.people ?? 4);
+    setValue('variety-select', prefs.variety ?? 'medium');
+    setValue('cuisine-select', prefs.cuisine ?? 'mix');
+    setValue('prep-time-select', prefs.prepTime ?? 'any');
+    setValue('allergies-input', Array.isArray(prefs.allergies) ? prefs.allergies.join(', ') : '');
+    setValue('notes-input', prefs.notes ?? '');
+    setValue('budget-input', prefs.budget || '');
+    setValue('goal-select', prefs.goal || '');
+    setValue('pantry-input', Array.isArray(prefs.pantry) ? prefs.pantry.join(', ') : '');
+
+    const dietarySet = new Set(Array.isArray(prefs.dietary) ? prefs.dietary : []);
+    const dietaryCheckboxes = [
+      'diet-no-beef',
+      'diet-no-pork',
+      'diet-lactose-free',
+      'diet-no-chicken',
+      'diet-no-seafood',
+      'diet-no-nuts',
+      'diet-gluten-free',
+    ];
+    for (const id of dietaryCheckboxes) {
+      const checkbox = document.getElementById(id);
+      if (checkbox) {
+        checkbox.checked = dietarySet.has(checkbox.value);
+      }
+    }
   }
 
   attachEventListeners() {
@@ -237,6 +313,14 @@ export class MenuPlannerApp {
     if (budgetInput) {
       budgetInput.value = '';
     }
+    const goalInput = document.getElementById('goal-select');
+    if (goalInput) {
+      goalInput.value = '';
+    }
+    const pantryInput = document.getElementById('pantry-input');
+    if (pantryInput) {
+      pantryInput.value = '';
+    }
 
     const defaultPrefs = {
       people: 4,
@@ -247,6 +331,8 @@ export class MenuPlannerApp {
       allergies: [],
       notes: '',
       budget: 0,
+      pantry: [],
+      goal: '',
     };
     savePreferences(defaultPrefs);
     this.state.preferences = defaultPrefs;
@@ -280,7 +366,7 @@ export class MenuPlannerApp {
 
   attachPreferencesListeners() {
     const inputs = document.querySelectorAll(
-      '#people-input, #variety-select, #cuisine-select, #prep-time-select, #allergies-input, #notes-input, #budget-input, #diet-no-beef, #diet-no-pork, #diet-lactose-free, #diet-no-chicken, #diet-no-seafood, #diet-no-nuts, #diet-gluten-free'
+      '#people-input, #variety-select, #cuisine-select, #prep-time-select, #allergies-input, #notes-input, #budget-input, #goal-select, #pantry-input, #diet-no-beef, #diet-no-pork, #diet-lactose-free, #diet-no-chicken, #diet-no-seafood, #diet-no-nuts, #diet-gluten-free'
     );
     inputs.forEach((input) => {
       input.addEventListener('change', () => {
@@ -346,6 +432,9 @@ export class MenuPlannerApp {
     const dietary = dietaryCheckboxes
       .filter((id) => document.getElementById(id)?.checked)
       .map((id) => document.getElementById(id).value);
+    const notes = document.getElementById('notes-input')?.value || '';
+    const pantryInput = document.getElementById('pantry-input')?.value || '';
+    const parsedPantry = parsePantryInput(pantryInput);
     return {
       people: parseInt(document.getElementById('people-input')?.value || 4, 10),
       variety: document.getElementById('variety-select')?.value || 'medium',
@@ -355,8 +444,10 @@ export class MenuPlannerApp {
       allergies: (document.getElementById('allergies-input')?.value || '')
         .split(',')
         .filter((x) => x.trim()),
-      notes: document.getElementById('notes-input')?.value || '',
+      notes,
       budget: parseFloat(document.getElementById('budget-input')?.value) || 0,
+      pantry: parsedPantry.length > 0 ? parsedPantry : parsePantryFromNotes(notes),
+      goal: document.getElementById('goal-select')?.value || parseGoalFromNotes(notes),
     };
   }
 
@@ -1192,6 +1283,12 @@ export class MenuPlannerApp {
     const locationWarning = report.coords.isFallback
       ? `<p class="market-location-warning">&#9888;&#65039; ${t('marketLocationApprox')}</p>`
       : '';
+    const eurToBgn = Number(report?.fx?.BGN || 1.9558);
+    const formatTotal = (eurValue) => {
+      const eur = Number(eurValue || 0);
+      const bgn = eur * eurToBgn;
+      return `€${eur.toFixed(2)} / ${bgn.toFixed(2)} лв`;
+    };
 
     const budget = Number(this.state.preferences?.budget || 0);
     const storeTotals = storesForRender
@@ -1207,7 +1304,7 @@ export class MenuPlannerApp {
         : status === 'close'
           ? t('budgetClose')
           : t('budgetOnBudget');
-      budgetIndicator = `<p class="budget-indicator ${status}">${statusText}: €${cheapestTotal.toFixed(2)} / €${budget.toFixed(2)}</p>`;
+      budgetIndicator = `<p class="budget-indicator ${status}">${statusText}: ${formatTotal(cheapestTotal)} / ${formatTotal(budget)}</p>`;
     }
 
     const cards = storesForRender
@@ -1277,10 +1374,10 @@ export class MenuPlannerApp {
               ${distanceHtml}
               <span class="market-meta-item coverage-tag">${store.coverage.percent}% ${availabilityLabel}</span>
               <span class="market-meta-item promo-tag">${store.coverage.promoPercent || 0}% ${promoLabel}</span>
-              <span class="market-meta-item price-tag">&euro;${store.coverage.estimatedTotal.toFixed(2)}</span>
+              <span class="market-meta-item price-tag">${formatTotal(store.coverage.estimatedTotal)}</span>
               ${budgetBadgeHtml}
             </div>
-            <p class="market-coverage-line">${t('marketCoverage')(store.coverage.matchedCount, store.coverage.total, store.coverage.percent)} · min ${minCoverage}%: ${thresholdLabel} · ${t('marketMatchedOffers')(promoCount)} · ${t('marketEstimatedPrice')(store.coverage.estimatedTotal)}</p>
+            <p class="market-coverage-line">${t('marketCoverage')(store.coverage.matchedCount, store.coverage.total, store.coverage.percent)} · min ${minCoverage}%: ${thresholdLabel} · ${t('marketMatchedOffers')(promoCount)} · ${formatTotal(store.coverage.estimatedTotal)}</p>
             ${store.address ? `<p class="market-address">${store.address}</p>` : ''}
             ${links ? `<div class="market-links">${links}</div>` : ''}
             ${store.coverage.matchedOffers.length > 0 ? `
@@ -1297,7 +1394,7 @@ export class MenuPlannerApp {
 
     const topStore = storesForRender[0] || null;
     const summaryText = topStore && topStore.coverage.percent > 0
-      ? `${topStore.chainLabel}: ${t('marketCoverage')(topStore.coverage.matchedCount, topStore.coverage.total, topStore.coverage.percent)}${topStore.coverage.estimatedTotal > 0 ? ` · ${t('marketEstimatedPrice')(topStore.coverage.estimatedTotal)}` : ''}`
+      ? `${topStore.chainLabel}: ${t('marketCoverage')(topStore.coverage.matchedCount, topStore.coverage.total, topStore.coverage.percent)}${topStore.coverage.estimatedTotal > 0 ? ` · ${formatTotal(topStore.coverage.estimatedTotal)}` : ''}`
       : '';
 
     const chainIds = [...new Set(report.stores.map((store) => store.chainId))];

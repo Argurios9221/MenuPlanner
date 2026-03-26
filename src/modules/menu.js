@@ -1,10 +1,12 @@
 // Menu generation logic
 import { extractIngredients, fetchMealDetails, fetchMealsByCategory, getRandomMeal } from './api.js';
 import { saveCurrentMenu } from './storage.js';
-import { estimatePrepTime } from './metadata.js';
+import { estimateCalories, estimatePrepTime } from './metadata.js';
+import { getWeatherHint } from './weather.js';
 
 const DAYS_OF_WEEK = 7;
 const MEALS_PER_DAY = 3; // breakfast, lunch, dinner
+const MEAL_SLOTS = ['Breakfast', 'Lunch', 'Dinner'];
 
 const MAIN_MEAL_CATEGORIES = ['Beef', 'Chicken', 'Goat', 'Lamb', 'Pasta', 'Pork', 'Seafood', 'Vegan', 'Vegetarian'];
 const MIN_EASY_INGREDIENT_RATIO = 0.7;
@@ -12,6 +14,11 @@ const MIX_ALLOWED_CUISINES = ['bulgarian', 'italian', 'german', 'british', 'fren
 
 // Extra dietary exclusions applied during current generation/swap
 let _extraDietaryFilter = [];
+let _generationContext = {
+  weatherHint: null,
+  goal: '',
+  lastProteinBySlot: { Lunch: '', Dinner: '' },
+};
 
 const EASY_INGREDIENT_KEYWORDS = [
   'oat',
@@ -176,6 +183,122 @@ function matchesMealSlot(meal, slotType) {
   return true;
 }
 
+function getMealPrimaryProtein(meal) {
+  const haystack = [
+    meal?.strMeal,
+    meal?.strCategory,
+    ...(meal?.ingredients || []).map((ing) => ing?.name || ''),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  if (/\bbeef\b|телешк/.test(haystack)) {
+    return 'beef';
+  }
+  if (/\bpork\b|свинск/.test(haystack)) {
+    return 'pork';
+  }
+  if (/\bchicken\b|пилешк|пиле/.test(haystack)) {
+    return 'chicken';
+  }
+  if (/\blamb\b|агнешк/.test(haystack)) {
+    return 'lamb';
+  }
+  if (/\bseafood\b|\bfish\b|\bsalmon\b|\btuna\b|\bcod\b|\bshrimp\b|\bprawn\b|\bcrab\b|сьомг|треск|риба/.test(haystack)) {
+    return 'seafood';
+  }
+  if (/\bbean\b|\blentil\b|\bchickpea\b|\btofu\b|боб|леща|нахут|тофу/.test(haystack)) {
+    return 'plant';
+  }
+
+  return '';
+}
+
+function matchesWeatherPreference(meal, slotType) {
+  if (slotType === 'Breakfast') {
+    return true;
+  }
+
+  const weatherHint = _generationContext.weatherHint;
+  if (!weatherHint) {
+    return true;
+  }
+
+  const text = [meal?.strMeal, meal?.strCategory, meal?.strTags]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  const warmKeywords = /soup|stew|roast|curry|bake|risotto|broth|яхни|суп/;
+  const lightKeywords = /salad|grill|grilled|fresh|wrap|sandwich|tabbouleh|салат/;
+
+  if (weatherHint.isCold || weatherHint.isRainy) {
+    return warmKeywords.test(text) || !lightKeywords.test(text);
+  }
+
+  if (weatherHint.isHot) {
+    return lightKeywords.test(text) || !warmKeywords.test(text);
+  }
+
+  return true;
+}
+
+function matchesProteinRotation(meal, slotType, allowProteinRepeat = false) {
+  if (allowProteinRepeat || (slotType !== 'Lunch' && slotType !== 'Dinner')) {
+    return true;
+  }
+
+  const currentProtein = getMealPrimaryProtein(meal);
+  if (!currentProtein) {
+    return true;
+  }
+
+  return _generationContext.lastProteinBySlot[slotType] !== currentProtein;
+}
+
+function updateProteinRotation(meal, slotType) {
+  if (slotType !== 'Lunch' && slotType !== 'Dinner') {
+    return;
+  }
+  _generationContext.lastProteinBySlot[slotType] = getMealPrimaryProtein(meal);
+}
+
+function matchesGenerationContext(meal, slotType, allowProteinRepeat = false) {
+  return (
+    matchesWeatherPreference(meal, slotType) &&
+    matchesProteinRotation(meal, slotType, allowProteinRepeat) &&
+    matchesGoalPreference(meal, _generationContext.goal)
+  );
+}
+
+function matchesGoalPreference(meal, goal) {
+  if (!goal) {
+    return true;
+  }
+
+  const ingredients = meal?.ingredients || [];
+  const text = [meal?.strMeal, meal?.strCategory, ...(ingredients.map((ing) => ing?.name || ''))]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  if (goal === 'high_protein') {
+    return /chicken|beef|pork|lamb|fish|salmon|tuna|egg|yogurt|cheese|bean|lentil|chickpea|tofu/.test(text);
+  }
+
+  if (goal === 'low_calorie') {
+    const kcal = meal?.nutrition?.calories || estimateCalories(ingredients);
+    return kcal <= 650;
+  }
+
+  if (goal === 'budget') {
+    return isEasyToShopMeal(meal, 0.75);
+  }
+
+  return true;
+}
+
 // Map cuisine preference to TheMealDB categories
 function getCategoriesForCuisine(cuisine) {
   switch (cuisine) {
@@ -302,6 +425,8 @@ export async function generateMenu(options = {}) {
     prepTime = 'any',
     dietary = [],
     allergies = [],
+    pantry = [],
+    goal = '',
   } = options;
 
   try {
@@ -309,7 +434,7 @@ export async function generateMenu(options = {}) {
     const menu = {
       id: generateMenuId(),
       generatedAt: Date.now(),
-      options: { people, variety, cuisine, prepTime, dietary, allergies },
+      options: { people, variety, cuisine, prepTime, dietary, allergies, pantry, goal },
       days: [],
     };
     const usedMealIds = new Set();
@@ -318,6 +443,12 @@ export async function generateMenu(options = {}) {
     const cuisineCategories = getCategoriesForCuisine(cuisine);
     const dietPreference = getDietPreference(cuisine, dietary);
     const allowedAreas = getAllowedAreasForCuisine(cuisine);
+    const weatherHint = await getWeatherHint().catch(() => null);
+    _generationContext = {
+      weatherHint,
+      goal,
+      lastProteinBySlot: { Lunch: '', Dinner: '' },
+    };
     _extraDietaryFilter = (dietary || []).filter((d) =>
       ['no_pork', 'no_beef', 'lactose_free', 'no_chicken', 'no_seafood', 'no_nuts', 'gluten_free'].includes(d.trim())
     );
@@ -343,7 +474,7 @@ export async function generateMenu(options = {}) {
         usedMealSignatures
       );
       if (breakfast) {
-        dayMeals.meals.push({ type: 'Breakfast', ...breakfast });
+        dayMeals.meals.push({ ...breakfast, type: 'Breakfast' });
         usedMealIds.add(breakfast.idMeal);
         usedMealSignatures.add(mealSignature(breakfast));
       }
@@ -363,9 +494,10 @@ export async function generateMenu(options = {}) {
         usedMealSignatures
       );
       if (lunch) {
-        dayMeals.meals.push({ type: 'Lunch', ...lunch });
+        dayMeals.meals.push({ ...lunch, type: 'Lunch' });
         usedMealIds.add(lunch.idMeal);
         usedMealSignatures.add(mealSignature(lunch));
+        updateProteinRotation(lunch, 'Lunch');
       }
 
       // Dinner from cuisine categories (offset to get different category)
@@ -383,14 +515,23 @@ export async function generateMenu(options = {}) {
         usedMealSignatures
       );
       if (dinner) {
-        dayMeals.meals.push({ type: 'Dinner', ...dinner });
+        dayMeals.meals.push({ ...dinner, type: 'Dinner' });
         usedMealIds.add(dinner.idMeal);
         usedMealSignatures.add(mealSignature(dinner));
+        updateProteinRotation(dinner, 'Dinner');
       }
 
-      // Fallback: if any meals are missing, use random
+      // Fallback: fill specifically the missing slots so we always have Breakfast/Lunch/Dinner once each.
+      const getMissingMealType = () => {
+        const present = new Set(dayMeals.meals.map((meal) => meal.type));
+        return MEAL_SLOTS.find((slot) => !present.has(slot)) || null;
+      };
+
       while (dayMeals.meals.length < MEALS_PER_DAY) {
-        const mealType = ['Breakfast', 'Lunch', 'Dinner'][dayMeals.meals.length];
+        const mealType = getMissingMealType();
+        if (!mealType) {
+          break;
+        }
         let randomMeal = await getCompatibleRandomMeal(
           dietPreference,
           cuisine,
@@ -430,6 +571,8 @@ export async function generateMenu(options = {}) {
             {
               ignoreEasyToShop: true,
               allowReuse: true,
+              allowProteinRepeat: true,
+              ignoreGoal: true,
               ignoreCuisine: true,
               maxAttempts: 40,
             }
@@ -449,13 +592,17 @@ export async function generateMenu(options = {}) {
         }
 
         if (randomMeal) {
-          dayMeals.meals.push({ type: mealType, ...randomMeal });
+          dayMeals.meals.push({ ...randomMeal, type: mealType });
           usedMealIds.add(randomMeal.idMeal);
           usedMealSignatures.add(mealSignature(randomMeal));
+          updateProteinRotation(randomMeal, mealType);
         } else {
           break;
         }
       }
+
+      // Keep deterministic ordering in UI and exports.
+      dayMeals.meals.sort((a, b) => MEAL_SLOTS.indexOf(a.type) - MEAL_SLOTS.indexOf(b.type));
 
       menu.days.push(dayMeals);
     }
@@ -482,8 +629,10 @@ async function getMealForSlot(
   allowedAreas = [],
   prepTimePreference = 'any',
   usedMealIds = new Set(),
-  usedMealSignatures = new Set()
+  usedMealSignatures = new Set(),
+  options = {}
 ) {
+  const { allowProteinRepeat = false } = options;
   try {
     const meals = await fetchMealsByCategory(category);
     if (!meals || meals.length === 0) {
@@ -527,6 +676,7 @@ async function getMealForSlot(
           !usedMealIds.has(details.idMeal) &&
           !usedMealSignatures.has(mealSignature(details)) &&
           matchesMealSlot(details, slotType) &&
+          matchesGenerationContext(details, slotType, allowProteinRepeat) &&
           matchesDietPreference(details, dietPreference) &&
           matchesCuisinePreference(details, cuisinePreference, allowedAreas) &&
           matchesPrepTime(details, prepTimePreference) &&
@@ -592,6 +742,8 @@ async function getCompatibleRandomMeal(
   const {
     ignoreEasyToShop = false,
     allowReuse = false,
+    allowProteinRepeat = false,
+    ignoreGoal = false,
     ignoreCuisine = false,
     maxAttempts = 30,
   } = options;
@@ -611,6 +763,9 @@ async function getCompatibleRandomMeal(
         (allowReuse || !usedMealIds.has(details.idMeal)) &&
         (allowReuse || !usedMealSignatures.has(mealSignature(details))) &&
         matchesMealSlot(details, slotType) &&
+        (ignoreGoal
+          ? matchesWeatherPreference(details, slotType) && matchesProteinRotation(details, slotType, allowProteinRepeat)
+          : matchesGenerationContext(details, slotType, allowProteinRepeat)) &&
         matchesDietPreference(details, dietPreference) &&
         (ignoreCuisine || matchesCuisinePreference(details, cuisinePreference, allowedAreas)) &&
         matchesPrepTime(details, prepTimePreference) &&
@@ -642,10 +797,10 @@ async function getFallbackMealFromPools(
       : ['Chicken', 'Beef', 'Pork', 'Lamb', 'Seafood', 'Vegetarian', 'Vegan', 'Pasta'];
 
   const strictnessLevels = [
-    { allowReuse: false, ignoreEasyToShop: false, ignoreCuisine: false },
-    { allowReuse: false, ignoreEasyToShop: true, ignoreCuisine: false },
-    { allowReuse: true, ignoreEasyToShop: true, ignoreCuisine: false },
-    { allowReuse: true, ignoreEasyToShop: true, ignoreCuisine: true },
+    { allowReuse: false, allowProteinRepeat: false, ignoreEasyToShop: false, ignoreCuisine: false },
+    { allowReuse: false, allowProteinRepeat: false, ignoreEasyToShop: true, ignoreCuisine: false },
+    { allowReuse: true, allowProteinRepeat: false, ignoreEasyToShop: true, ignoreCuisine: false },
+    { allowReuse: true, allowProteinRepeat: true, ignoreEasyToShop: true, ignoreCuisine: true },
   ];
 
   for (const rules of strictnessLevels) {
@@ -661,6 +816,7 @@ async function getFallbackMealFromPools(
             (rules.allowReuse || !usedMealIds.has(details.idMeal)) &&
             (rules.allowReuse || !usedMealSignatures.has(mealSignature(details))) &&
             matchesMealSlot(details, slotType) &&
+            matchesGenerationContext(details, slotType, rules.allowProteinRepeat) &&
             matchesDietPreference(details, dietPreference) &&
             (rules.ignoreCuisine || matchesCuisinePreference(details, cuisinePreference, allowedAreas)) &&
             matchesPrepTime(details, prepTimePreference) &&
@@ -814,5 +970,5 @@ export async function swapMealInMenu(menu, dayIndex, mealIndex) {
   if (!newMeal || newMeal.idMeal === oldMeal.idMeal) {
     return null;
   }
-  return { type: mealType, ...newMeal };
+  return { ...newMeal, type: mealType };
 }
