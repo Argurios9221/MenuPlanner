@@ -1575,29 +1575,21 @@ export class MenuPlannerApp {
     const normalizedFilter = activeFilter || 'all';
     let storesForRender = report.stores || [];
 
-    if (normalizedFilter === 'all') {
-      const byChainNearest = new Map();
-      for (const store of storesForRender) {
-        const current = byChainNearest.get(store.chainId);
-        const currentDistance = current?.distanceKm ?? Number.POSITIVE_INFINITY;
-        const candidateDistance = store.distanceKm ?? Number.POSITIVE_INFINITY;
-        if (!current || candidateDistance < currentDistance) {
-          byChainNearest.set(store.chainId, store);
-        }
-      }
-      // Sort: recommended chain first, then by offer coverage % desc
-      storesForRender = Array.from(byChainNearest.values()).sort((a, b) => {
-        if (a.id === report.recommendedStoreId) {
-          return -1;
-        }
-        if (b.id === report.recommendedStoreId) {
-          return 1;
-        }
-        return b.coverage.percent - a.coverage.percent;
-      });
-    } else {
-      storesForRender = storesForRender.filter((store) => store.chainId === normalizedFilter);
+    if (normalizedFilter !== 'all') {
+      storesForRender = storesForRender.filter((store) => store.chainLabel === normalizedFilter);
     }
+    
+    // Sort: recommended store first, then by offer coverage % desc, then by distance
+    storesForRender = storesForRender.sort((a, b) => {
+      if (a.id === report.recommendedStoreId) return -1;
+      if (b.id === report.recommendedStoreId) return 1;
+      if (b.coverage.percent !== a.coverage.percent) {
+        return b.coverage.percent - a.coverage.percent;
+      }
+      const aDist = a.distanceKm ?? Number.POSITIVE_INFINITY;
+      const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
+      return aDist - bDist;
+    });
 
     const locationWarning = report.coords.isFallback
       ? `<p class="market-location-warning">&#9888;&#65039; ${t('marketLocationApprox')}</p>`
@@ -1716,13 +1708,12 @@ export class MenuPlannerApp {
       ? `${topStore.chainLabel}: ${t('marketCoverage')(topStore.coverage.matchedCount, topStore.coverage.total, topStore.coverage.percent)}${topStore.coverage.estimatedTotal > 0 ? ` · ${formatTotal(topStore.coverage.estimatedTotal)}` : ''}`
       : '';
 
-    const chainIds = [...new Set(report.stores.map((store) => store.chainId))];
+    const chainLabels = [...new Set(report.stores.map((store) => store.chainLabel))];
     const filterBtns = [
       `<button class="market-filter-btn ${normalizedFilter === 'all' ? 'active' : ''}" data-filter="all">${t('marketFilterAll')}</button>`,
-      ...chainIds.map((id) => {
-        const label = report.stores.find((store) => store.chainId === id)?.chainLabel || id;
-        const activeClass = normalizedFilter === id ? 'active' : '';
-        return `<button class="market-filter-btn ${activeClass}" data-filter="${id}">${label}</button>`;
+      ...chainLabels.map((label) => {
+        const activeClass = normalizedFilter === label ? 'active' : '';
+        return `<button class="market-filter-btn ${activeClass}" data-filter="${label}">${label}</button>`;
       }),
     ].join('');
 
