@@ -228,7 +228,7 @@ function parseOverpassElement(el) {
 
   const name = el.tags?.name || el.tags?.brand || el.tags?.operator || '';
 
-  return {
+  const result = {
     id: `store_${el.id}`,
     chainLabel: name || 'Supermarket',
     name: name || 'Supermarket',
@@ -236,6 +236,10 @@ function parseOverpassElement(el) {
     lon,
     address: [el.tags?.['addr:street'], el.tags?.['addr:housenumber']].filter(Boolean).join(' '),
   };
+  
+  console.log('🏪 [Parse] Element ID:', el.id, '→', result);
+  
+  return result;
 }
 
 function dedupeStoreKey(store) {
@@ -281,9 +285,12 @@ async function fetchNearbyChains(coords, options = {}) {
   const cacheKey = `${Number(coords.lat).toFixed(3)}:${Number(coords.lon).toFixed(3)}:${useFallbackOnly ? 1 : 0}`;
   const cacheHit = storesCache.get(cacheKey);
   if (cacheHit && Date.now() - cacheHit.ts < CACHE_TTL_MS) {
+    console.log('🏪 [Supermarkets] Using cached stores:', cacheHit.value.length, 'stores');
     return cacheHit.value;
   }
 
+  console.log('🏪 [Supermarkets] Fetching nearby stores. Coords:', coords);
+  
   // Always try Overpass API, even without GPS (uses fallback coords)
   const query = `
     [out:json][timeout:12];
@@ -307,7 +314,10 @@ async function fetchNearbyChains(coords, options = {}) {
     }
 
     const data = await response.json();
+    console.log('🏪 [Supermarkets] Overpass API raw response elements:', data.elements?.length || 0);
+    
     const parsed = (data.elements || []).map(parseOverpassElement).filter(Boolean);
+    console.log('🏪 [Supermarkets] Parsed stores:', parsed.length, parsed.map(s => ({ id: s.id, name: s.name, chainLabel: s.chainLabel, lat: s.lat, lon: s.lon })));
 
     const deduped = new Map();
     for (const store of parsed) {
@@ -318,6 +328,8 @@ async function fetchNearbyChains(coords, options = {}) {
     }
 
     const result = Array.from(deduped.values());
+    console.log('🏪 [Supermarkets] Deduped stores:', result.length, result.map(s => ({ name: s.name, chainLabel: s.chainLabel, key: dedupeStoreKey(s) })));
+    
     // If we got real stores, use them; otherwise fall back to generic
     const finalResult = result.length > 0 ? result : [{
       id: 'fallback_generic',
@@ -329,9 +341,11 @@ async function fetchNearbyChains(coords, options = {}) {
       isFallback: true,
     }];
     
+    console.log('🏪 [Supermarkets] Final result:', finalResult.length, 'stores');
     storesCache.set(cacheKey, { ts: Date.now(), value: finalResult });
     return finalResult;
-  } catch {
+  } catch (err) {
+    console.error('🏪 [Supermarkets] Overpass API error:', err);
     const fallback = [{
       id: 'fallback_generic_error',
       chainLabel: 'Supermarket (Estimated)',
@@ -503,6 +517,8 @@ export async function buildSupermarketRecommendations(basket) {
     useFallbackOnly = false,
   } = options;
 
+  console.log('🏪 [Supermarkets] Building recommendations. Options:', { minRecommendedCoverage, forceFallbackCoords, useFallbackOnly });
+
   const allBasketIngredients = getBasketIngredients(basket);
   const ingredientByCanonical = new Map();
   for (const item of allBasketIngredients) {
@@ -524,15 +540,21 @@ export async function buildSupermarketRecommendations(basket) {
   }
   const ingredientItems = Array.from(ingredientByCanonical.values());
   const ingredientNames = ingredientItems.map((i) => i.name);
+  console.log('🏪 [Supermarkets] Basket ingredients:', ingredientNames.length, 'items');
 
   const coords = forceFallbackCoords
     ? { ...DEFAULT_COORDS, isFallback: true }
     : await getUserCoords();
+  console.log('🏪 [Supermarkets] User coords:', coords.isFallback ? '(fallback) ' + JSON.stringify(coords) : JSON.stringify(coords));
+  
   const shouldUseFallbackOnly = useFallbackOnly || forceFallbackCoords;
   const nearbyStores = await fetchNearbyChains(coords, { useFallbackOnly: shouldUseFallbackOnly });
+  console.log('🏪 [Supermarkets] Nearby stores from fetchNearbyChains:', nearbyStores.length);
+  
   const fx = await getFxRates();
 
   // Fetch offers for all nearby stores
+  console.log('🏪 [Supermarkets] Fetching offers for', nearbyStores.length, 'stores...');
   const offerEntries = await Promise.all(
     nearbyStores.map(async (store) => {
       const offers = await getChainOffers(store.id, ingredientNames, {
@@ -576,6 +598,8 @@ export async function buildSupermarketRecommendations(basket) {
     const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
     return aDist - bDist;
   });
+
+  console.log('🏪 [Supermarkets] Final result:', orderedStores.length, 'stores. Recommended:', recommended?.name);
 
   return {
     coords,

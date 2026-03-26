@@ -1572,12 +1572,16 @@ export class MenuPlannerApp {
   }
 
   renderMarketResults(results, report, activeFilter = 'all') {
+    console.log('🏪 [UI] renderMarketResults called. Report has', report.stores?.length || 0, 'stores. Filter:', activeFilter);
+    
     const normalizedFilter = activeFilter || 'all';
     let storesForRender = report.stores || [];
 
     if (normalizedFilter !== 'all') {
       storesForRender = storesForRender.filter((store) => store.chainLabel === normalizedFilter);
     }
+    
+    console.log('🏪 [UI] After filter:', storesForRender.length, 'stores to render');
     
     // Sort: recommended store first, then by offer coverage % desc, then by distance
     storesForRender = storesForRender.sort((a, b) => {
