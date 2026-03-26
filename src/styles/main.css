@@ -50,6 +50,54 @@ body {
   min-height: 100vh;
 }
 
+body:not(.authenticated) #app {
+  display: none;
+}
+
+body.authenticated #auth-gate {
+  display: none;
+}
+
+.auth-gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background:
+    radial-gradient(circle at 10% 18%, rgba(15, 118, 110, 0.13), transparent 40%),
+    radial-gradient(circle at 88% 10%, rgba(249, 115, 22, 0.14), transparent 35%),
+    var(--light-bg);
+}
+
+.auth-gate-card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+  padding: 1.3rem;
+}
+
+.auth-gate-card h1 {
+  font-family: 'Sora', sans-serif;
+  color: var(--primary-color);
+  font-size: 1.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.auth-gate-subtitle {
+  color: var(--muted-text);
+  margin-bottom: 0.9rem;
+}
+
+.auth-gate-status {
+  margin-top: 0.8rem;
+  color: var(--muted-text);
+  font-size: 0.88rem;
+}
+
 /* Header */
 .header {
   background:

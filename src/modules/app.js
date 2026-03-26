@@ -250,6 +250,31 @@ export class MenuPlannerApp {
   }
 
   attachAuthListeners() {
+    const gateLoginBtn = document.getElementById('auth-gate-login');
+    if (gateLoginBtn) {
+      gateLoginBtn.addEventListener('click', () => this.handleEmailLogin('gate'));
+    }
+    const gateRegisterBtn = document.getElementById('auth-gate-register');
+    if (gateRegisterBtn) {
+      gateRegisterBtn.addEventListener('click', () => this.handleEmailRegister('gate'));
+    }
+    const gateResetBtn = document.getElementById('auth-gate-reset');
+    if (gateResetBtn) {
+      gateResetBtn.addEventListener('click', () => this.handlePasswordReset('gate'));
+    }
+    const gateGoogleBtn = document.getElementById('auth-gate-google');
+    if (gateGoogleBtn) {
+      gateGoogleBtn.addEventListener('click', () => this.handleProviderLogin('google', 'gate'));
+    }
+    const gateFacebookBtn = document.getElementById('auth-gate-facebook');
+    if (gateFacebookBtn) {
+      gateFacebookBtn.addEventListener('click', () => this.handleProviderLogin('facebook', 'gate'));
+    }
+    const gateXBtn = document.getElementById('auth-gate-x');
+    if (gateXBtn) {
+      gateXBtn.addEventListener('click', () => this.handleProviderLogin('x', 'gate'));
+    }
+
     const authModal = document.getElementById('auth-modal');
     if (authModal) {
       authModal.addEventListener('click', (event) => {
@@ -321,7 +346,15 @@ export class MenuPlannerApp {
     }
   }
 
-  getAuthFormValues() {
+  getAuthFormValues(source = 'modal') {
+    if (source === 'gate') {
+      return {
+        email: String(document.getElementById('auth-gate-email')?.value || '').trim(),
+        password: String(document.getElementById('auth-gate-password')?.value || ''),
+        consent: Boolean(document.getElementById('auth-gate-consent')?.checked),
+      };
+    }
+
     return {
       email: String(document.getElementById('auth-email')?.value || '').trim(),
       password: String(document.getElementById('auth-password')?.value || ''),
@@ -367,8 +400,8 @@ export class MenuPlannerApp {
     }
   }
 
-  async handleEmailRegister() {
-    const { email, password, consent } = this.getAuthFormValues();
+  async handleEmailRegister(source = 'modal') {
+    const { email, password, consent } = this.getAuthFormValues(source);
     if (!isValidEmail(email)) {
       showToast(t('authInvalidEmail'));
       return;
@@ -383,8 +416,8 @@ export class MenuPlannerApp {
     await this.runAuthAction(() => registerWithEmail(email, password), t('authRegisterDone'));
   }
 
-  async handleEmailLogin() {
-    const { email, password, consent } = this.getAuthFormValues();
+  async handleEmailLogin(source = 'modal') {
+    const { email, password, consent } = this.getAuthFormValues(source);
     if (!isValidEmail(email) || !password) {
       showToast(t('authEmailPasswordRequired'));
       return;
@@ -395,8 +428,8 @@ export class MenuPlannerApp {
     await this.runAuthAction(() => loginWithEmail(email, password), t('authLoginDone'));
   }
 
-  async handlePasswordReset() {
-    const { email } = this.getAuthFormValues();
+  async handlePasswordReset(source = 'modal') {
+    const { email } = this.getAuthFormValues(source);
     if (!email) {
       showToast(t('authEmailRequired'));
       return;
@@ -404,8 +437,8 @@ export class MenuPlannerApp {
     await this.runAuthAction(() => resetPassword(email), t('authResetDone'));
   }
 
-  async handleProviderLogin(provider) {
-    const { consent } = this.getAuthFormValues();
+  async handleProviderLogin(provider, source = 'modal') {
+    const { consent } = this.getAuthFormValues(source);
     if (!this.ensureGdprConsent(consent, '')) {
       return;
     }
@@ -455,6 +488,8 @@ export class MenuPlannerApp {
     const loggedIn = document.getElementById('auth-logged-in');
     const userEmail = document.getElementById('auth-user-email');
 
+    document.body.classList.toggle('authenticated', Boolean(user));
+
     if (authBtn) {
       authBtn.textContent = user ? t('authManage') : t('authLogin');
     }
@@ -478,10 +513,19 @@ export class MenuPlannerApp {
     }
 
     const providersDisabled = !isAuthConfigured();
-    for (const id of ['auth-email-login', 'auth-email-register', 'auth-email-reset', 'auth-google', 'auth-facebook', 'auth-x']) {
+    for (const id of ['auth-email-login', 'auth-email-register', 'auth-email-reset', 'auth-google', 'auth-facebook', 'auth-x', 'auth-gate-login', 'auth-gate-register', 'auth-gate-reset', 'auth-gate-google', 'auth-gate-facebook', 'auth-gate-x']) {
       const btn = document.getElementById(id);
       if (btn) {
         btn.disabled = providersDisabled;
+      }
+    }
+
+    const gateStatus = document.getElementById('auth-gate-status');
+    if (gateStatus) {
+      if (providersDisabled) {
+        gateStatus.textContent = t('authNotConfigured');
+      } else {
+        gateStatus.textContent = user ? '' : t('authGateSubtitle');
       }
     }
   }

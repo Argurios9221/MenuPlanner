@@ -32,6 +32,48 @@
     </script>
   </head>
   <body>
+    <div id="auth-gate" class="auth-gate" role="dialog" aria-modal="true" aria-labelledby="auth-gate-title">
+      <div class="auth-gate-card">
+        <h1 id="auth-gate-title" data-i18n="authGateTitle">Welcome to Fresh Kitchen</h1>
+        <p class="auth-gate-subtitle" data-i18n="authGateSubtitle">Login or create an account to continue.</p>
+
+        <div class="form-group">
+          <label for="auth-gate-email" data-i18n="authEmail">Email</label>
+          <input id="auth-gate-email" type="email" autocomplete="email" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label for="auth-gate-password" data-i18n="authPassword">Password</label>
+          <input id="auth-gate-password" type="password" autocomplete="current-password" />
+        </div>
+
+        <div class="form-group auth-consent-box">
+          <label class="diet-check-label">
+            <input type="checkbox" id="auth-gate-consent" />
+            <span data-i18n="authConsent">I agree to Privacy Policy and Terms and consent to data processing for account access.</span>
+          </label>
+          <small>
+            <a href="./privacy.html" target="_blank" rel="noopener" data-i18n="privacyPolicy">Privacy Policy</a>
+            ·
+            <a href="./terms.html" target="_blank" rel="noopener" data-i18n="termsOfUse">Terms of Use</a>
+          </small>
+        </div>
+
+        <div class="auth-grid-btns">
+          <button id="auth-gate-login" type="button" class="btn btn-primary" data-i18n="authLogin">Login</button>
+          <button id="auth-gate-register" type="button" class="btn btn-secondary" data-i18n="authRegister">Register</button>
+          <button id="auth-gate-reset" type="button" class="btn btn-secondary" data-i18n="authResetPassword">Reset password</button>
+        </div>
+
+        <div class="auth-provider-buttons">
+          <button id="auth-gate-google" type="button" class="btn btn-secondary" data-i18n="authGoogle">Continue with Google</button>
+          <button id="auth-gate-facebook" type="button" class="btn btn-secondary" data-i18n="authFacebook">Continue with Facebook</button>
+          <button id="auth-gate-x" type="button" class="btn btn-secondary" data-i18n="authX">Continue with X</button>
+        </div>
+
+        <p id="auth-gate-status" class="auth-gate-status" aria-live="polite"></p>
+      </div>
+    </div>
+
     <div id="app">
       <!-- Header -->
       <header class="header">

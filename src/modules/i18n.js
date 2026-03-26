@@ -248,6 +248,8 @@ const translations = {
     authUnexpectedError: 'Authentication failed. Please try again.',
     authNotConfigured: 'Authentication is not configured yet. Add Firebase env variables.',
     authNotConfiguredShort: 'Auth off',
+    authGateTitle: 'Welcome to Fresh Kitchen',
+    authGateSubtitle: 'Login or create an account to continue.',
   },
   bg: {
     appName: 'Fresh Kitchen',
@@ -497,6 +499,8 @@ const translations = {
     authUnexpectedError: 'Неуспешна автентикация. Опитай отново.',
     authNotConfigured: 'Автентикацията още не е конфигурирана. Добави Firebase env променливи.',
     authNotConfiguredShort: 'Auth off',
+    authGateTitle: 'Добре дошъл във Fresh Kitchen',
+    authGateSubtitle: 'Влез или се регистрирай, за да продължиш.',
   },
 };
 
