@@ -397,10 +397,6 @@ export class MenuPlannerApp {
     };
     this.authUnsubscribe = null;
     this.barcodeListenersBound = false;
-    this.lastScrollY = 0;
-    this.mobileScrollHandlersBound = false;
-    this.onWindowScroll = null;
-    this.onWindowResize = null;
   }
 
   async init() {
@@ -514,7 +510,6 @@ export class MenuPlannerApp {
     this.attachSpoonacularListeners();
     this.attachTabListeners();
     this.attachAuthListeners();
-    this.bindMobileHeaderAutoHide();
 
     const modal = document.getElementById('recipe-modal');
     if (modal) {
@@ -2642,43 +2637,4 @@ export class MenuPlannerApp {
     }
   }
 
-  bindMobileHeaderAutoHide() {
-    if (this.mobileScrollHandlersBound) {
-      return;
-    }
-
-    this.onWindowScroll = () => {
-      const header = document.querySelector('.header');
-      if (!header) {
-        return;
-      }
-
-      const currentY = window.scrollY || 0;
-      const onMobile = window.matchMedia('(max-width: 900px)').matches;
-
-      if (!onMobile) {
-        header.classList.remove('header-hidden');
-        this.lastScrollY = currentY;
-        return;
-      }
-
-      const scrollingDown = currentY > this.lastScrollY;
-      const shouldHide = scrollingDown && currentY > 72;
-      header.classList.toggle('header-hidden', shouldHide);
-      this.lastScrollY = Math.max(0, currentY);
-    };
-
-    this.onWindowResize = () => {
-      if (!window.matchMedia('(max-width: 900px)').matches) {
-        const header = document.querySelector('.header');
-        if (header) {
-          header.classList.remove('header-hidden');
-        }
-      }
-    };
-
-    window.addEventListener('scroll', this.onWindowScroll, { passive: true });
-    window.addEventListener('resize', this.onWindowResize);
-    this.mobileScrollHandlersBound = true;
-  }
 }

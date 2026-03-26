@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('Responsive and viewport behavior', () => {
-  test('desktop layout keeps two-column shell and has core header controls', async ({ page }, testInfo) => {
+  test('desktop layout keeps two-column shell and keeps only account in top header', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('desktop'), 'Desktop-only assertion');
 
     const mainContainer = page.locator('.main-container');
@@ -18,21 +18,23 @@ test.describe('Responsive and viewport behavior', () => {
     const columnCount = templateColumns.split(' ').filter(Boolean).length;
 
     expect(columnCount).toBeGreaterThanOrEqual(2);
-    await expect(page.locator('#lang-btn')).toBeVisible();
-    await expect(page.locator('#theme-btn')).toBeVisible();
+    await expect(page.locator('#lang-btn')).toHaveCount(0);
+    await expect(page.locator('#theme-btn')).toHaveCount(0);
     await expect(page.locator('#auth-btn')).toBeVisible();
   });
 
-  test('mobile header hides on scroll down and returns on scroll up', async ({ page }, testInfo) => {
+  test('mobile header stays fixed and visible on scroll', async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('mobile'), 'Mobile-only assertion');
 
     const header = page.locator('.header');
     await expect(header).toBeVisible();
 
     await page.evaluate(() => window.scrollTo(0, 700));
-    await expect(header).toHaveClass(/header-hidden/);
+    await expect(header).toBeVisible();
+    await expect(header).not.toHaveClass(/header-hidden/);
 
     await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(header).toBeVisible();
     await expect(header).not.toHaveClass(/header-hidden/);
   });
 

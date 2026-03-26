@@ -2325,12 +2325,6 @@ recipe-modal-content .modal-close {
 }
 
 @media (max-width: 900px) {
-  .header.header-hidden {
-    transform: translateY(calc(-100% - 10px));
-    opacity: 0.97;
-    pointer-events: none;
-  }
-
   .header-content {
     align-items: center;
     gap: 0.65rem;
