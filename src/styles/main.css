@@ -2331,7 +2331,12 @@ recipe-modal-content .modal-close {
 
   .header-controls {
     width: 100%;
-    justify-content: flex-end;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .auth-user-label {
+    max-width: 100%;
   }
 
   .header {
@@ -2370,6 +2375,10 @@ recipe-modal-content .modal-close {
     height: 98px;
   }
 
+  .planning-insights {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
   .form-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2380,6 +2389,10 @@ recipe-modal-content .modal-close {
 }
 
 @media (max-width: 600px) {
+  .modal {
+    padding: var(--spacing-sm);
+  }
+
   .header {
     padding: var(--spacing-md);
   }
@@ -2405,6 +2418,21 @@ recipe-modal-content .modal-close {
     padding: 0.2rem 0.5rem;
   }
 
+  .header-controls {
+    gap: 0.45rem;
+  }
+
+  .control-btn,
+  .lang-btn {
+    padding: 0.5rem 0.78rem;
+    font-size: 0.98rem;
+  }
+
+  .auth-user-label {
+    width: 100%;
+    text-align: center;
+  }
+
   .main-container {
     padding: var(--spacing-sm);
     gap: var(--spacing-sm);
@@ -2426,32 +2454,121 @@ recipe-modal-content .modal-close {
     font-size: 0.9rem;
   }
 
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    min-height: 44px;
+  }
+
+  .menu-container {
+    padding: var(--spacing-md);
+  }
+
+  .menu-actions-bar {
+    gap: 0.5rem;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+
   .tabs {
-    flex-wrap: wrap;
-    gap: 0;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    border-bottom: none;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-bottom: 0.2rem;
   }
 
   .tab {
-    padding: var(--spacing-md);
-    flex: 1;
-    font-size: 0.85rem;
-    border-bottom: none;
-    border-right: 1px solid var(--border-color);
+    padding: 0.58rem 0.92rem;
+    flex: 0 0 auto;
+    font-size: 0.82rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-pill);
+    bottom: 0;
+    white-space: nowrap;
   }
 
   .tab:last-child {
-    border-right: none;
+    border-right: 1px solid var(--border-color);
   }
 
   .tab.active {
-    border-right: none;
-    border-bottom: 3px solid var(--primary-color);
+    border-color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  }
+
+  .pane {
+    padding: var(--spacing-md) 0;
+  }
+
+  .meal-item {
+    padding: var(--spacing-md);
+  }
+
+  .meal-content {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .meal-thumb {
+    width: 100%;
+    min-width: 0;
+    height: 170px;
+  }
+
+  .meal-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .market-results-layout,
+  .market-cards,
+  .market-cards.all-chains,
+  .planning-insights,
+  .dietary-checkboxes,
+  .auth-grid-btns,
+  .account-settings-row {
+    grid-template-columns: 1fr;
+  }
+
+  .market-card {
+    padding: 0.75rem;
+  }
+
+  .market-card-head {
+    align-items: flex-start;
+    gap: 0.45rem;
+  }
+
+  .market-links {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .planning-list-item {
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .planning-remove-btn {
+    align-self: flex-end;
+  }
+
+  .diet-check-label {
+    width: 100%;
+    min-height: 40px;
+    border-radius: 0.75rem;
   }
 
   .modal-content,
   .recipe-modal-content {
     max-width: 100%;
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md);
   }
 
   .recipe-actions {

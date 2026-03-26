@@ -5,8 +5,8 @@
   "description": "AI-powered weekly meal planner with shopping list",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:pages": "vite build --base=/MenuPlanner/",
+    "build": "vite build --base=./",
+    "build:pages": "vite build --base=./",
     "preview": "vite preview",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
