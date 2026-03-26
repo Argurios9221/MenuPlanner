@@ -335,19 +335,26 @@ async function fetchNearbyChains(coords, options = {}) {
     return [];
   }
 
-  // Only allowed supermarket/hypermarket/grocery chains.
-  const query = `
+  const buildQuery = (radiusMeters) => `
     [out:json][timeout:8];
     (
-      node["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:7000,${coords.lat},${coords.lon});
-      way["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:7000,${coords.lat},${coords.lon});
-      relation["shop"~"supermarket|hypermarket|grocery",i][~"^(name|brand|operator)$"~"lidl|лидл|kaufland|кауфланд|billa|била|metro|метро|fantastico|фантастико|cba|сба|345|dar|дар",i](around:7000,${coords.lat},${coords.lon});
+      node["shop"~"supermarket|hypermarket|grocery",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      way["shop"~"supermarket|hypermarket|grocery",i](around:${radiusMeters},${coords.lat},${coords.lon});
+      relation["shop"~"supermarket|hypermarket|grocery",i](around:${radiusMeters},${coords.lat},${coords.lon});
     );
     out center tags;
   `;
 
   try {
-    const parsed = await fetchFromOverpassMirrors(query);
+    // First pass: close radius for speed.
+    let parsed = await fetchFromOverpassMirrors(buildQuery(9000));
+    // Second pass: wider radius if too few allowed stores were discovered.
+    if (parsed.length < 2) {
+      const wider = await fetchFromOverpassMirrors(buildQuery(18000));
+      if (wider.length > parsed.length) {
+        parsed = wider;
+      }
+    }
     const candidates = parsed;
 
     const deduped = new Map();
