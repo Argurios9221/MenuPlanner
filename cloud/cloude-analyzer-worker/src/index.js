@@ -6,6 +6,15 @@ const DEFAULT_COORDS = { lat: 42.6977, lon: 23.3219 };
 const DEFAULT_RADIUS_KM = 15;
 const OVERPASS_TIMEOUT_MS = 9000;
 
+// Fallback store locations (Sofia) used when Overpass is unreachable from CF edge
+const SOFIA_FALLBACK_STORES = {
+  lidl:       { lat: 42.6527, lon: 23.3801, address: 'бул. Александър Малинов 11, София' },
+  fantastico: { lat: 42.6879, lon: 23.3173, address: 'ул. Шипченски проход 63, София' },
+  kaufland:   { lat: 42.6854, lon: 23.2985, address: 'бул. България 69, София' },
+  metro:      { lat: 42.7487, lon: 23.3481, address: 'Ломско шосе 1, София' },
+  '345':      { lat: 42.6977, lon: 23.3219, address: 'ул. Граф Игнатиев, София' },
+};
+
 const PHYSICAL_CHAIN_RULES = [
   { id: 'lidl', label: 'Lidl', regex: /(^|\W)lidl(\W|$)|лидл/iu, queryPattern: 'lidl|лидл' },
   { id: 'fantastico', label: 'Fantastico', regex: /(^|\W)fantastico(\W|$)|фантастико/iu, queryPattern: 'fantastico|фантастико' },
@@ -215,11 +224,29 @@ async function fetchNearestStoreForRule(rule, coords, radiusKm) {
   return null;
 }
 
+function makeFallbackStore(rule, coords) {
+  const fb = SOFIA_FALLBACK_STORES[rule.id] || { lat: coords.lat, lon: coords.lon, address: 'Approximate location' };
+  const distKm = Number(haversineKm(coords, { lat: fb.lat, lon: fb.lon }).toFixed(1));
+  return {
+    id: `fallback_${rule.id}`,
+    chainId: rule.id,
+    chainLabel: rule.label,
+    name: rule.label,
+    lat: fb.lat,
+    lon: fb.lon,
+    address: fb.address,
+    isOnline: false,
+    distanceKm: distKm,
+    isFallback: true,
+  };
+}
+
 async function fetchNearestPhysicalStores(coords, radiusKm) {
   const nearestByRule = await Promise.all(
     PHYSICAL_CHAIN_RULES.map((rule) => fetchNearestStoreForRule(rule, coords, radiusKm)),
   );
-  return nearestByRule.filter(Boolean);
+  // If Overpass failed for a chain, always fall back to a known Sofia location
+  return PHYSICAL_CHAIN_RULES.map((rule, i) => nearestByRule[i] || makeFallbackStore(rule, coords));
 }
 
 function toIngredientItems(rawItems) {
@@ -319,6 +346,10 @@ function summarizeConfidence(offers = []) {
 
 function makeDirectionsUrl(store, coords) {
   if (store.isOnline) return '';
+  if (store.isFallback) {
+    // No verified exact location — link to a map search for the chain near the user
+    return `https://www.google.com/maps/search/${encodeURIComponent(store.chainLabel)}/@${coords.lat},${coords.lon},13z`;
+  }
   if (!Number.isFinite(store.lat) || !Number.isFinite(store.lon)) return '';
   const destination = encodeURIComponent(`${Number(store.lat).toFixed(6)},${Number(store.lon).toFixed(6)}`);
   const origin = `&origin=${encodeURIComponent(`${coords.lat},${coords.lon}`)}`;

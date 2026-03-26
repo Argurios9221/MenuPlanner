@@ -654,13 +654,15 @@ function normalizeCloudStore(rawStore, coords, ingredientItems) {
   }
 
   const isOnline = Boolean(rawStore?.isOnline) || chainId === 'ebag' || chainId === 'supermag';
+  const isFallback = Boolean(rawStore?.isFallback);
   const distanceKm = Number.isFinite(rawStore?.distanceKm)
     ? Number(rawStore.distanceKm)
     : (!isOnline && Number.isFinite(rawStore?.lat) && Number.isFinite(rawStore?.lon)
       ? Number(haversineKm(coords, { lat: Number(rawStore.lat), lon: Number(rawStore.lon) }).toFixed(2))
       : null);
 
-  if (!isOnline && distanceKm !== null && distanceKm > 15) {
+  // Fallback stores always pass the distance filter (they are the best available for that chain)
+  if (!isOnline && !isFallback && distanceKm !== null && distanceKm > 15) {
     return null;
   }
 
