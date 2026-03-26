@@ -1641,8 +1641,6 @@ export class MenuPlannerApp {
   }
 
   renderMarketResults(results, report, selectedChains = []) {
-    console.log('🏪 [UI] renderMarketResults called. Report has', report.stores?.length || 0, 'stores. Selected chains:', selectedChains);
-
     const selected = Array.isArray(selectedChains) ? selectedChains : [];
     let storesForRender = report.stores || [];
 
@@ -1650,8 +1648,6 @@ export class MenuPlannerApp {
       const selectedSet = new Set(selected);
       storesForRender = storesForRender.filter((store) => selectedSet.has(store.chainId || store.chainLabel));
     }
-
-    console.log('🏪 [UI] After filter:', storesForRender.length, 'stores to render');
 
     // Sort: recommended store first, then by offer coverage % desc, then by distance
     storesForRender = storesForRender.sort((a, b) => {

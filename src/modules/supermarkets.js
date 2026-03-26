@@ -291,8 +291,6 @@ function parseOverpassElement(el) {
     address: [el.tags?.['addr:street'], el.tags?.['addr:housenumber']].filter(Boolean).join(' '),
   };
 
-  console.log('🏪 [Parse] Element ID:', el.id, '→', result);
-
   return result;
 }
 
@@ -337,8 +335,6 @@ async function fetchNearbyChains(coords, options = {}) {
     return [];
   }
 
-  console.log('🏪 [Supermarkets] Fetching nearby stores. Coords:', coords);
-
   // Only allowed supermarket/hypermarket/grocery chains.
   const query = `
     [out:json][timeout:8];
@@ -352,8 +348,6 @@ async function fetchNearbyChains(coords, options = {}) {
 
   try {
     const parsed = await fetchFromOverpassMirrors(query);
-    console.log('🏪 [Supermarkets] Parsed stores from Overpass:', parsed.length, parsed.map(s => ({ id: s.id, name: s.name, chainLabel: s.chainLabel, lat: s.lat, lon: s.lon })));
-
     const candidates = parsed;
 
     const deduped = new Map();
@@ -365,12 +359,9 @@ async function fetchNearbyChains(coords, options = {}) {
     }
 
     const result = Array.from(deduped.values());
-    console.log('🏪 [Supermarkets] Deduped stores:', result.length, result.map(s => ({ name: s.name, chainLabel: s.chainLabel, key: dedupeStoreKey(s) })));
-
     // Strict mode: return only allowed real chains.
     const finalResult = result;
 
-    console.log('🏪 [Supermarkets] Final result:', finalResult.length, 'stores');
     return finalResult;
   } catch (err) {
     console.error('🏪 [Supermarkets] Overpass API error:', err);
@@ -398,7 +389,6 @@ async function fetchFromOverpassMirrors(query) {
 
       const data = await response.json();
       const parsed = (data.elements || []).map(parseOverpassElement).filter(Boolean);
-      console.log('🏪 [Supermarkets] Overpass mirror raw elements:', endpoint, data.elements?.length || 0, 'parsed allowed:', parsed.length);
       if (parsed.length > 0) {
         return parsed;
       }
@@ -445,7 +435,6 @@ async function getChainOffers(storeId, chainLabel, ingredientNames, options = {}
 
   // If no offers found for this store, use generic fallback
   if (!offers || offers.length === 0) {
-    console.log(`🛒 [Supermarkets] No scraped prices found for ${chainLabel}, using fallback`);
     offers = FALLBACK_OFFERS['generic'] || [];
   }
   return offers;
@@ -565,8 +554,6 @@ export async function buildSupermarketRecommendations(basket) {
     useFallbackOnly = false,
   } = options;
 
-  console.log('🏪 [Supermarkets] Building recommendations. Options:', { minRecommendedCoverage, forceFallbackCoords, useFallbackOnly });
-
   const allBasketIngredients = getBasketIngredients(basket);
   const ingredientByCanonical = new Map();
   for (const item of allBasketIngredients) {
@@ -588,12 +575,9 @@ export async function buildSupermarketRecommendations(basket) {
   }
   const ingredientItems = Array.from(ingredientByCanonical.values());
   const ingredientNames = ingredientItems.map((i) => i.name);
-  console.log('🏪 [Supermarkets] Basket ingredients:', ingredientNames.length, 'items');
-
   const coords = forceFallbackCoords
     ? { ...DEFAULT_COORDS, isFallback: true }
     : await getUserCoords();
-  console.log('🏪 [Supermarkets] User coords:', coords.isFallback ? '(fallback) ' + JSON.stringify(coords) : JSON.stringify(coords));
 
   const shouldUseFallbackOnly = useFallbackOnly || forceFallbackCoords;
   const nearbyStores = await fetchNearbyChains(coords, { useFallbackOnly: shouldUseFallbackOnly });
@@ -607,12 +591,10 @@ export async function buildSupermarketRecommendations(basket) {
     address: 'Online',
   }));
   const allStores = [...limitedNearbyStores, ...onlineStores];
-  console.log('🏪 [Supermarkets] Nearby stores from fetchNearbyChains:', nearbyStores.length, 'limited to:', limitedNearbyStores.length, 'online stores:', onlineStores.length);
 
   const fx = await getFxRates();
 
   // Fetch offers for all nearby stores
-  console.log('🏪 [Supermarkets] Fetching offers for', allStores.length, 'stores...');
   const offerEntries = await Promise.all(
     allStores.map(async (store) => {
       const offers = await getChainOffers(store.id, store.chainLabel, ingredientNames, {
@@ -660,8 +642,6 @@ export async function buildSupermarketRecommendations(basket) {
     const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
     return aDist - bDist;
   });
-
-  console.log('🏪 [Supermarkets] Final result:', orderedStores.length, 'stores. Recommended:', recommended?.name);
 
   return {
     coords,
