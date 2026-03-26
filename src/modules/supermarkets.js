@@ -22,7 +22,8 @@ const ALLOWED_CHAIN_RULES = [
   { id: 'fresco', label: 'FRESCO', regex: /(^|\W)fresco(\W|$)|фреско/iu },
   { id: 'dar', label: 'Dar', regex: /(^|\W)dar(\W|$)|(^|\W)дар(\W|$)/iu },
 ];
-const TARGET_CHAIN_IDS = new Set(['lidl', 'fantastico', 'kaufland', 'dar', '345', 'metro']);
+const TARGET_CHAIN_IDS = new Set(['lidl', 'fantastico', 'kaufland', 'metro', '345', 'ebag', 'supermag']);
+const TARGET_PHYSICAL_CHAIN_IDS = new Set(['lidl', 'fantastico', 'kaufland', 'metro', '345']);
 const CLOUDE_ANALYZER_URL = import.meta.env.VITE_CLOUDE_ANALYZER_URL || '';
 const CLOUDE_ANALYZER_KEY = import.meta.env.VITE_CLOUDE_ANALYZER_KEY || '';
 const ONLINE_GROCERY_STORES = [
@@ -584,9 +585,18 @@ function normalizeCloudeCoverage(rawCoverage, fallbackCoverage, ingredientItems)
   };
 }
 
-async function analyzeWithCloude({ coords, stores, ingredientItems, basket }) {
+async function analyzeWithCloude({
+  coords,
+  stores,
+  ingredientItems,
+  basket,
+  minRecommendedCoverage,
+  useFallbackOnly,
+  forceFallbackCoords,
+  includeOnlineStores,
+}) {
   if (!CLOUDE_ANALYZER_URL) {
-    return null;
+    throw new Error('Missing VITE_CLOUDE_ANALYZER_URL');
   }
 
   try {
@@ -598,10 +608,17 @@ async function analyzeWithCloude({ coords, stores, ingredientItems, basket }) {
       },
       body: JSON.stringify({
         provider: 'cloude',
+        mode: 'full_market_report',
         searchRadiusKm: 15,
         coords,
         chains: Array.from(TARGET_CHAIN_IDS),
-        stores: stores.map((store) => ({
+        physicalChains: Array.from(TARGET_PHYSICAL_CHAIN_IDS),
+        onlineChains: ['ebag', 'supermag'],
+        minRecommendedCoverage,
+        useFallbackOnly: Boolean(useFallbackOnly),
+        forceFallbackCoords: Boolean(forceFallbackCoords),
+        includeOnlineStores: Boolean(includeOnlineStores),
+        stores: (stores || []).map((store) => ({
           id: store.id,
           chainId: store.chainId,
           chainLabel: store.chainLabel,
@@ -615,22 +632,122 @@ async function analyzeWithCloude({ coords, stores, ingredientItems, basket }) {
     });
 
     if (!response.ok) {
-      return null;
+      throw new Error(`Cloude analyzer HTTP ${response.status}`);
     }
 
     const payload = await response.json();
-    const normalizedStores = Array.isArray(payload?.stores)
-      ? payload.stores
-      : (Array.isArray(payload?.report?.stores) ? payload.report.stores : []);
+    return payload?.report ? payload.report : payload;
+  } catch (error) {
+    throw new Error(error?.message || 'Cloude analyzer request failed');
+  }
+}
 
-    return {
-      provider: payload?.provider || payload?.analysisProvider || 'cloude',
-      summary: payload?.summary || payload?.report?.summary || '',
-      stores: normalizedStores,
-    };
-  } catch {
+function normalizeCloudStore(rawStore, coords, ingredientItems) {
+  const chainInfo = resolveAllowedChain(rawStore?.name || rawStore?.chainLabel || '', rawStore?.brand || '', rawStore?.operator || '');
+  const chainId = String(rawStore?.chainId || chainInfo?.chainId || '').trim().toLowerCase();
+  const chainLabel = String(rawStore?.chainLabel || chainInfo?.chainLabel || rawStore?.name || chainId || 'Store').trim();
+  if (!TARGET_CHAIN_IDS.has(chainId)) {
     return null;
   }
+
+  const isOnline = Boolean(rawStore?.isOnline) || chainId === 'ebag' || chainId === 'supermag';
+  const distanceKm = Number.isFinite(rawStore?.distanceKm)
+    ? Number(rawStore.distanceKm)
+    : (!isOnline && Number.isFinite(rawStore?.lat) && Number.isFinite(rawStore?.lon)
+      ? Number(haversineKm(coords, { lat: Number(rawStore.lat), lon: Number(rawStore.lon) }).toFixed(2))
+      : null);
+
+  if (!isOnline && distanceKm !== null && distanceKm > 15) {
+    return null;
+  }
+
+  const fallbackCoverage = {
+    matchedCount: 0,
+    pricedCount: 0,
+    promoMatchedCount: 0,
+    total: ingredientItems.length,
+    percent: 0,
+    estimatedPercent: 0,
+    promoPercent: 0,
+    estimatedTotal: 0,
+    matchedOffers: [],
+    unmatchedItems: ingredientItems.map((item) => item.name),
+  };
+  const coverage = normalizeCloudeCoverage(rawStore?.coverage || rawStore, fallbackCoverage, ingredientItems);
+  const confidenceSeed = coverage.matchedOffers.map((entry) => entry.offer);
+
+  return {
+    id: rawStore?.id || rawStore?.storeId || `${chainId}_${Math.random().toString(36).slice(2, 8)}`,
+    chainId,
+    chainLabel,
+    name: rawStore?.name || chainLabel,
+    isOnline,
+    lat: Number.isFinite(rawStore?.lat) ? Number(rawStore.lat) : coords.lat,
+    lon: Number.isFinite(rawStore?.lon) ? Number(rawStore.lon) : coords.lon,
+    address: rawStore?.address || (isOnline ? 'Online' : ''),
+    offers: confidenceSeed,
+    coverage,
+    distanceKm: distanceKm !== null ? Number(distanceKm.toFixed(2)) : null,
+    priceConfidence: summarizeConfidence(confidenceSeed),
+    score: Number(rawStore?.score || (coverage.percent * 1.2 + coverage.matchedCount * 2 - (distanceKm || 0))),
+    analysisSource: 'cloude',
+    brochureHighlights: Array.isArray(rawStore?.brochureHighlights) ? rawStore.brochureHighlights.slice(0, 4) : [],
+    directionsUrl: rawStore?.directionsUrl || makeDirectionsUrl({ ...rawStore, isOnline, lat: rawStore?.lat, lon: rawStore?.lon }, coords),
+    offerUrl: rawStore?.offerUrl || '',
+  };
+}
+
+function normalizeCloudeReport(report, { coords, ingredientItems, minRecommendedCoverage, fx, familyAdjustments }) {
+  const sourceStores = Array.isArray(report?.stores)
+    ? report.stores
+    : (Array.isArray(report?.report?.stores) ? report.report.stores : []);
+  const normalizedStores = sourceStores
+    .map((store) => normalizeCloudStore(store, coords, ingredientItems))
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (b.coverage.percent !== a.coverage.percent) {
+        return b.coverage.percent - a.coverage.percent;
+      }
+      const aDist = a.distanceKm ?? Number.POSITIVE_INFINITY;
+      const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
+      return aDist - bDist;
+    });
+
+  const recommendedStoreId = report?.recommendedStoreId
+    || normalizedStores.find((store) => !store.isOnline && store.coverage.percent >= minRecommendedCoverage)?.id
+    || normalizedStores.find((store) => !store.isOnline)?.id
+    || normalizedStores[0]?.id
+    || null;
+
+  const bestCoveragePercent = Number(report?.bestCoveragePercent || normalizedStores[0]?.coverage?.percent || 0);
+
+  return {
+    coords,
+    searchRadiusKm: 15,
+    analysisProvider: 'Cloude',
+    analysisSummary: String(report?.analysisSummary || report?.summary || 'Cloud-selected stores and budget optimization'),
+    recommendedStoreId,
+    minRecommendedCoverage,
+    bestCoveragePercent,
+    fx,
+    familyAdjustments: {
+      count: familyAdjustments.length,
+      lines: familyAdjustments.slice(0, 6),
+    },
+    optimization: {
+      splitPlan: report?.optimization?.splitPlan || {
+        total: 0,
+        itemCount: 0,
+        storeCount: 0,
+        savingsVsCheapestSingle: 0,
+        assignments: [],
+      },
+      swapSuggestions: Array.isArray(report?.optimization?.swapSuggestions)
+        ? report.optimization.swapSuggestions
+        : [],
+    },
+    stores: normalizedStores,
+  };
 }
 
 function mergeCloudeIntoStores(localStores, cloudeResult, ingredientItems) {
@@ -1067,7 +1184,7 @@ export async function buildSupermarketRecommendations(basket) {
     useFallbackOnly = false,
     familyProfiles = [],
     useCloudeAnalysis = true,
-    includeOnlineStores = false,
+    includeOnlineStores = true,
   } = options;
 
   const allBasketIngredients = getBasketIngredients(basket);
@@ -1099,98 +1216,32 @@ export async function buildSupermarketRecommendations(basket) {
     current.count += item.count || 1;
   }
   const ingredientItems = Array.from(ingredientByCanonical.values());
-  const ingredientNames = ingredientItems.map((i) => i.name);
   const coords = forceFallbackCoords
     ? { ...DEFAULT_COORDS, isFallback: true }
     : await getUserCoords();
 
-  const shouldUseFallbackOnly = useFallbackOnly || forceFallbackCoords;
-  const nearbyStores = await fetchNearbyChains(coords, { useFallbackOnly: shouldUseFallbackOnly });
-  const limitedNearbyStores = limitStoresForComparison(nearbyStores, coords);
-  const onlineStores = includeOnlineStores ? ONLINE_GROCERY_STORES.map((store) => ({
-    ...store,
-    lat: coords.lat,
-    lon: coords.lon,
-    address: 'Online',
-  })) : [];
-  const allStores = [...limitedNearbyStores, ...onlineStores];
-
   const fx = await getFxRates();
 
-  // Fetch offers for all nearby stores
-  const offerEntries = await Promise.all(
-    allStores.map(async (store) => {
-      const offers = await getChainOffers(store.id, store.chainLabel, ingredientNames, {
-        useFallbackOnly: shouldUseFallbackOnly,
-      });
-      return [store.id, offers];
-    }),
-  );
-  const offersByStore = Object.fromEntries(offerEntries);
+  if (!useCloudeAnalysis) {
+    throw new Error('Market analysis requires Cloude');
+  }
 
-  const enrichedBase = allStores.map((store) => {
-    const offers = offersByStore[store.id] || [];
-    const coverage = getCoverage(offers, ingredientItems);
-    const distanceKm = store.isOnline ? null : haversineKm(coords, { lat: store.lat, lon: store.lon });
-    const distancePenalty = distanceKm !== null ? distanceKm * 1.5 : 4.5;
-    const onlinePenalty = store.isOnline ? 2 : 0;
-    const score = coverage.percent * 1.2 + coverage.matchedCount * 2 - distancePenalty - onlinePenalty;
-
-    return {
-      ...store,
-      id: store.id || `store_${Math.random()}`,
-      offers,
-      coverage,
-      priceConfidence: summarizeConfidence(coverage.matchedOffers.map((entry) => entry.offer)),
-      distanceKm: distanceKm !== null ? Number(distanceKm.toFixed(2)) : null,
-      score,
-      directionsUrl: makeDirectionsUrl(store, coords),
-      offerUrl: store.offerUrl || '',
-    };
-  });
-
-  const cloudeResult = useCloudeAnalysis
-    ? await analyzeWithCloude({ coords, stores: enrichedBase, ingredientItems, basket })
-    : null;
-  const { stores: enriched, usedCloude } = mergeCloudeIntoStores(enrichedBase, cloudeResult, ingredientItems);
-
-  const byScore = [...enriched].sort((a, b) => b.score - a.score);
-  const physicalSorted = byScore.filter((store) => !store.isOnline);
-  const recommended =
-    physicalSorted.find((store) => store.coverage.percent >= minRecommendedCoverage) ||
-    physicalSorted[0] ||
-    byScore[0] ||
-    null;
-  const bestCoveragePercent = byScore[0]?.coverage?.percent || 0;
-
-  const orderedStores = byScore.sort((a, b) => {
-    if (b.coverage.percent !== a.coverage.percent) {
-      return b.coverage.percent - a.coverage.percent;
-    }
-    const aDist = a.distanceKm ?? Number.POSITIVE_INFINITY;
-    const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
-    return aDist - bDist;
-  });
-  const splitPlan = buildSplitBasketPlan(orderedStores, ingredientItems);
-  const swapSuggestions = buildSwapSuggestions(orderedStores, ingredientItems, familyProfiles);
-
-  return {
+  const cloudeReport = await analyzeWithCloude({
     coords,
-    searchRadiusKm: 15,
-    analysisProvider: usedCloude ? 'Cloude' : 'Local estimator',
-    analysisSummary: usedCloude ? (cloudeResult?.summary || '') : '',
-    recommendedStoreId: recommended?.id || null,
+    stores: [],
+    ingredientItems,
+    basket,
     minRecommendedCoverage,
-    bestCoveragePercent,
+    useFallbackOnly,
+    forceFallbackCoords,
+    includeOnlineStores,
+  });
+
+  return normalizeCloudeReport(cloudeReport, {
+    coords,
+    ingredientItems,
+    minRecommendedCoverage,
     fx,
-    familyAdjustments: {
-      count: familyAdjustments.length,
-      lines: familyAdjustments.slice(0, 6),
-    },
-    optimization: {
-      splitPlan,
-      swapSuggestions,
-    },
-    stores: orderedStores,
-  };
+    familyAdjustments,
+  });
 }
